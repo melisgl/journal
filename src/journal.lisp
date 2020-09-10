@@ -5073,18 +5073,20 @@
     (ensure-directories-exist directory)
     (bt:with-lock-held (*file-bundle-lock*)
       ;; Make DIRECTORY independent of *DEFAULT-PATHNAME-DEFAULTS* and such.
-      (let ((directory (truename directory)))
-        (or (check-file-bundle-options
-             (gethash directory *truename-to-file-bundle*)
-             max-n-failed max-n-completed sync)
-            (setf (gethash directory *truename-to-file-bundle*)
-                  (make-instance
-                   'file-bundle
-                   :directory directory
-                   :journals (make-file-journals-for-bundle directory sync)
-                   :max-n-failed max-n-failed
-                   :max-n-completed max-n-completed
-                   :sync sync)))))))
+      (let* ((directory (truename directory))
+             (bundle (or (check-file-bundle-options
+                          (gethash directory *truename-to-file-bundle*)
+                          max-n-failed max-n-completed sync)
+                         (setf (gethash directory *truename-to-file-bundle*)
+                               (make-instance
+                                'file-bundle
+                                :directory directory
+                                :max-n-failed max-n-failed
+                                :max-n-completed max-n-completed
+                                :sync sync)))))
+        (setf (slot-value bundle 'journals)
+              (make-file-journals-for-bundle directory sync))
+        bundle))))
 
 (defun check-file-bundle-options (bundle max-n-failed max-n-completed sync)
   (when bundle
