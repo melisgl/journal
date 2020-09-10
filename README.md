@@ -669,8 +669,8 @@ returned along with `"hello"`.
 - [function] **EXPECTED-TYPE** *TYPE*
 
     Return a function suitable as the `CONDITION` argument of [`JOURNALED`][a1aa],
-    which returns the type of its single argument if it is of `TYPE`, else
-    `NIL`.
+    which returns the type of its single argument as a string if it is
+    of `TYPE`, else `NIL`.
 
 <a id='x-28JOURNAL-3A-40PRETTY-PRINTING-20MGL-PAX-3ASECTION-29'></a>
 

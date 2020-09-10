@@ -1523,11 +1523,12 @@
 
 (defun expected-type (type)
   "Return a function suitable as the CONDITION argument of JOURNALED,
-  which returns the type of its single argument if it is of TYPE, else
-  NIL."
+  which returns the type of its single argument as a string if it is
+  of TYPE, else NIL."
   (lambda (object)
     (if (typep object type)
-        (type-of object)
+        (with-standard-io-syntax
+          (prin1-to-string (type-of object)))
         nil)))
 
 

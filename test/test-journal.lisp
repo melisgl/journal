@@ -1071,6 +1071,11 @@
                       :error ("SOME-ERROR" "SOME-ERROR was signalled."))
                      (:out a
                       :error ("SOME-ERROR" "SOME-ERROR was signalled.")))))))
+
+(defun test-expected-type ()
+  (assert (string= (funcall (expected-type '(member :a :b)) :a)
+                   (with-standard-io-syntax
+                     (prin1-to-string 'cl:keyword)))))
 
 
 ;;;; Test replay mismatch
@@ -1712,6 +1717,7 @@
   (test-external-event-unexpected-outcome)
   (test-unwinding-from-record-unexpected-outcome)
   (test-nested-external-events-with-unexpected-outcome)
+  (test-expected-type)
   ;; Replay mismatch
   (test-replay-mismatch)
   ;; Inserting
