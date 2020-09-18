@@ -1591,7 +1591,7 @@
              (maybe-print-resignalling-message condition stream)
              (let ((embedded (journaling-failure-embedded-condition condition)))
                (if embedded
-                   (format stream "~@<JOURNALED failed with ~S.~:@>~%"
+                   (format stream "~@<JOURNALED failed with \"~A\".~:@>~%"
                            embedded)
                    (format stream "~@<JOURNALED failed with an unidentified ~
                                   non-local-exit.~:@>~%")))
