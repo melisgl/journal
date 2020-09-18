@@ -1069,8 +1069,8 @@
               (setq ,completep t)
               (values-list ,values))
          (if ,completep
-             (funcall ,on-return ,values)
-             (funcall ,on-nlx ,last-condition))))))
+             ,(when on-return `(funcall ,on-return ,values))
+             ,(when on-nlx `(funcall ,on-nlx ,last-condition)))))))
 
 (defun finalize-journal-state (record-streamlet abort)
   (when record-streamlet
@@ -2909,7 +2909,9 @@
                :insert)
               (t
                (replay-failure 'replay-name-mismatch :new-event event
-                               :replay-event replay-event))))))
+                               :replay-event replay-event
+                               :upgrade-restart t
+                               :insert-restart t))))))
 
 (defun match-version (event replay-event)
   (cond ((version= (event-version replay-event) (event-version event))
@@ -2918,7 +2920,8 @@
          :upgrade)
         (t
          (replay-failure 'replay-version-downgrade
-                         :new-event event :replay-event replay-event))))
+                         :new-event event :replay-event replay-event
+                         :upgrade-restart t))))
 
 
 (defsection @matching-in-events (:title "Matching in-events")
@@ -3001,7 +3004,8 @@
 (defun check-args (in-event replayed-in-event)
   (unless (equal (event-args in-event) (event-args replayed-in-event))
     (replay-failure 'replay-args-mismatch :new-event in-event
-                  :replay-event replayed-in-event)))
+                    :replay-event replayed-in-event
+                    :upgrade-restart t)))
 
 (defun skip-events-and-maybe->recording
     (record-streamlet replay-streamlet &key skip-events)
@@ -3401,8 +3405,6 @@
 (defun check-outcome (out-event replayed-out-event)
   (assert (expected-outcome-p replayed-out-event))
   (cond ((unexpected-outcome-p out-event)
-         ;; Things are apparently getting worse: we are replaying an
-         ;; normal outcome and got an unexpected one.
          (replay-failure 'replay-unexpected-outcome :new-event out-event
                          :replay-event replayed-out-event))
         (t
@@ -3414,7 +3416,8 @@
                              (event-outcome replayed-out-event)))
            (replay-failure 'replay-outcome-mismatch
                            :new-event out-event
-                           :replay-event replayed-out-event)))))
+                           :replay-event replayed-out-event
+                           :upgrade-restart t)))))
 
 
 (defsection @replay-failures (:title "Replay failures")
@@ -3427,7 +3430,9 @@
   (replay-args-mismatch condition)
   (replay-outcome-mismatch condition)
   (replay-unexpected-outcome condition)
-  (replay-incomplete condition))
+  (replay-incomplete condition)
+  (replay-force-insert restart)
+  (replay-force-upgrade restart))
 
 (define-condition replay-failure (serious-condition)
   ((new-event
@@ -3458,35 +3463,62 @@
   WITH-JOURNALING, keep in mind that in :MISMATCHED, replay always
   uses the _insert_ replay strategy (see @THE-REPLAY-STRATEGY)."))
 
-(defun replay-failure (&rest args)
+(defun replay-failure (condition-type &key new-event replay-event
+                       insert-restart upgrade-restart continue-restart)
   (assert *replay-streamlet*)
   ;; Don't signal more than once. Relies on switching to :INSERT on
   ;; :MISMATCH.
   (assert (null *replay-failure*))
-  (let ((condition (apply #'make-condition args)))
+  (let ((condition (make-condition condition-type :new-event new-event
+                                   :replay-event replay-event)))
     (assert (typep condition 'replay-failure))
-    (cond ((typep condition 'replay-incomplete)
-           ;; REPLAY-INCOMPLETE does not have a new event. Just
-           ;; check that the state is already set.
-           (when *record-streamlet*
-             (assert (eq (journal-state (record-journal)) :failed))))
-          (*record-streamlet*
-           (assert (eq (journal-state (record-journal)) :replaying))
-           (set-journal-state *record-streamlet* :mismatched)
-           ;; Make sure that the event that caused the failure is
-           ;; recorded for debugging and to make different failures
-           ;; not be IDENTICAL-JOURNALS-P and avoid reaping.
-           (write-event (replay-failure-new-event condition)
-                        *record-streamlet*)))
-    ;; This is for WITH-JOURNALING to be able to tell without a
-    ;; RECORD-JOURNAL whether to signal REPLAY-INCOMPLETE.
-    (setq *replay-failure* condition)
-    (error condition)))
+    (flet ((on-nlx (c)
+             (assert (eq c condition))
+             (cond ((typep condition 'replay-incomplete)
+                    ;; REPLAY-INCOMPLETE does not have a new event. Just
+                    ;; check that the state is already set.
+                    (when *record-streamlet*
+                      (assert (eq (journal-state (record-journal)) :failed))))
+                   (*record-streamlet*
+                    (assert (eq (journal-state (record-journal)) :replaying))
+                    (set-journal-state *record-streamlet* :mismatched)
+                    ;; Make sure that the event that caused the failure is
+                    ;; recorded for debugging and to make different failures
+                    ;; not be IDENTICAL-JOURNALS-P and avoid reaping.
+                    (write-event (replay-failure-new-event condition)
+                                 *record-streamlet*)))
+             ;; This is for WITH-JOURNALING to be able to tell without a
+             ;; RECORD-JOURNAL whether to signal REPLAY-INCOMPLETE.
+             (setq *replay-failure* condition)))
+      (nlx-protect (:on-nlx #'on-nlx)
+        (labels
+            ((maybe-with-insert-restart ()
+               (if insert-restart
+                   (restart-case
+                       (maybe-with-upgrade-restart)
+                     (replay-force-insert ()
+                       :report "Force :INSERT as JRN:@THE-REPLAY-STRATEGY."
+                       (values :insert)))
+                   (maybe-with-upgrade-restart)))
+             (maybe-with-upgrade-restart ()
+               (if upgrade-restart
+                   (restart-case
+                       (maybe-with-continue-restart)
+                     (replay-force-upgrade ()
+                       :report "Force :UPGRADE as JRN:@THE-REPLAY-STRATEGY."
+                       (values :upgrade)))
+                   (maybe-with-continue-restart)))
+             (maybe-with-continue-restart ()
+               (if continue-restart
+                   (cerror "Ignore this condition." condition)
+                   (error condition))))
+          (maybe-with-insert-restart))))))
 
 (define-condition replay-name-mismatch (replay-failure)
   ()
   (:documentation "Signaled when the new event's and replay event's
-  EVENT-NAME are not EQUAL.")
+  EVENT-NAME are not EQUAL. The REPLAY-FORCE-INSERT,
+  REPLAY-FORCE-UPGRADE restarts are provided.")
   (:report (lambda (condition stream)
              (format stream "~@<The names of the new ~S and the replay ~S ~
                             (at position ~A) events are not EQUAL.~:@>"
@@ -3497,7 +3529,8 @@
 (define-condition replay-version-downgrade (replay-failure)
   ()
   (:documentation "Signaled when the new event and the replay event
-  have the same EVENT-NAME, but the new event has a lower version.")
+  have the same EVENT-NAME, but the new event has a lower version. The
+  REPLAY-FORCE-UPGRADE restart is provided.")
   (:report (lambda (condition stream)
              (format stream "~@<The new event ~S has a lower :VERSION than ~
                             the replay event ~S (at position ~A).~:@>"
@@ -3508,7 +3541,8 @@
 (define-condition replay-args-mismatch (replay-failure)
   ()
   (:documentation "Signaled when the new event's and replay event's
-  EVENT-ARGS are not EQUAL.")
+  EVENT-ARGS are not EQUAL. The REPLAY-FORCE-UPGRADE restart is
+  provided.")
   (:report (lambda (condition stream)
              (format stream "~@<The :ARGS of the new ~S and the replay ~S ~
                             (at position ~A) events are not EQUAL.~:@>"
@@ -3519,7 +3553,8 @@
 (define-condition replay-outcome-mismatch (replay-failure)
   ()
   (:documentation "Signaled when the new event's and replay event's
-  EVENT-EXIT and/or EVENT-OUTCOME are not EQUAL.")
+  EVENT-EXIT and/or EVENT-OUTCOME are not EQUAL. The
+  REPLAY-FORCE-UPGRADE restart is provided.")
   (:report (lambda (condition stream)
              (format stream "~@<The EXITs and OUTCOMEs of the new ~S and ~
                             the replay ~S (at position ~A) events are ~
@@ -3532,7 +3567,8 @@
   ()
   (:documentation "Signaled when the new event has an
   UNEXPECTED-OUTCOME. Note that the replay event always has an
-  EXPECTED-OUTCOME due to logic of RECORD-UNEXPECTED-OUTCOME.")
+  EXPECTED-OUTCOME due to the logic of RECORD-UNEXPECTED-OUTCOME. No
+  restarts are provided.")
   (:report (lambda (condition stream)
              (format stream
                      "~@<The new event ~S has an unexpected outcome while the ~
@@ -3546,7 +3582,8 @@
   (:documentation "Signaled if there are unprocessed non-log events in
   REPLAY-JOURNAL when WITH-JOURNALING finishes and the body of
   WITH-JOURNALING returned normally, which is to prevent this
-  condition to cancel an ongoing unwinding.")
+  condition to cancel an ongoing unwinding. No restarts are
+  provided.")
   (:report (lambda (condition stream)
              (format stream "~@<Replay incomplete: there are unprocessed ~
                             events left in ~S. The next one is ~S ~
@@ -3554,6 +3591,17 @@
                      (replay-failure-replay-journal condition)
                      (replay-failure-replay-event condition)
                      (replay-failure-replay-position condition)))))
+
+(define-restart replay-force-insert ()
+  "This restart forces @THE-REPLAY-STRATEGY to be :INSERT, overriding
+  REPLAY-NAME-MISMATCH. This is intended for upgrades, and extreme
+  care must be taken not to lose data.")
+
+(define-restart replay-force-upgrade ()
+  "This restart forces @THE-REPLAY-STRATEGY to be :UPGRADE, overriding
+  REPLAY-NAME-MISMATCH, REPLAY-VERSION-DOWNGRADE,
+  REPLAY-ARGS-MISMATCH, REPLAY-OUTCOME-MISMATCH. This is intended for
+  upgrades, and extreme care must be taken not to lose data.")
 
 
 (defsection @upgrades-and-replay (:title "Upgrades and replay")
@@ -3568,9 +3616,14 @@
   tools at our disposal to control this tradeoff between safety and
   flexibility:
 
-  - We can insert individual frames with JOURNALED's INSERTABLE and
-    filter frames with WITH-REPLAY-FILTER. This option allows for the
-    most consistency checks.
+  - We can insert individual frames with JOURNALED's INSERTABLE,
+    upgrade frames by bumping JOURNALED's VERSION, and filter frames
+    with WITH-REPLAY-FILTER. This option allows for the most
+    consistency checks.
+
+  - The REPLAY-FORCE-UPGRADE and REPLAY-FORCE-INSERT restarts allow
+    overriding @THE-REPLAY-STRATEGY, but their use requires great care
+    to be taken.
 
   - Or we may decide to keep the bare minimum of the replay journal
     around, and discard everything except for EXTERNAL-EVENTs. This

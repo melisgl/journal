@@ -1789,28 +1789,32 @@ process failed hard without unwinding properly, or when an
 - [condition] **REPLAY-NAME-MISMATCH** *REPLAY-FAILURE*
 
     Signaled when the new event's and replay event's
-    [`EVENT-NAME`][2b45] are not `EQUAL`.
+    [`EVENT-NAME`][2b45] are not `EQUAL`. The [`REPLAY-FORCE-INSERT`][4ae5],
+    [`REPLAY-FORCE-UPGRADE`][aa3d] restarts are provided.
 
 <a id='x-28JOURNAL-3AREPLAY-VERSION-DOWNGRADE-20CONDITION-29'></a>
 
 - [condition] **REPLAY-VERSION-DOWNGRADE** *REPLAY-FAILURE*
 
     Signaled when the new event and the replay event
-    have the same [`EVENT-NAME`][2b45], but the new event has a lower version.
+    have the same [`EVENT-NAME`][2b45], but the new event has a lower version. The
+    [`REPLAY-FORCE-UPGRADE`][aa3d] restart is provided.
 
 <a id='x-28JOURNAL-3AREPLAY-ARGS-MISMATCH-20CONDITION-29'></a>
 
 - [condition] **REPLAY-ARGS-MISMATCH** *REPLAY-FAILURE*
 
     Signaled when the new event's and replay event's
-    [`EVENT-ARGS`][5da8] are not `EQUAL`.
+    [`EVENT-ARGS`][5da8] are not `EQUAL`. The [`REPLAY-FORCE-UPGRADE`][aa3d] restart is
+    provided.
 
 <a id='x-28JOURNAL-3AREPLAY-OUTCOME-MISMATCH-20CONDITION-29'></a>
 
 - [condition] **REPLAY-OUTCOME-MISMATCH** *REPLAY-FAILURE*
 
     Signaled when the new event's and replay event's
-    `EVENT-EXIT`([`0`][a6d1] [`1`][ef19]) and/or [`EVENT-OUTCOME`][95b8] are not `EQUAL`.
+    `EVENT-EXIT`([`0`][a6d1] [`1`][ef19]) and/or [`EVENT-OUTCOME`][95b8] are not `EQUAL`. The
+    [`REPLAY-FORCE-UPGRADE`][aa3d] restart is provided.
 
 <a id='x-28JOURNAL-3AREPLAY-UNEXPECTED-OUTCOME-20CONDITION-29'></a>
 
@@ -1818,7 +1822,8 @@ process failed hard without unwinding properly, or when an
 
     Signaled when the new event has an
     [unexpected outcome][f57e]. Note that the replay event always has an
-    [expected outcome][32e0] due to logic of [`RECORD-UNEXPECTED-OUTCOME`][cf72].
+    [expected outcome][32e0] due to the logic of [`RECORD-UNEXPECTED-OUTCOME`][cf72]. No
+    restarts are provided.
 
 <a id='x-28JOURNAL-3AREPLAY-INCOMPLETE-20CONDITION-29'></a>
 
@@ -1827,7 +1832,25 @@ process failed hard without unwinding properly, or when an
     Signaled if there are unprocessed non-log events in
     [`REPLAY-JOURNAL`][103b] when [`WITH-JOURNALING`][c7e8] finishes and the body of
     [`WITH-JOURNALING`][c7e8] returned normally, which is to prevent this
-    condition to cancel an ongoing unwinding.
+    condition to cancel an ongoing unwinding. No restarts are
+    provided.
+
+<a id='x-28JOURNAL-3AREPLAY-FORCE-INSERT-20-28RESTART-29-29'></a>
+
+- [restart] **REPLAY-FORCE-INSERT**
+
+    This restart forces [The replay strategy][3c00] to be `:INSERT`, overriding
+    [`REPLAY-NAME-MISMATCH`][d031]. This is intended for upgrades, and extreme
+    care must be taken not to lose data.
+
+<a id='x-28JOURNAL-3AREPLAY-FORCE-UPGRADE-20-28RESTART-29-29'></a>
+
+- [restart] **REPLAY-FORCE-UPGRADE**
+
+    This restart forces [The replay strategy][3c00] to be `:UPGRADE`, overriding
+    [`REPLAY-NAME-MISMATCH`][d031], [`REPLAY-VERSION-DOWNGRADE`][2efb],
+    [`REPLAY-ARGS-MISMATCH`][28a4], [`REPLAY-OUTCOME-MISMATCH`][55b7]. This is intended for
+    upgrades, and extreme care must be taken not to lose data.
 
 <a id='x-28JOURNAL-3A-40UPGRADES-AND-REPLAY-20MGL-PAX-3ASECTION-29'></a>
 
@@ -1844,9 +1867,14 @@ of the safety provided by the replay mechanism. There are various
 tools at our disposal to control this tradeoff between safety and
 flexibility:
 
-- We can insert individual frames with [`JOURNALED`][a1aa]'s `INSERTABLE` and
-  filter frames with [`WITH-REPLAY-FILTER`][eeec]. This option allows for the
-  most consistency checks.
+- We can insert individual frames with [`JOURNALED`][a1aa]'s `INSERTABLE`,
+  upgrade frames by bumping [`JOURNALED`][a1aa]'s `VERSION`, and filter frames
+  with [`WITH-REPLAY-FILTER`][eeec]. This option allows for the most
+  consistency checks.
+
+- The [`REPLAY-FORCE-UPGRADE`][aa3d] and [`REPLAY-FORCE-INSERT`][4ae5] restarts allow
+  overriding [The replay strategy][3c00], but their use requires great care
+  to be taken.
 
 - Or we may decide to keep the bare minimum of the replay journal
   around, and discard everything except for [`EXTERNAL-EVENT`][093c]s. This
@@ -3420,6 +3448,7 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
   [4182]: #x-28JOURNAL-3A-40JOURNAL-FEATURES-20MGL-PAX-3ASECTION-29 "Distinguishing features"
   [4454]: #x-28JOURNAL-3AJOURNAL-EVENTS-20-28MGL-PAX-3AREADER-20JOURNAL-3AIN-MEMORY-JOURNAL-29-29 "(JOURNAL:JOURNAL-EVENTS (MGL-PAX:READER JOURNAL:IN-MEMORY-JOURNAL))"
   [4522]: #x-28JOURNAL-3AWITH-BUNDLE-20-28MGL-PAX-3AMACRO-29-29 "(JOURNAL:WITH-BUNDLE (MGL-PAX:MACRO))"
+  [4ae5]: #x-28JOURNAL-3AREPLAY-FORCE-INSERT-20-28RESTART-29-29 "(JOURNAL:REPLAY-FORCE-INSERT (RESTART))"
   [4c38]: #x-28JOURNAL-3AMAKE-IN-EVENT-20FUNCTION-29 "(JOURNAL:MAKE-IN-EVENT FUNCTION)"
   [4d31]: #x-28JOURNAL-3ALOG-EVENT-20-28TYPE-29-29 "(JOURNAL:LOG-EVENT (TYPE))"
   [4dc9]: #x-28JOURNAL-3ASTREAMLET-ERROR-20CONDITION-29 "(JOURNAL:STREAMLET-ERROR CONDITION)"
@@ -3480,6 +3509,7 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
   [a6d1]: #x-28JOURNAL-3AEVENT-EXIT-20FUNCTION-29 "(JOURNAL:EVENT-EXIT FUNCTION)"
   [a799]: #x-28JOURNAL-3AVALUES--3E-20FUNCTION-29 "(JOURNAL:VALUES-> FUNCTION)"
   [a8b4]: #x-28JOURNAL-3AREQUEST-COMPLETED-ON-ABORT-20GENERIC-FUNCTION-29 "(JOURNAL:REQUEST-COMPLETED-ON-ABORT GENERIC-FUNCTION)"
+  [aa3d]: #x-28JOURNAL-3AREPLAY-FORCE-UPGRADE-20-28RESTART-29-29 "(JOURNAL:REPLAY-FORCE-UPGRADE (RESTART))"
   [ade5]: #x-28JOURNAL-3A-40OPENING-AND-CLOSING-20MGL-PAX-3ASECTION-29 "Opening and closing"
   [ae7d]: #x-28JOURNAL-3A-40LEAF-EVENTS-REFERENCE-20MGL-PAX-3ASECTION-29 "Leaf-events"
   [afa1]: #x-28JOURNAL-3A-40WRITING-TO-STREAMLETS-20MGL-PAX-3ASECTION-29 "Writing to streamlets"

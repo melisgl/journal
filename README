@@ -1570,35 +1570,54 @@ UNEXPECTED-OUTCOME triggered the transition to JOURNAL-STATE
 - [condition] REPLAY-NAME-MISMATCH REPLAY-FAILURE
 
     Signaled when the new event's and replay event's
-    EVENT-NAME are not EQUAL.
+    EVENT-NAME are not EQUAL. The REPLAY-FORCE-INSERT,
+    REPLAY-FORCE-UPGRADE restarts are provided.
 
 - [condition] REPLAY-VERSION-DOWNGRADE REPLAY-FAILURE
 
     Signaled when the new event and the replay event
-    have the same EVENT-NAME, but the new event has a lower version.
+    have the same EVENT-NAME, but the new event has a lower version. The
+    REPLAY-FORCE-UPGRADE restart is provided.
 
 - [condition] REPLAY-ARGS-MISMATCH REPLAY-FAILURE
 
     Signaled when the new event's and replay event's
-    EVENT-ARGS are not EQUAL.
+    EVENT-ARGS are not EQUAL. The REPLAY-FORCE-UPGRADE restart is
+    provided.
 
 - [condition] REPLAY-OUTCOME-MISMATCH REPLAY-FAILURE
 
     Signaled when the new event's and replay event's
-    EVENT-EXIT and/or EVENT-OUTCOME are not EQUAL.
+    EVENT-EXIT and/or EVENT-OUTCOME are not EQUAL. The
+    REPLAY-FORCE-UPGRADE restart is provided.
 
 - [condition] REPLAY-UNEXPECTED-OUTCOME REPLAY-FAILURE
 
     Signaled when the new event has an
     UNEXPECTED-OUTCOME. Note that the replay event always has an
-    EXPECTED-OUTCOME due to logic of RECORD-UNEXPECTED-OUTCOME.
+    EXPECTED-OUTCOME due to the logic of RECORD-UNEXPECTED-OUTCOME. No
+    restarts are provided.
 
 - [condition] REPLAY-INCOMPLETE REPLAY-FAILURE
 
     Signaled if there are unprocessed non-log events in
     REPLAY-JOURNAL when WITH-JOURNALING finishes and the body of
     WITH-JOURNALING returned normally, which is to prevent this
-    condition to cancel an ongoing unwinding.
+    condition to cancel an ongoing unwinding. No restarts are
+    provided.
+
+- [restart] REPLAY-FORCE-INSERT
+
+    This restart forces @THE-REPLAY-STRATEGY to be :INSERT, overriding
+    REPLAY-NAME-MISMATCH. This is intended for upgrades, and extreme
+    care must be taken not to lose data.
+
+- [restart] REPLAY-FORCE-UPGRADE
+
+    This restart forces @THE-REPLAY-STRATEGY to be :UPGRADE, overriding
+    REPLAY-NAME-MISMATCH, REPLAY-VERSION-DOWNGRADE,
+    REPLAY-ARGS-MISMATCH, REPLAY-OUTCOME-MISMATCH. This is intended for
+    upgrades, and extreme care must be taken not to lose data.
 
 ### Upgrades and replay
 
@@ -1613,9 +1632,14 @@ of the safety provided by the replay mechanism. There are various
 tools at our disposal to control this tradeoff between safety and
 flexibility:
 
-- We can insert individual frames with JOURNALED's INSERTABLE and
-  filter frames with WITH-REPLAY-FILTER. This option allows for the
-  most consistency checks.
+- We can insert individual frames with JOURNALED's INSERTABLE,
+  upgrade frames by bumping JOURNALED's VERSION, and filter frames
+  with WITH-REPLAY-FILTER. This option allows for the most
+  consistency checks.
+
+- The REPLAY-FORCE-UPGRADE and REPLAY-FORCE-INSERT restarts allow
+  overriding @THE-REPLAY-STRATEGY, but their use requires great care
+  to be taken.
 
 - Or we may decide to keep the bare minimum of the replay journal
   around, and discard everything except for EXTERNAL-EVENTs. This

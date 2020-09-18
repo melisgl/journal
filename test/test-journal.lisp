@@ -1688,6 +1688,73 @@
           (checked (j2)))))))
 
 
+;;;; Test replay restarts
+
+(defun test-replay-restarts ()
+  (let ((journal-1 (funcall *make-journal*)))
+    (with-journaling (:record journal-1)
+      (checked (c1 :args '(1) :version 2)
+        42))
+    ;; :UPGRADE on REPLAY-NAME-MISMATCH
+    (handler-bind ((replay-name-mismatch
+                     (lambda (c)
+                       (declare (ignore c))
+                       (invoke-restart 'replay-force-upgrade))))
+      (with-journaling (:replay journal-1 :record (funcall *make-journal*))
+        (checked (other-name)
+          42)
+        (assert (equal (list-events)
+                       '((:in other-name :version 1)
+                         (:out other-name :version 1 :values (42)))))))
+    ;; :INSERT on REPLAY-NAME-MISMATCH
+    (handler-bind ((replay-name-mismatch
+                     (lambda (c)
+                       (declare (ignore c))
+                       (invoke-restart 'replay-force-insert))))
+      (with-journaling (:replay journal-1 :record (funcall *make-journal*))
+        (checked (other-name)
+          (checked (c1 :args '(1) :version 2)
+            42))
+        (assert (equal (list-events)
+                       '((:in other-name :version 1)
+                         (:in c1 :version 2 :args (1))
+                         (:out c1 :version 2 :values (42))
+                         (:out other-name :version 1 :values (42)))))))
+    ;; :UPGRADE on REPLAY-VERSION-DOWNGRADE
+    (handler-bind ((replay-version-downgrade
+                     (lambda (c)
+                       (declare (ignore c))
+                       (invoke-restart 'replay-force-upgrade))))
+      (with-journaling (:replay journal-1 :record (funcall *make-journal*))
+        (checked (c1 :args '(1) :version 1)
+          42)
+        (assert (equal (list-events)
+                       '((:in c1 :version 1 :args (1))
+                         (:out c1 :version 1 :values (42)))))))
+    ;; :UPGRADE on REPLAY-ARGS-MISMATCH
+    (handler-bind ((replay-args-mismatch
+                     (lambda (c)
+                       (declare (ignore c))
+                       (invoke-restart 'replay-force-upgrade))))
+      (with-journaling (:replay journal-1 :record (funcall *make-journal*))
+        (checked (c1 :args '(7) :version 2)
+          42)
+        (assert (equal (list-events)
+                       '((:in c1 :version 2 :args (7))
+                         (:out c1 :version 2 :values (42)))))))
+    ;; :UPGRADE on REPLAY-OUTCOME-MISMATCH
+    (handler-bind ((replay-outcome-mismatch
+                     (lambda (c)
+                       (declare (ignore c))
+                       (invoke-restart 'replay-force-upgrade))))
+      (with-journaling (:replay journal-1 :record (funcall *make-journal*))
+        (checked (c1 :args '(1) :version 2)
+          7)
+        (assert (equal (list-events)
+                       '((:in c1 :version 2 :args (1))
+                         (:out c1 :version 2 :values (7)))))))))
+
+
 (defun test-events ()
   ;; Recording of log events
   (test-log-values-record)
@@ -1760,7 +1827,9 @@
   (test-with-replay-filter-greed)
   (test-with-replay-filter-nesting)
   (test-with-replay-filter-recursive)
-  (test-with-replay-filter-with-imbalanced-log-events))
+  (test-with-replay-filter-with-imbalanced-log-events)
+  ;; Replay restarts
+  (test-replay-restarts))
 
 (defun test-in-memory-journal ()
   (test-events))
