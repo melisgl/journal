@@ -1732,7 +1732,7 @@
                              :embedded-condition condition))))
 
 
-;;;; Continuing @ERROR-HANDLING
+;;;; Continuing @JOURNAL-ERROR-HANDLING
 
 (define-condition record-unexpected-outcome (condition)
   ((new-event
@@ -3853,6 +3853,8 @@
 
 ;;; Return true if PRED is true for every event in the non-empty frame
 ;;; next read from STREAMLET.
+;;;
+;;; FIXME: PRED vs LOG-EVENTs?
 (defun every-event-in-frame (pred streamlet)
   (save-excursion (streamlet)
     (let ((end-of-frame-position (end-of-frame-position streamlet :depth 0)))
