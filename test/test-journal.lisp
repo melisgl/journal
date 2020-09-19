@@ -1670,6 +1670,22 @@
     (with-journaling (:replay journal :replay-eoj-error-p t)
       (with-replay-filter (:patterns '((:name j1)))
         (journaled (j2 :version 1))))))
+
+(defun test-with-replay-filter-with-imbalanced-log-events ()
+  (let ((journal-1 (funcall *make-journal*))
+        (journal-2 (funcall *make-journal*)))
+    (with-journaling (:record journal-1)
+      (assert-error (some-error)
+        ;; J1's in-event is a VERSIONED-EVENT, but the out-event is a
+        ;; LOG-EVENT because we switch to :INSERT replay strategy on
+        ;; :ERROR.
+        (checked (j1)
+          (checked (j2))
+          (error 'some-error))))
+    (with-journaling (:replay journal-1 :record journal-2)
+      (with-replay-filter (:patterns '())
+        (checked (j1)
+          (checked (j2)))))))
 
 
 (defun test-events ()
@@ -1743,7 +1759,8 @@
   (test-with-replay-filter-parent-intact)
   (test-with-replay-filter-greed)
   (test-with-replay-filter-nesting)
-  (test-with-replay-filter-recursive))
+  (test-with-replay-filter-recursive)
+  (test-with-replay-filter-with-imbalanced-log-events))
 
 (defun test-in-memory-journal ()
   (test-events))

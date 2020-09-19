@@ -554,6 +554,10 @@
    ;; This is set to NIL when the streamlet is closed.
    (direction :initarg :direction :type (or direction null)
               :accessor %direction)
+   ;; N-IN-EVENTS - N-OUT-EVENTS read from the streamlet. Not
+   ;; meaningful if the read position is altered manually (i.e. not
+   ;; via SAVE-EXCURSION).
+   (depth :initform 0 :accessor %depth)
    ;; Same as this streamlet's JOURNAL's SYNC.
    (sync :initform t :initarg :sync)
    ;; Suppresses checks for DIRECTION and being open.
@@ -725,7 +729,11 @@
       (check-input-streamlet-p streamlet)
       (check-open-streamlet-p streamlet))
     (check-okay-for-input streamlet)
-    (call-next-method streamlet eoj-error-p)))
+    (let ((event (call-next-method streamlet eoj-error-p)))
+      (with-slots (depth) streamlet
+        (cond ((in-event-p event) (incf depth))
+              ((out-event-p event) (decf depth))))
+      event)))
 
 ;;; Although we rely on READ-POSITION (and FILE-POSITION behind the
 ;;; scenes), implementing socket-based journals is possible with the
@@ -745,11 +753,13 @@
   "Save READ-POSITION of STREAMLET, execute BODY, and make sure to
   restore the saved read position."
   (alexandria:once-only (streamlet)
-    (alexandria:with-gensyms (read-position)
-      `(let ((,read-position (read-position ,streamlet)))
+    (alexandria:with-gensyms (read-position depth)
+      `(let ((,read-position (read-position ,streamlet))
+             (,depth (%depth ,streamlet)))
          (unwind-protect
               (progn ,@body)
-           (setf (read-position ,streamlet) ,read-position))))))
+           (setf (read-position ,streamlet) ,read-position)
+           (setf (%depth ,streamlet) ,depth))))))
 
 (defgeneric peek-event (streamlet)
   (:documentation "Read the next event from STREAMLET without changing
@@ -2875,9 +2885,8 @@
 
 ;;; Return one of :MATCH, :UPGRADE, and :INSERT, or signal
 ;;; REPLAY-NAME-MISMATCH, END-OF-JOURNAL, REPLAY-VERSION-DOWNGRADE.
-(defun replay-strategy (event insertable
-                        record-streamlet replay-streamlet
-                        replay-eoj-error-p entering-block-p)
+(defun replay-strategy (event insertable record-streamlet replay-streamlet
+                        replay-eoj-error-p)
   (when record-streamlet
     (assert (not (member *record-journal-state* '(:failed :completed)))))
   (if (or (log-event-p event)
@@ -2888,8 +2897,7 @@
       (let ((replay-event (when replay-streamlet
                             (skip-events-and-maybe->recording
                              record-streamlet replay-streamlet
-                             :skip-events *skip-events*
-                             :entering-block-p entering-block-p)
+                             :skip-events *skip-events*)
                             (peek-event replay-streamlet))))
         (cond ((null replay-event)
                (if (and replay-streamlet replay-eoj-error-p)
@@ -2971,7 +2979,7 @@
          (in-event (make-in-event* replay-in-event name version args))
          (strategy (replay-strategy in-event insertable
                                     record-streamlet replay-streamlet
-                                    replay-eoj-error-p t)))
+                                    replay-eoj-error-p)))
     (when (eq strategy :match)
       (check-args in-event replay-in-event))
     (route-event in-event record-streamlet log-record)
@@ -2996,16 +3004,15 @@
                   :replay-event replayed-in-event)))
 
 (defun skip-events-and-maybe->recording
-    (record-streamlet replay-streamlet &key skip-events entering-block-p)
-  (skip-events replay-streamlet :skip-events skip-events
-               :entering-block-p entering-block-p)
+    (record-streamlet replay-streamlet &key skip-events)
+  (skip-events replay-streamlet :skip-events skip-events)
   (when (->recording-p record-streamlet replay-streamlet)
     (set-journal-state record-streamlet :recording)))
 
-(defun skip-events (replay-streamlet &key skip-events entering-block-p)
+(defun skip-events (replay-streamlet &key skip-events)
   (when replay-streamlet
     (if skip-events
-        (funcall skip-events entering-block-p)
+        (funcall skip-events)
         (skip-log-events replay-streamlet))))
 
 (defun skip-log-events (streamlet)
@@ -3360,7 +3367,7 @@
                       :insert
                       (replay-strategy out-event insertable
                                        record-streamlet replay-streamlet
-                                       replay-eoj-error-p nil))))
+                                       replay-eoj-error-p))))
     (ecase strategy
       ((:insert)
        (route-event out-event record-streamlet log-record)
@@ -3714,16 +3721,15 @@
 
   For how to add new blocks in a code upgrade, see JOURNALED's
   :INSERTABLE argument."
-  (alexandria:with-gensyms (with-filtering-body eat pred depth entering-block-p)
+  (alexandria:with-gensyms (with-filtering-body eat pred depth)
     `(flet ((,with-filtering-body () ,@body))
        (declare (dynamic-extent #',with-filtering-body))
        (if *replay-streamlet*
            (let* ((*patterns* (append *patterns* ,patterns))
                   (,pred (patterns-to-disjunction *patterns*))
-                  (,depth 0))
-             (flet ((,eat (,entering-block-p)
-                      (setq ,depth (eat-events ,pred *replay-streamlet*
-                                               ,depth ,entering-block-p))))
+                  (,depth (%depth *replay-streamlet*)))
+             (flet ((,eat ()
+                      (eat-events ,pred *replay-streamlet* ,depth)))
                (unwind-protect
                     (let ((*skip-events* #',eat))
                       (,with-filtering-body))
@@ -3767,33 +3773,26 @@
            (version< (event-version event)
                      (or version< :infinity))))))
 
-;;; Consume all consecutive log-events and those that match PRED. This
-;;; is called with ENTERING-BLOCK-P indicating whether a non-log
-;;; JOURNALED within a WITH-REPLAY-FILTER is about to be entered or
-;;; left.
-(defun eat-events (pred streamlet depth entering-block-p)
+;;; Consume all consecutive log-events and those that match PRED.
+(defun eat-events (pred streamlet base-depth)
   (loop
-    (let ((event (peek-event streamlet)))
+    (let ((depth (%depth streamlet))
+          (event (peek-event streamlet)))
       (cond ((and event
+                  ;; Filter LOG-EVENTs and those matching PRED unless
+                  ;; DEPTH would go below BASE-DEPTH.
                   (or (log-event-p event)
                       (funcall pred event))
-                  (or (plusp depth)
-                      (in-event-p event)))
+                  (or (< base-depth depth)
+                      (not (out-event-p event))))
              (read-event streamlet)
-             (cond ((in-event-p event)
-                    (incf depth))
-                   ((out-event-p event)
-                    ;; When leaving a block, we must stop at depth 0 to
-                    ;; avoid consuming events that may fall outside the
-                    ;; scope of WITH-REPLAY-FILTER.
-                    (when (and (zerop (decf depth))
-                               (not entering-block-p))
-                      (return depth)))))
+             (when (= base-depth (%depth streamlet))
+               (return)))
             (t
-             (return depth))))))
+             (return))))))
 
-(defun eat-full-frames-of-events (pred streamlet depth)
-  (if (zerop depth)
+(defun eat-full-frames-of-events (pred streamlet base-depth)
+  (if (= (%depth streamlet) base-depth)
       (loop for read-position = (every-event-in-frame pred streamlet)
             while read-position
             do (setf (read-position streamlet) read-position))
