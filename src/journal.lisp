@@ -4588,8 +4588,12 @@
       ;; Make sure they are superseeded safely.
       (let ((existing (gethash truename *truename-to-file-journal*)))
         (when (and existing
-                   (not (probe-file truename))
-                   (not (eq (journal-state existing) :new)))
+                   (or (and (not (probe-file truename))
+                            (not (eq (journal-state existing) :new)))
+                       ;; Notice manual edits to journal state, too.
+                       (and (probe-file truename)
+                            (not (eq (journal-state existing)
+                                     (read-file-journal-state truename))))))
           (invalidate-journal existing)
           (remhash truename *truename-to-file-journal*)))
       (or (check-file-journal-options
