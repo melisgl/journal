@@ -601,10 +601,11 @@
       (with-journal-locked (journal)
         (when outputp
           (check-concurrent-write-access journal))
-        (if outputp
-            (incf (slot-value journal 'n-writers))
-            (incf (slot-value journal 'n-readers)))
-        (call-next-method journal :direction direction)))))
+        (multiple-value-prog1
+            (call-next-method journal :direction direction)
+          (if outputp
+              (incf (slot-value journal 'n-writers))
+              (incf (slot-value journal 'n-readers))))))))
 
 (defun check-concurrent-write-access (journal)
   (with-slots (n-writers) journal
