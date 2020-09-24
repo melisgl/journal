@@ -998,12 +998,16 @@
       (when (eq state :recording)
         (request-completed-on-abort streamlet)))))
 
+;;; An override mechanism for SKIP-LOG-EVENTS for WITH-REPLAY-FILTER.
+(defvar *skip-events* nil)
+
 (defun call-with-journaling (fn record replay replay-eoj-error-p)
   (let ((record (and record (to-journal record)))
         (replay (and replay (to-journal replay)))
         (*journaling-failure* nil)
         (*replay-failure* nil)
-        (*record-journal-state* :new))
+        (*record-journal-state* :new)
+        (*skip-events* nil))
     (check-journal-state "Record" record :new)
     (check-journal-state "Replay" replay :completed)
     (with-open-journal (*record-streamlet* record :direction :output)
@@ -2885,8 +2889,6 @@
        |-----------------+-------+-----------|
        | downgrade-error | match | upgrade   |")
 
-(defvar *skip-events* nil)
-
 ;;; Return one of :MATCH, :UPGRADE, and :INSERT, or signal
 ;;; REPLAY-NAME-MISMATCH, END-OF-JOURNAL, REPLAY-VERSION-DOWNGRADE.
 (defun replay-strategy (event insertable record-streamlet replay-streamlet
@@ -2900,8 +2902,7 @@
       :insert
       (let ((replay-event (when replay-streamlet
                             (skip-events-and-maybe->recording
-                             record-streamlet replay-streamlet
-                             :skip-events *skip-events*)
+                             record-streamlet replay-streamlet)
                             (peek-event replay-streamlet))))
         (cond ((null replay-event)
                (if (and replay-streamlet replay-eoj-error-p)
@@ -2990,7 +2991,7 @@
     (when (eq strategy :match)
       (check-args in-event replay-in-event))
     (route-event in-event record-streamlet log-record)
-    (when (or (eq strategy :upgrade) (eq strategy :match))
+    (when (or (eq strategy :match) (eq strategy :upgrade))
       (read-event replay-streamlet)
       (unwind-protect
            (let ((replayed-out-event nil))
@@ -3011,16 +3012,15 @@
                     :replay-event replayed-in-event
                     :upgrade-restart t)))
 
-(defun skip-events-and-maybe->recording
-    (record-streamlet replay-streamlet &key skip-events)
-  (skip-events replay-streamlet :skip-events skip-events)
+(defun skip-events-and-maybe->recording (record-streamlet replay-streamlet)
+  (skip-events replay-streamlet)
   (when (->recording-p record-streamlet replay-streamlet)
     (set-journal-state record-streamlet :recording)))
 
-(defun skip-events (replay-streamlet &key skip-events)
+(defun skip-events (replay-streamlet)
   (when replay-streamlet
-    (if skip-events
-        (funcall skip-events)
+    (if *skip-events*
+        (funcall *skip-events*)
         (skip-log-events replay-streamlet))))
 
 (defun skip-log-events (streamlet)
@@ -3165,16 +3165,14 @@
                              replayed-out-event replay-values replay-condition)
   (cond ((values-event-p replayed-out-event)
          (echo-current-frame replay-streamlet record-streamlet)
-         (skip-events-and-maybe->recording record-streamlet replay-streamlet
-                                           :skip-events *skip-events*)
+         (skip-events-and-maybe->recording record-streamlet replay-streamlet)
          (turn-off-with-journaling-failure-on-nlx)
          (throw 'replay-values-happened
            (funcall (or replay-values #'values-list)
                     (event-outcome replayed-out-event))))
         ((condition-event-p replayed-out-event)
          (echo-current-frame replay-streamlet record-streamlet)
-         (skip-events-and-maybe->recording record-streamlet replay-streamlet
-                                           :skip-events *skip-events*)
+         (skip-events-and-maybe->recording record-streamlet replay-streamlet)
          (turn-off-with-journaling-failure-on-nlx)
          (funcall (or replay-condition #'error)
                   (event-outcome replayed-out-event))
@@ -3382,8 +3380,7 @@
        (when record-streamlet
          (write-event out-event record-streamlet))
        (read-event replay-streamlet)
-       (skip-events-and-maybe->recording record-streamlet replay-streamlet
-                                         :skip-events *skip-events*)
+       (skip-events-and-maybe->recording record-streamlet replay-streamlet)
        (maybe-sync out-event record-streamlet))
       ((:match)
        (let ((replay-event (peek-event replay-streamlet)))
@@ -3391,8 +3388,7 @@
          (when record-streamlet
            (write-event out-event record-streamlet))
          (read-event replay-streamlet)
-         (skip-events-and-maybe->recording record-streamlet replay-streamlet
-                                           :skip-events *skip-events*)
+         (skip-events-and-maybe->recording record-streamlet replay-streamlet)
          (maybe-sync out-event record-streamlet))))))
 
 ;;; Tests for :RECORDING, thus must be called after reading the replay
@@ -3730,7 +3726,14 @@
   Filtered out events are never seen by JOURNALED as it replays
   events. All patterns are of the format `(&KEY NAME VERSION<)`, where
   VERSION< is a valid [EVENT-VERSION][type], and NAME may be NIL,
-  which acts as a wildcard. Examples:
+  which acts as a wildcard.
+
+  WITH-REPLAY-FILTER affects only the immediately enclosing
+  WITH-JOURNALING. A WITH-REPLAY-FILTER nested within another in the
+  same WITH-JOURNALING inherits PATTERNS of its parent, to which it
+  add its own PATTERNS.
+
+  Examples:
 
   ```
   ;; Match events with name FOO and version 1, 2, 3 or 4
@@ -3787,6 +3790,9 @@
                       (eat-events ,pred *replay-streamlet* ,depth)))
                (unwind-protect
                     (let ((*skip-events* #',eat))
+                      (with-journaling-failure-on-nlx
+                        (skip-events-and-maybe->recording
+                         *record-streamlet* *replay-streamlet*))
                       (,with-filtering-body))
                  ;; Being in a cleanup form, be conservative about
                  ;; potentially piling more errors on top of
@@ -3806,8 +3812,7 @@
                      ;; performs the :REPLAYING -> :RECORDING
                      ;; transition.
                      (skip-events-and-maybe->recording
-                      *record-streamlet* *replay-streamlet*
-                      :skip-events *skip-events*))))))
+                      *record-streamlet* *replay-streamlet*))))))
            (,with-filtering-body)))))
 
 (defvar *patterns* ())

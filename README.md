@@ -1989,7 +1989,14 @@ With that, let's see how [`WITH-REPLAY-FILTER`][eeec] works.
     Filtered out events are never seen by [`JOURNALED`][a1aa] as it replays
     events. All patterns are of the format `(&KEY NAME VERSION<)`, where
     `VERSION`< is a valid [`EVENT-VERSION`][55cf], and `NAME` may be `NIL`,
-    which acts as a wildcard. Examples:
+    which acts as a wildcard.
+    
+    [`WITH-REPLAY-FILTER`][eeec] affects only the immediately enclosing
+    [`WITH-JOURNALING`][c7e8]. A [`WITH-REPLAY-FILTER`][eeec] nested within another in the
+    same [`WITH-JOURNALING`][c7e8] inherits `PATTERNS` of its parent, to which it
+    add its own `PATTERNS`.
+    
+    Examples:
     
     ```
     ;; Match events with name FOO and version 1, 2, 3 or 4
