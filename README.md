@@ -332,7 +332,7 @@ cycles focussing on persistence.
 
 <a id='x-28JOURNAL-3AREPLAYED-20-28MGL-PAX-3AMACRO-29-29'></a>
 
-- [macro] **REPLAYED** *(NAME &KEY ARGS VALUES CONDITION REPLAY-VALUES REPLAY-CONDITION) &BODY BODY*
+- [macro] **REPLAYED** *(NAME &KEY ARGS VALUES CONDITION INSERTABLE REPLAY-VALUES REPLAY-CONDITION) &BODY BODY*
 
     A wrapper around [`JOURNALED`][a1aa] to produce [frame][1452]s of [`EXTERNAL-EVENT`][093c]s.
     `VERSION` is `:INFINITY`.
@@ -1429,11 +1429,13 @@ The following arguments of [`JOURNALED`][a1aa] control behaviour under replay.
 
 - `VERSION`: see [`EVENT-VERSION`][55cf] below.
 
-- `INSERTABLE` controls whether [`VERSIONED-EVENT`][e361]s may be replayed with
-  the *insert* replay strategy (see [The replay strategy][3c00]). Does not
-  affect [`LOG-EVENT`][4d31]s, that are always \_insert\_ed, or [`EXTERNAL-EVENT`][093c]s,
-  which are only inserted after the replay is complete. It is a
-  [`JOURNAL-ERROR`][571f] to have both `VERSION` `:INFINITY` and `INSERTABLE`.
+- `INSERTABLE` controls whether [`VERSIONED-EVENT`][e361]s and [`EXTERNAL-EVENT`][093c]s
+  may be replayed with the *insert* replay strategy (see
+  [The replay strategy][3c00]). Does not affect [`LOG-EVENT`][4d31]s, that are always
+  \_insert\_ed. Note that inserting [`EXTERNAL-EVENT`][093c]s while `:REPLAYING`
+  is often not meaningful (e.g. asking the user for input may lead
+  to a [`REPLAY-FAILURE`][955f]). See [`PEEK-REPLAY-EVENT`][63a5] for an example on how
+  to properly insert these kinds of [`EXTERNAL-EVENT`][093c]s.
 
 - `REPLAY-VALUES`, a function or `NIL`, may be called with [`EVENT-OUTCOME`][95b8]
   when replaying and `:VERSION` `:INFINITY`. `NIL` is equivalent to
@@ -3475,6 +3477,7 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
   [5da8]: #x-28JOURNAL-3AEVENT-ARGS-20FUNCTION-29 "(JOURNAL:EVENT-ARGS FUNCTION)"
   [5e31]: #x-28JOURNAL-3AEXTERNAL-EVENT-DOWNGRADE-20CONDITION-29 "(JOURNAL:EXTERNAL-EVENT-DOWNGRADE CONDITION)"
   [61f5]: #x-28JOURNAL-3ANLX-OUTCOME-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL:NLX-OUTCOME MGL-PAX:GLOSSARY-TERM)"
+  [63a5]: #x-28JOURNAL-3APEEK-REPLAY-EVENT-20FUNCTION-29 "(JOURNAL:PEEK-REPLAY-EVENT FUNCTION)"
   [6505]: #x-28JOURNAL-3AFRAMED-20-28MGL-PAX-3AMACRO-29-29 "(JOURNAL:FRAMED (MGL-PAX:MACRO))"
   [6519]: #x-28JOURNAL-3AJTRACE-20-28MGL-PAX-3AMACRO-29-29 "(JOURNAL:JTRACE (MGL-PAX:MACRO))"
   [6572]: #x-28JOURNAL-3A-40BLOCK-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL:@BLOCK MGL-PAX:GLOSSARY-TERM)"

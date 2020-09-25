@@ -1184,13 +1184,14 @@
                      :insertable ,insertable)
      ,@body))
 
-(defmacro replayed ((name &key args values condition
+(defmacro replayed ((name &key args values condition insertable
                      replay-values replay-condition)
                     &body body)
   "A wrapper around JOURNALED to produce @FRAMEs of EXTERNAL-EVENTs.
   VERSION is :INFINITY."
   `(journaled (,name :version :infinity :args ,args
                      :values ,values :condition ,condition
+                     :insertable ,insertable
                      :replay-values ,replay-values
                      :replay-condition ,replay-condition)
      ,@body))
@@ -1538,7 +1539,7 @@
   (lambda (object)
     (if (typep object type)
         (with-standard-io-syntax
-          (prin1-to-string (type-of object)))
+          (cleanup (prin1-to-string (type-of object))))
         nil)))
 
 
@@ -2655,11 +2656,13 @@
 
   - VERSION: see [EVENT-VERSION][type] below.
 
-  - INSERTABLE controls whether VERSIONED-EVENTs may be replayed with
-    the _insert_ replay strategy (see @THE-REPLAY-STRATEGY). Does not
-    affect LOG-EVENTs, that are always _insert_ed, or EXTERNAL-EVENTs,
-    which are only inserted after the replay is complete. It is a
-    JOURNAL-ERROR to have both VERSION :INFINITY and INSERTABLE.
+  - INSERTABLE controls whether VERSIONED-EVENTs and EXTERNAL-EVENTs
+    may be replayed with the _insert_ replay strategy (see
+    @THE-REPLAY-STRATEGY). Does not affect LOG-EVENTs, that are always
+    _insert_ed. Note that inserting EXTERNAL-EVENTs while :REPLAYING
+    is often not meaningful (e.g. asking the user for input may lead
+    to a REPLAY-FAILURE). See PEEK-REPLAY-EVENT for an example on how
+    to properly insert these kinds of EXTERNAL-EVENTs.
 
   - REPLAY-VALUES, a function or NIL, may be called with EVENT-OUTCOME
     when replaying and :VERSION :INFINITY. NIL is equivalent to
@@ -3258,12 +3261,9 @@
      record-streamlet log-record name version args values-key condition-key
      replay-streamlet insertable replay-values replay-condition
      replay-eoj-error-p)
-  (if (eq version :infinity)
-      (when insertable
-        (error 'journal-error
-               :format-control "EXTERNAL-EVENTs cannot be INSERTABLE."))
-      (when *force-insertable*
-        (setq insertable t)))
+  (unless (eq version :infinity)
+    (when *force-insertable*
+      (setq insertable t)))
   (catch 'replay-values-happened
     (let ((in-event-strategy
             (with-journaling-failure-on-nlx
@@ -3331,9 +3331,10 @@
                   (values :condition c)
                   (values :error
                           (with-standard-io-syntax
-                            (list
-                             (cleanup (princ-to-string (type-of condition)))
-                             (cleanup (princ-to-string condition)))))))
+                            (cleanup
+                             (list
+                              (princ-to-string (type-of condition))
+                              (princ-to-string condition)))))))
             (values :nlx nil))
       (when (and version record-streamlet)
         (let ((state *record-journal-state*))

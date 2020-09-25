@@ -1167,12 +1167,6 @@
         (journaled (b :version 1))
         (assert (eq (journal-state (record-journal)) :recording))))))
 
-(defun test-insertable-external ()
-  (let ((journal (funcall *make-journal*)))
-    (assert-error (journal-error "EXTERNAL-EVENTs cannot be INSERTABLE")
-      (with-journaling (:record journal)
-        (journaled (a :version :infinity :insertable t))))))
-
 (defun test-force-insertable-vs-external ()
   (let ((journal (funcall *make-journal*))
         (*force-insertable* t))
@@ -1807,7 +1801,6 @@
   (test-insertable-next-vs-prev-event)
   (test-force-insertable-vs-external)
   (test-insert-before-unexpected)
-  (test-insertable-external)
   (test-force-insertable-vs-external)
   (test-with-replay-streamlet)
   (test-peek-replay-event)

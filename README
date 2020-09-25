@@ -245,7 +245,7 @@ cycles focussing on persistence.
     A wrapper around JOURNALED to produce @FRAMEs of VERSIONED-EVENTs.
     VERSION defaults to 1.
 
-- [macro] REPLAYED (NAME &KEY ARGS VALUES CONDITION REPLAY-VALUES REPLAY-CONDITION) &BODY BODY
+- [macro] REPLAYED (NAME &KEY ARGS VALUES CONDITION INSERTABLE REPLAY-VALUES REPLAY-CONDITION) &BODY BODY
 
     A wrapper around JOURNALED to produce @FRAMEs of EXTERNAL-EVENTs.
     VERSION is :INFINITY.
@@ -1244,11 +1244,13 @@ The following arguments of JOURNALED control behaviour under replay.
 
 - VERSION: see [EVENT-VERSION][type] below.
 
-- INSERTABLE controls whether VERSIONED-EVENTs may be replayed with
-  the *insert* replay strategy (see @THE-REPLAY-STRATEGY). Does not
-  affect LOG-EVENTs, that are always \_insert\_ed, or EXTERNAL-EVENTs,
-  which are only inserted after the replay is complete. It is a
-  JOURNAL-ERROR to have both VERSION :INFINITY and INSERTABLE.
+- INSERTABLE controls whether VERSIONED-EVENTs and EXTERNAL-EVENTs
+  may be replayed with the *insert* replay strategy (see
+  @THE-REPLAY-STRATEGY). Does not affect LOG-EVENTs, that are always
+  \_insert\_ed. Note that inserting EXTERNAL-EVENTs while :REPLAYING
+  is often not meaningful (e.g. asking the user for input may lead
+  to a REPLAY-FAILURE). See PEEK-REPLAY-EVENT for an example on how
+  to properly insert these kinds of EXTERNAL-EVENTs.
 
 - REPLAY-VALUES, a function or NIL, may be called with EVENT-OUTCOME
   when replaying and :VERSION :INFINITY. NIL is equivalent to
