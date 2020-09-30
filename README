@@ -214,7 +214,8 @@ cycles focussing on persistence.
     JOURNALED generates events upon entering and leaving the dynamic
     extent of BODY (also known as the journaled @BLOCK), which we call
     the @IN-EVENTS and @OUT-EVENTS. Between generating the two events,
-    BODY is executed normally.
+    BODY is typically executed normally (except for
+    @REPLAYING-THE-OUTCOME).
     
     Where the generated events are written is determined by the :RECORD
     argument of the enclosing WITH-JOURNALING. If there is no enclosing
@@ -233,22 +234,6 @@ cycles focussing on persistence.
     Also see in @LOG-RECORD in the @LOGGING section. For a description
     of VERSION, INSERTABLE, REPLAY-VALUES and REPLAY-CONDITION, see
     @JOURNALED-FOR-REPLAY.
-
-- [macro] FRAMED (NAME &KEY LOG-RECORD ARGS VALUES CONDITION) &BODY BODY
-
-    A wrapper around JOURNALED to produce @FRAMEs of LOG-EVENTs. That
-    is, VERSION is always NIL, and some irrelevant arguments are
-    omitted. The related LOGGED creates a single LEAF-EVENT.
-
-- [macro] CHECKED (NAME &KEY (VERSION 1) ARGS VALUES CONDITION INSERTABLE) &BODY BODY
-
-    A wrapper around JOURNALED to produce @FRAMEs of VERSIONED-EVENTs.
-    VERSION defaults to 1.
-
-- [macro] REPLAYED (NAME &KEY ARGS VALUES CONDITION INSERTABLE REPLAY-VALUES REPLAY-CONDITION) &BODY BODY
-
-    A wrapper around JOURNALED to produce @FRAMEs of EXTERNAL-EVENTs.
-    VERSION is :INFINITY.
 
 ### In-events
 
@@ -711,20 +696,18 @@ most often used for @LOGGING and @TRACING.
     signalling this condition, JOURNAL-STATE is set to :LOGGING, thus no
     more events can be recorded that will affect replay of the journal
     being recorded. The event that triggered this condition is recorded
-    in state :LOGGING, with its version downgraded. Since @REPLAY is
-    built on the assumption that control flow is deterministic, an
-    unexpected outcome is significant because it makes this assumption
-    to hold unlikely.
+    in state :LOGGING, with its version downgraded. Since
+    @REPLAY (except INVOKED) is built on the assumption that control
+    flow is deterministic, an unexpected outcome is significant because
+    it makes this assumption to hold unlikely.
     
     Also see REPLAY-UNEXPECTED-OUTCOME.
 
-- [condition] EXTERNAL-EVENT-DOWNGRADE JOURNALING-FAILURE
+- [condition] DATA-EVENT-LOSSAGE JOURNALING-FAILURE
 
-    Signalled when an IN-EVENT EXTERNAL-EVENT is to be
-    recorded in JOURNAL-STATE :LOGGING. In that state, the version of
-    generated events is forced to NIL, making them LOG-EVENTs, but that
-    would constitute data loss (also see DATA-EVENTs). To be :LOGGING,
-    there must have been RECORD-UNEXPECTED-OUTCOME.
+    Signalled when a DATA-EVENT is about to be recorded
+    in JOURNAL-STATE :MISMATCHED or :LOGGING. Since the data event will
+    not be replayed that constitutes data loss.
 
 - [condition] JOURNAL-ERROR ERROR
 
@@ -1203,16 +1186,17 @@ implemented, revolves around [JOURNAL-STATE][type] and
       been replayed successfuly, but there are more, non-log events to
       replay.
     
-    - **:MISMATCHED**: There was a REPLAY-FAILURE.
+    - **:MISMATCHED**: There was a REPLAY-FAILURE. In this state,
+      VERSIONED-EVENTs generated are downgraded to LOG-EVENTs,
+      EXTERNAL-EVENTs and INVOKED trigger a DATA-EVENT-LOSSAGE.
     
     - **:RECORDING**: All events from the replay journal were
       successfully replayed and now new events are being recorded
       without being matched to the replay journal.
     
-    - **:LOGGING**: There was a RECORD-UNEXPECTED-OUTCOME.
-      VERSIONED-EVENTs generated in this state are downgraded to
-      LOG-EVENTs, and EXTERNAL-EVENTs trigger a
-      EXTERNAL-EVENT-DOWNGRADE.
+    - **:LOGGING**: There was a RECORD-UNEXPECTED-OUTCOME. In this
+      state, VERSIONED-EVENTs generated are downgraded to LOG-EVENTs,
+      EXTERNAL-EVENTs and INVOKED trigger a DATA-EVENT-LOSSAGE.
     
     - **:FAILED**: The journal is to be discarded. It encountered a
       JOURNALING-FAILURE or a REPLAY-FAILURE without completing the
@@ -1268,8 +1252,7 @@ The following arguments of JOURNALED control behaviour under replay.
     The default value of the INSERTABLE argument of JOURNALED for
     VERSIONED-EVENTs. Binding this to T allows en-masse structural
     upgrades in combination with WITH-REPLAY-FILTER. Does not affect
-    EXTERNAL-EVENTs, which are not insertable. See
-    @UPGRADES-AND-REPLAY.
+    EXTERNAL-EVENTs. See @UPGRADES-AND-REPLAY.
 
 - [type] EVENT-VERSION
 
@@ -1286,7 +1269,9 @@ The following arguments of JOURNALED control behaviour under replay.
     they are never matched to events from the replay journal, and log
     events in the replay do not affect events being recorded either.
     These properties allow log events to be recorded in arbitrary
-    journals with JOURNALED's LOG-RECORD argument.
+    journals with JOURNALED's LOG-RECORD argument. The convenience macro
+    FRAMED is creating frames of log-events, while the LOGGED generates
+    a log-event that's a LEAF-EVENT.
 
 - [type] VERSIONED-EVENT
 
@@ -1296,8 +1281,11 @@ The following arguments of JOURNALED control behaviour under replay.
     EXTERNAL-EVENTs. In particular, higher versions are always
     considered compatible with lower versions, they become an *upgrade*
     in terms of the @THE-REPLAY-STRATEGY, and versioned events can be
-    inserted into the record without a corresponding replay event with
+    inserted into the record without a corresponding REPLAY-EVENT with
     JOURNALED's INSERTABLE.
+    
+    If a VERSIONED-EVENT has an UNEXPECTED-OUTCOME,
+    RECORD-UNEXPECTED-OUTCOME is signalled.
 
 - [type] EXTERNAL-EVENT
 
@@ -1312,6 +1300,149 @@ The following arguments of JOURNALED control behaviour under replay.
     @REPLAYING-THE-OUTCOME). This allows their out-event variety, called
     DATA-EVENTs, to be non-deterministic. Data events play a crucial
     role in @PERSISTENCE.
+    
+    If an EXTERNAL-EVENT has an UNEXPECTED-OUTCOME,
+    RECORD-UNEXPECTED-OUTCOME is signalled.
+
+Built on top of JOURNALED, the macros below record a pair of
+@IN-EVENTS and @OUT-EVENTS, but differ in how they are replayed and
+the requirements on their @BLOCKs. The following table names the
+type of EVENT produced (`Event`), how @IN-EVENTS are
+replayed (`In-e.`), whether the block is always run (`Run`), how
+@OUT-EVENTS are replayed (`Out-e.`), whether the block must be
+deterministic (`Det`) or side-effect free (`SEF`).
+
+    |          | Event     | In-e.  | Run | Out-e. | Det | SEF |
+    |----------+-----------+--------+-----+--------+-----+-----|
+    | FRAMED   | log       | skip   | y   | skip   | n   | n   |
+    | CHECKED  | versioned | match  | y   | match  | y   | n   |
+    | REPLAYED | external  | match  | n   | replay | n   | y   |
+    | INVOKED  | versioned | replay | y   | match  | y   | n   |
+
+Note that the replay-replay combination is not implemented because
+there is nowhere to return values from replay-triggered functions.
+
+- [macro] FRAMED (NAME &KEY LOG-RECORD ARGS VALUES CONDITION) &BODY BODY
+
+    A wrapper around JOURNALED to produce @FRAMEs of LOG-EVENTs. That
+    is, VERSION is always NIL, and some irrelevant arguments are
+    omitted. The related LOGGED creates a single LEAF-EVENT.
+    
+    With FRAMED, BODY is always run and no REPLAY-FAILUREs are
+    triggered. BODY is not required to be deterministic and it may have
+    side-effects.
+
+- [macro] CHECKED (NAME &KEY (VERSION 1) ARGS VALUES CONDITION INSERTABLE) &BODY BODY
+
+    A wrapper around JOURNALED to produce @FRAMEs of VERSIONED-EVENTs.
+    VERSION defaults to 1. CHECKED is for ensuring that supposedly
+    deterministic processing does not veer off the replay.
+    
+    With CHECKED, BODY - which must be deterministic - is always run and
+    REPLAY-FAILUREs are triggered when the events generated do not match
+    the events in the replay journal. BODY may have side-effects.
+    
+    For further discussion of determinism, see REPLAYED.
+
+- [macro] REPLAYED (NAME &KEY ARGS VALUES CONDITION INSERTABLE REPLAY-VALUES REPLAY-CONDITION) &BODY BODY
+
+    A wrapper around JOURNALED to produce @FRAMEs of EXTERNAL-EVENTs.
+    VERSION is :INFINITY. REPLAYED is for primarily for marking and
+    isolating non-deterministic processing.
+    
+    With REPLAYED, the IN-EVENT is checked for consistency with the
+    replay (as with CHECKED), but BODY is not run (assuming it has a
+    recorded EXPECTED-OUTCOME) and the outcome in the OUT-EVENT is
+    reproduced (see @REPLAYING-THE-OUTCOME). For this scheme to work,
+    REPLAYED requires its BODY to be side-effect free, but it may be
+    non-deterministic.
+
+- [glossary-term] Invoked
+
+    Invoked refers to functions and blocks defined by DEFINE-INVOKED or
+    FLET-INVOKED. Invoked frames may be recorded in response to
+    asynchronous events, and at replay the presence of its in-event
+    triggers the execution of the function associated with the name of
+    the event.
+    
+    On one hand, FRAMED, CHECKED, REPLAYED or plain JOURNALED have
+    @IN-EVENTS that are always predictable from the code and the
+    preceding events. The control flow - on the level of recorded frames
+    - is deterministic in this sense. On the other hand, Invoked encodes
+    in its IN-EVENT what function to call next, introducing
+    non-deterministic control flow.
+    
+    By letting events choose the code to run, Invoked resembles typical
+    [Event Sourcing][event-sourcing] frameworks. When Invoked is used
+    exclusively, the journal becomes a sequence of events. In contrast,
+    JOURNALED and its wrappers put code first, and the journal will be a
+    projection of the call tree.
+
+- [macro] DEFINE-INVOKED FUNCTION-NAME ARGS (NAME &KEY (VERSION 1) INSERTABLE) &BODY BODY
+
+    DEFINE-INVOKED is intended for recording asynchronous function
+    invocations like event or signal handlers. It defines a function
+    that records VERSIONED-EVENTs with ARGS set to the actual arguments.
+    At replay, it is invoked whenever the recorded IN-EVENT becomes the
+    REPLAY-EVENT.
+    
+    DEFUN and CHECKED rolled into one, DEFINE-INVOKED defines a
+    top-level function with FUNCTION-NAME and ARGS (only simple
+    positional arguments are allowed) and wraps CHECKED with NAME, the
+    same ARGS and INSERTABLE around BODY. Whenever an IN-EVENT becomes
+    the REPLAY-EVENT and it has a DEFINE-INVOKED defined with the name
+    of the event, then FUNCTION-NAME is invoked with EVENT-ARGS.
+    
+    While BODY's return values are recorded as usual, the defined
+    function returns no values to make it less likely to affect control
+    flow in a way that's not possible to reproduce when the function is
+    called by the replay mechanism.
+    
+    ```
+    (defvar *state*)
+    
+    (define-invoked foo (x) ("foo")
+      (setq *state* (1+ x)))
+    
+    (define-invoked bar (x) ("bar")
+      (setq *state* (+ 2 x)))
+    
+    (if (zerop (random 2))
+        (foo 0)
+        (bar 1))
+    ```
+    
+    The above can be alternatively implemented with REPLAYED explicitly
+    encapsulating the non-determinism:
+    
+    ```
+    (let ((x (replayed (choose) (random 2))))
+      (if (zerop x)
+          (checked (foo :args `(,x))
+            (setq *state* (1+ x)))
+          (checked (bar :args `(,x))
+            (setq *state* (+ 2 x)))))
+    ```
+
+
+- [macro] FLET-INVOKED DEFINITIONS &BODY BODY
+
+    Like DEFINE-INVOKED, but with FLET instead of DEFUN. The event
+    name and the function are associated in the dynamic extent of BODY.
+    WITH-JOURNALING does not change the bindings. The example in
+    DEFINE-INVOKED can be rewritten as:
+    
+    ```
+    (let ((state nil))
+      (flet-invoked ((foo (x) ("foo")
+                       (setq state (1+ x)))
+                     (bar (x) ("bar")
+                       (setq state (+ 2 x))))
+        (if (zerop (random 2))
+          (foo 0)
+          (bar 1))))
+    ```
+
 
 ### Bundles
 
@@ -1331,7 +1462,7 @@ replay journal. A typical solution to this would look like this:
            ;; RECORD is a valid replay of REPLAY ...
            (eq (journal-state record) :completed)
            ;; ... and is also significantly different from it ...
-           (not (journal-diverged-p record)))
+           (journal-diverged-p record))
       ;; so use it for future replays.
       (setq replay record))))
 ```
@@ -1372,7 +1503,7 @@ IN-MEMORY-BUNDLEs.
 The replay process for both @IN-EVENTs and @OUT-EVENTs starts by
 determining how the generated event (the *new* event from now on)
 shall be replayed. Roughly, the decision is based on the NAME and
-VERSION of the new event and the replay event (the next event to be
+VERSION of the new event and the REPLAY-EVENT (the next event to be
 read from the replay). There are four possible strategies:
 
 - **match**: A new in-event must match the replay event in its ARGS.
@@ -1461,6 +1592,23 @@ higher version:
      | downgrade-error | match | upgrade   |
 
 
+- [glossary-term] replay event
+
+    The replay event is the next event to be read from REPLAY-JOURNAL
+    which is not to be skipped. There may be no replay event if there
+    are no more unread events in the replay journal.
+    
+    An event in the replay journal is skipped if it is a LOG-EVENT or
+    there is a WITH-REPLAY-FILTER with a matching :SKIP. If :SKIP is in
+    effect, the replay event may be indeterminate.
+    
+    Events from the replay journal are read when they are `:MATCH`ed or
+    `:UPGRADE`d (see @THE-REPLAY-STRATEGY), when nested events are
+    echoed while @REPLAYING-THE-OUTCOME, or when there is an INVOKED
+    defined with the same name as the replay event.
+    
+    The replay event is available via PEEK-REPLAY-EVENT.
+
 ### Matching in-events
 
 If the replay strategy is *match*, then, for in-events, the
@@ -1472,7 +1620,7 @@ matching process continues like this:
 - At this point, two things might happen:
 
     - For VERSIONED-EVENTs, the @BLOCK will be executed as normal
-      and its outcome will be matched to the replay event (see
+      and its outcome will be matched to the REPLAY-EVENT (see
       @MATCHING-OUT-EVENTS).
 
     - For EXTERNAL-EVENTs, the corresponding replay OUT-EVENT is
@@ -1495,8 +1643,9 @@ following manner:
   nested in the current one are skipped over in the replay journal.
 
 - All events (including LOG-EVENTs) skipped over are echoed to the
-  record journal. This only serves to keep a trail of what happened
-  during the original recording.
+  record journal. This serves to keep a trail of what happened
+  during the original recording. Note that functions corresponding
+  to INVOKED frames are called when their IN-EVENT is skipped over.
 
 - The out-event corresponding to the in-event being processed is
   then read from the replay journal and is recorded again (to allow
@@ -1505,12 +1654,11 @@ following manner:
 To be able to reproduce the outcome in the replay journal, some
 assistance may be required from REPLAY-VALUES and REPLAY-CONDITION:
 
-- If the replay event has returned normally (has EVENT-EXIT
-  :VALUES), then the recorded return values (in EVENT-OUTCOME) are
-  returned immediately as in `(VALUES-LIST (EVENT-OUTCOME
-  REPLAY-EVENT))`. If REPLAY-VALUES is specified, it is called
-  instead of VALUES-LIST. See @WORKING-WITH-UNREADABLE-VALUES for an
-  example.
+- If the REPLAY-EVENT has normal return (i.e. EVENT-EXIT :VALUES),
+  then the recorded return values (in EVENT-OUTCOME) are returned
+  immediately as in `(VALUES-LIST (EVENT-OUTCOME REPLAY-EVENT))`. If
+  REPLAY-VALUES is specified, it is called instead of VALUES-LIST.
+  See @WORKING-WITH-UNREADABLE-VALUES for an example.
 
 - Similarly, if the replay event has unwound with an expected
   condition (has EVENT-EXIT :CONDITION), then the recorded
@@ -1519,6 +1667,9 @@ assistance may be required from REPLAY-VALUES and REPLAY-CONDITION:
   specified, it is called instead of ERROR. REPLAY-CONDITION must
   not return normally.
 
+WITH-REPLAY-FILTER's NO-REPLAY-OUTCOME can selectively turn off
+replaying the outcome. See @TESTING-ON-MULTIPLE-LEVELS, for an
+example.
 
 ### Matching out-events
 
@@ -1541,7 +1692,7 @@ name from the REPLAY-JOURNAL in the latter case. If the strategy is
   RECORD-UNEXPECTED-OUTCOME.
 
 - If the new event has an EXPECTED-OUTCOME, then unless the new and
-  replay events' EVENT-EXITs are `EQ` and their EVENT-OUTCOMEs are
+  REPLAY-EVENT's EVENT-EXITs are `EQ` and their EVENT-OUTCOMEs are
   EQUAL, **REPLAY-OUTCOME-MISMATCH** is signalled.
 
 - Else, the replay event is consumed and the new event is written
@@ -1577,32 +1728,32 @@ UNEXPECTED-OUTCOME triggered the transition to JOURNAL-STATE
 
 - [condition] REPLAY-NAME-MISMATCH REPLAY-FAILURE
 
-    Signaled when the new event's and replay event's
+    Signaled when the new event's and REPLAY-EVENT's
     EVENT-NAME are not EQUAL. The REPLAY-FORCE-INSERT,
     REPLAY-FORCE-UPGRADE restarts are provided.
 
 - [condition] REPLAY-VERSION-DOWNGRADE REPLAY-FAILURE
 
-    Signaled when the new event and the replay event
+    Signaled when the new event and the REPLAY-EVENT
     have the same EVENT-NAME, but the new event has a lower version. The
     REPLAY-FORCE-UPGRADE restart is provided.
 
 - [condition] REPLAY-ARGS-MISMATCH REPLAY-FAILURE
 
-    Signaled when the new event's and replay event's
+    Signaled when the new event's and REPLAY-EVENT's
     EVENT-ARGS are not EQUAL. The REPLAY-FORCE-UPGRADE restart is
     provided.
 
 - [condition] REPLAY-OUTCOME-MISMATCH REPLAY-FAILURE
 
-    Signaled when the new event's and replay event's
+    Signaled when the new event's and REPLAY-EVENT's
     EVENT-EXIT and/or EVENT-OUTCOME are not EQUAL. The
     REPLAY-FORCE-UPGRADE restart is provided.
 
 - [condition] REPLAY-UNEXPECTED-OUTCOME REPLAY-FAILURE
 
     Signaled when the new event has an
-    UNEXPECTED-OUTCOME. Note that the replay event always has an
+    UNEXPECTED-OUTCOME. Note that the REPLAY-EVENT always has an
     EXPECTED-OUTCOME due to the logic of RECORD-UNEXPECTED-OUTCOME. No
     restarts are provided.
 
@@ -1654,7 +1805,7 @@ flexibility:
   option is equivalent to
 
         (let ((*force-insertable* t))
-          (with-replay-filter (:patterns '((:name nil)))
+          (with-replay-filter (:skip '((:name nil)))
             42))
 
 - Rerecording the journal without replay might be another option if
@@ -1677,14 +1828,19 @@ With that, let's see how WITH-REPLAY-FILTER works.
 
 - [function] PEEK-REPLAY-EVENT 
 
-    Return the next event to be read from REPLAY-JOURNAL. This is
-    equivalent to
+    Return the REPLAY-EVENT to be read from REPLAY-JOURNAL. This is
+    roughly equivalent to
     
     ```
     (when (replay-journal)
       (with-replay-streamlet (streamlet)
         (peek-event streamlet))
     ```
+    
+    except PEEK-REPLAY-EVENT takes into account WITH-REPLAY-FILTER
+    :MAP, and it may return `(:INDETERMINATE)` if WITH-REPLAY-FILTER
+    :SKIP is in effect and what events are to be skipped cannot be
+    decided until the next in-event generated by the code.
     
     Imagine a business process for paying an invoice. In the first
     version of this process, we just pay the invoice:
@@ -1704,17 +1860,17 @@ With that, let's see how WITH-REPLAY-FILTER works.
     
     Replaying a journal produced by the first version of the code with
     the second version would run into difficulties because inserting
-    EXTERNAL-EVENTs is not allowed.
+    EXTERNAL-EVENTs is tricky.
     
     We have to first decide how to handle the lack of approval in the
     first version. Here, we just assume the processes started by the
     first version get approval automatically. The implementation is
-    based on a dummy PROCESS block whose version is bumped when the
+    based on a dummy `PROCESS` block whose version is bumped when the
     payment process changes and is inspected at the start of journaling.
     
     When v1 is replayed with v2, we introduce an INSERTABLE, versioned
-    GET-APPROVAL block that just returns T. When replaying the code
-    again, still with v2, the GET-APPROVAL block will be upgraded to
+    `GET-APPROVAL` block that just returns T. When replaying the code
+    again, still with v2, the `GET-APPROVAL` block will be upgraded to
     :INFINITY.
     
     ```
@@ -1740,22 +1896,42 @@ With that, let's see how WITH-REPLAY-FILTER works.
     ```
 
 
-- [macro] WITH-REPLAY-FILTER (&KEY PATTERNS) &BODY BODY
+- [macro] WITH-REPLAY-FILTER (&KEY MAP SKIP NO-REPLAY-OUTCOME) &BODY BODY
 
-    If there is a REPLAY-JOURNAL, then, in addition to filtering out
-    LOG-EVENTs (which happens all time during replay), filter out all
-    events that belong to descendant frames that match any of PATTERNS.
-    Filtered out events are never seen by JOURNALED as it replays
-    events. All patterns are of the format `(&KEY NAME VERSION<)`, where
-    VERSION< is a valid [EVENT-VERSION][type], and NAME may be NIL,
-    which acts as a wildcard.
+    WITH-REPLAY-FILTER performs journal upgrade during replay by
+    allowing events to be transformed as they are read from the replay
+    journal or skipped if they match some patterns. For how to add new
+    blocks in a code upgrade, see JOURNALED's :INSERTABLE argument. In
+    addition, it also allows some control over @REPLAYING-THE-OUTCOME.
+    
+    - MAP: A function called with an event read from the replay journal
+      which returns a transformed event. See @EVENTS-REFERENCE. MAP
+      takes effect before before SKIP.
+    
+    - SKIP: In addition to filtering out LOG-EVENTs (which always
+      happens during replay), filter out all events that belong to
+      descendant frames that match any of its SKIP patterns. Filtered
+      out events are never seen by JOURNALED as it replays events. SKIP
+      patterns are of the format `(&KEY NAME VERSION<)`, where VERSION<
+      is a valid [EVENT-VERSION][type], and NAME may be NIL, which acts
+      as a wildcard.
+    
+        SKIP is for when JOURNALED @BLOCKs are removed from the code,
+        which would render replaying previously recorded journals
+        impossible. Note that, for reasons of safety, it is not possible
+        to filter EXTERNAL-EVENTs.
+    
+    - NO-REPLAY-OUTCOME is a list of EVENT-NAMEs. @REPLAYING-THE-OUTCOME
+      is prevented for frames with EQUAL names. See
+      @TESTING-ON-MULTIPLE-LEVELS for an example.
     
     WITH-REPLAY-FILTER affects only the immediately enclosing
     WITH-JOURNALING. A WITH-REPLAY-FILTER nested within another in the
-    same WITH-JOURNALING inherits PATTERNS of its parent, to which it
-    add its own PATTERNS.
+    same WITH-JOURNALING inherits the SKIP patterns of its parent, to
+    which it adds its own. The MAP function is applied to before the
+    parent's MAP.
     
-    Examples:
+    Examples of SKIP patterns:
     
     ```
     ;; Match events with name FOO and version 1, 2, 3 or 4
@@ -1770,7 +1946,7 @@ With that, let's see how WITH-REPLAY-FILTER works.
     ()
     ```
     
-    Filtering can be thought of as removing nodes of the tree of frames,
+    Skipping can be thought of as removing nodes of the tree of frames,
     connecting its children to its parent. The following example removes
     frames `J1` and `J2` from around `J3`, the `J1` frame from within
     `J3`, and the third `J1` frame.
@@ -1789,24 +1965,17 @@ With that, let's see how WITH-REPLAY-FILTER works.
       ;; Filter out all occurrences of VERSIONED-EVENTs named J1 and
       ;; J2 from the replay, leaving only J3 to match.
       (with-journaling (:replay journal :record t :replay-eoj-error-p t)
-        (with-replay-filter (:patterns '((:name j1) (:name j2)))
+        (with-replay-filter (:skip '((:name j1) (:name j2)))
           (checked (j3)
             42))))
     ```
-    
-    WITH-REPLAY-FILTER is intended to assist in upgrades where some
-    JOURNALED @BLOCKs are removed from the code, which would render
-    replaying previously recorded journals impossible. Note that, for
-    reasons of safety, it is not possible to filter EXTERNAL-EVENTs.
-    
-    For how to add new blocks in a code upgrade, see JOURNALED's
-    :INSERTABLE argument.
+
 
 ## Testing
 
 Having discussed the @REPLAY mechanism, next are @TESTING and
-@PERSISTENCE, which rely heavily on it. Suppose we want to unit test
-user registration. Unfortunately, the code communicates with a
+@PERSISTENCE, which rely heavily on replay. Suppose we want to unit
+test user registration. Unfortunately, the code communicates with a
 database service and also takes input from the user. A natural
 solution is to create [mocks][mock-object] for these external
 systems to unshackle the test from the cumbersome database
@@ -1936,10 +2105,55 @@ direct inspection of a journal with the low-level events api (see
     
     Furthermore, if BODY returns normally, and it is a replay of a
     previous run, and EQUIVALENTP, then it is ASSERTed that the record
-    and replay journals are EQUIVALENT-JOURNALS-P. If this check fails,
-    RECORD-JOURNAL is discarded when the function returns. In addition
-    to the replay consistency, this checks that no inserts or upgrades
-    were performed (see @THE-REPLAY-STRATEGY).
+    and replay journals are EQUIVALENT-REPLAY-JOURNALS-P. If this check
+    fails, RECORD-JOURNAL is discarded when the function returns. In
+    addition to the replay consistency, this checks that no inserts or
+    upgrades were performed (see @THE-REPLAY-STRATEGY).
+
+### Testing on multiple levels
+
+Nesting REPLAYEDs (that is, @FRAMEs of EXTERNAL-EVENTs) is not
+obviously useful since the outer REPLAYED will be replayed by
+outcome, and the inner one will be just echoed to the record
+journal. However, if we turn off @REPLAYING-THE-OUTCOME for the
+outer, the inner will be replayed.
+
+This is useful for testing layered communication. For example, we
+might have written code that takes input from an external
+system (READ-LINE) and does some complicated
+processing (READ-FROM-STRING) before returning the input in a form
+suitable for further processing. Suppose we wrap REPLAYED around
+READ-FROM-STRING for @PERSISTENCE because putting it around
+READ-LINE would expose low-level protocol details in the journal,
+making protocol changes difficult.
+
+However, upon realizing that READ-FROM-STRING was not the best tool
+for the job and switching to PARSE-INTEGER, we want to test by
+replaying all previously recorded journals. For this, we prevent the
+outer REPLAYED from being replayed by outcome with
+WITH-REPLAY-FILTER:
+
+```
+(let ((bundle (make-in-memory-bundle)))
+  ;; Original with READ-FROM-STRING
+  (with-bundle (bundle)
+    (replayed ("accept-number")
+      (values (read-from-string (replayed ("input-number")
+                                  (read-line))))))
+  ;; Switch to PARSE-INTEGER and test by replay.
+  (with-bundle (bundle)
+    (with-replay-filter (:no-replay-outcome '("accept-number"))
+      (replayed ("accept-number")
+        ;; 1+ is our bug.
+        (values (1+ (parse-integer (replayed ("input-number")
+                                     (read-line)))))))))
+```
+
+The inner `input-number` block is replayed by outcome, and
+PARSE-INTEGER is called with the string READ-LINE returned in the
+original invocation. The outcome of the outer `accept-number` block
+checked as if it was a VERSIONED-EVENT and we get a
+REPLAY-OUTCOME-MISMATCH due to the bug.
 
 ## Persistence
 
@@ -2099,18 +2313,21 @@ not need transactions.
 
 - [glossary-term] data event
 
-    An EXTERNAL-EVENT that is also and OUT-EVENT is called a data
-    event. Data events are the only events that may be
-    non-deterministic. They are to capture any data which might change
-    if the journal is replayed. Data events typically correspond to
-    interactions with the user, servers or even the random number
-    generator. Due to their non-determinism, they are the only parts of
-    the journal not reproducible by rerunning the code. In this sense,
-    only data events are not redundant with the code and whether other
-    events are persisted does not affect durability.
+    Data events are the only events that may be non-deterministic. They
+    record information which could change if the same code were run
+    multiple times. Data events typically correspond to interactions
+    with the user, servers or even the random number generator. Due to
+    their non-determinism, they are the only parts of the journal not
+    reproducible by rerunning the code. In this sense, only data events
+    are not redundant with the code and whether other events are
+    persisted does not affect durability. There are two kinds of data
+    events:
     
-    If an EXTERNAL-EVENT has an UNEXPECTED-OUTCOME,
-    RECORD-UNEXPECTED-OUTCOME is signalled.
+    - An EXTERNAL-EVENT that is also an OUT-EVENT.
+    
+    - The IN-EVENT of an INVOKED function, which lies outside the
+      normal, deterministic control flow.
+
 
 #### Synchronization strategies
 
@@ -2331,9 +2548,9 @@ directly is sometimes useful when writing tests that inspect
 recorded events. Otherwise, skip this entire section.
 
 All EVENTs have EVENT-NAME and EVENT-VERSION, which feature
-prominently in @THE-REPLAY-STRATEGY. After the @JOURNAL-TUTORIAL,
-the following example is a reminder of how events look in the
-simplest case.
+prominently in @THE-REPLAY-STRATEGY. After the examples in
+@IN-EVENTS and @OUT-EVENTS, the following example is a reminder of
+how events look in the simplest case.
 
 ```
 (with-journaling (:record t)
@@ -2506,13 +2723,13 @@ journals. Here we go into the details.
 
     If JOURNAL-DIVERGENT-P, then this is a list of two
     elements: the READ-POSITIONs in the RECORD-JOURNAL and
-    REPLAY-JOURNAL of the first events that were different. It is NIL,
-    otherwise.
+    REPLAY-JOURNAL of the first events that were different (ignoring
+    LOG-EVENTs). It is NIL, otherwise.
 
 - [function] JOURNAL-DIVERGENT-P JOURNAL
 
     See if WITH-JOURNALING recorded any event so far in this journal
-    which was not EQUAL to its replay event or it had no corresponding
+    which was not EQUAL to its REPLAY-EVENT or it had no corresponding
     replay event. This completely ignores LOG-EVENTs in both journals
     being compared, and is updated continuously during @REPLAY. It plays
     a role in WITH-BUNDLE deciding when a journal is important enough to
@@ -2526,7 +2743,7 @@ journals. Here we go into the details.
 After replay finished (i.e. WITH-JOURNALING completed), we can ask
 the question whether there were any changes produced. This is
 answered in the strictest sense by IDENTICAL-JOURNALS-P, and
-somewhat more functionally by EQUIVALENT-JOURNALS-P.
+somewhat more functionally by EQUIVALENT-REPLAY-JOURNALS-P.
 
 Also see JOURNAL-DIVERGENT-P.
 
@@ -2536,14 +2753,15 @@ Also see JOURNAL-DIVERGENT-P.
     they have the same JOURNAL-STATE and the lists of their events (as
     in LIST-EVENTS) are EQUAL.
 
-- [generic-function] EQUIVALENT-JOURNALS-P JOURNAL-1 JOURNAL-2
+- [generic-function] EQUIVALENT-REPLAY-JOURNALS-P JOURNAL-1 JOURNAL-2
 
-    Compare two journals allowing for some minor
-    variation. EQUIVALENT-JOURNALS-P is like IDENTICAL-JOURNALS-P, but
-    allows events with EVENT-EXIT :ERROR to differ in their outcomes,
-    which may very well be implementation specific, anyway. Also, it
-    considers two groups of states as different :NEW, :REPLAYING,
-    :MISMATCHED, :FAILED vs :RECORDING, :LOGGING, COMPLETED.
+    See if two journals are equivalent when used the
+    for REPLAY in WITH-JOURNALING. EQUIVALENT-REPLAY-JOURNALS-P is like
+    IDENTICAL-JOURNALS-P, but it ignores LOG-EVENTs and allows events
+    with EVENT-EXIT :ERROR to differ in their outcomes, which may very
+    well be implementation specific, anyway. Also, it considers two
+    groups of states as different :NEW, :REPLAYING, :MISMATCHED, :FAILED
+    vs :RECORDING, :LOGGING, COMPLETED.
 
 The rest of section is about concrete subclasses of [JOURNAL][class].
 

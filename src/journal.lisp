@@ -1001,6 +1001,36 @@
 ;;; Infinite recursion protection for DEFINE-INVOKED, when triggered
 ;;; from SKIP-EVENTS.
 (defvar *skipped-events-until* nil)
+;;; Also for WITH-REPLAY-FILTER, this is a function (or NIL) to
+;;; transform replay events as they are read.
+(defvar *replay-event-mapper* nil)
+#+sbcl
+(declaim (sb-ext:always-bound *skip-events* *skipped-events-until*
+                              *replay-event-mapper*))
+
+(defun peek-mapped-replay-event (replay-streamlet)
+  (and replay-streamlet
+       (let ((event (peek-event replay-streamlet)))
+         (and event
+              (if *replay-event-mapper*
+                  (let ((mapped (funcall *replay-event-mapper* event)))
+                    (unless (equal event mapped)
+                      (maybe-mark-record-as-divergent (event-version event)))
+                    mapped)
+                  event)))))
+
+(defun read-mapped-replay-event (replay-streamlet)
+  (and replay-streamlet
+       (if *replay-event-mapper*
+           (let* ((replay-read-position (read-position replay-streamlet))
+                  (event (read-event replay-streamlet)))
+             (when event
+               (let ((mapped (funcall *replay-event-mapper* event)))
+                 (unless (equal event mapped)
+                   (maybe-mark-record-as-divergent (event-version event)
+                                                   replay-read-position))
+                 mapped)))
+           (read-event replay-streamlet))))
 
 (defun call-with-journaling (fn record replay replay-eoj-error-p)
   (let ((record (and record (to-journal record)))
@@ -1009,7 +1039,8 @@
         (*replay-failure* nil)
         (*record-journal-state* :new)
         (*skip-events* nil)
-        (*skipped-events-until* nil))
+        (*skipped-events-until* nil)
+        (*replay-event-mapper* nil))
     (check-journal-state "Record" record :new)
     (check-journal-state "Replay" replay :completed)
     (with-open-journal (*record-streamlet* record :direction :output)
@@ -1023,12 +1054,14 @@
           (setf (slot-value *replay-streamlet* '%trusted) t))
         (let ((*replay-eoj-error-p* replay-eoj-error-p)
               (completedp nil))
-          (initialize-journal-state *record-streamlet* *replay-streamlet*)
           (unwind-protect*
-              (multiple-value-prog1 (funcall fn)
-                (setq completedp t))
-            ;; If there was a JOURNAL-FAILURE, we must have tried to
-            ;; finalize the state already. Let's not try again.
+              (progn
+                (initialize-journal-state *record-streamlet*
+                                          *replay-streamlet*)
+                (multiple-value-prog1 (funcall fn)
+                  (setq completedp t)))
+            ;; If there was a JOURNALING-FAILURE, we must have tried
+            ;; to finalize the state already. Let's not try again.
             (unless *journaling-failure*
               (call-with-journaling-failure-on-nlx
                (lambda ()
@@ -1041,7 +1074,8 @@
                        (null *replay-failure*)
                        *replay-streamlet*
                        (peek-event *replay-streamlet*))
-              (let ((replay-event (peek-event *replay-streamlet*)))
+              (let ((replay-event
+                      (peek-mapped-replay-event *replay-streamlet*)))
                 (assert (not (log-event-p replay-event)))
                 (replay-failure 'replay-incomplete
                                 :new-event nil
@@ -3117,10 +3151,7 @@
           *replay-failure*
           (and record-streamlet (eq *record-journal-state* :logging)))
       :insert
-      (let ((replay-event (when replay-streamlet
-                            (skip-events-and-maybe->recording
-                             record-streamlet replay-streamlet)
-                            (peek-event replay-streamlet))))
+      (let ((replay-event (peek-mapped-replay-event replay-streamlet)))
         (cond ((null replay-event)
                (if (and replay-streamlet replay-eoj-error-p)
                    (error 'end-of-journal :journal (journal replay-streamlet))
@@ -3187,20 +3218,27 @@
               (t
                `(:in ,name))))))
 
-(defun maybe-mark-record-as-divergent (version)
+(defun maybe-mark-record-as-divergent (version &optional replay-read-position)
   (when (and version *record-streamlet*)
     (unless (slot-value (journal *record-streamlet*) 'replay-mismatch)
       (setf (slot-value (journal *record-streamlet*) 'replay-mismatch)
             (list (write-position *record-streamlet*)
-                  (if *replay-streamlet*
-                      (read-position *replay-streamlet*)
-                      nil))))))
+                  (or replay-read-position
+                      (if *replay-streamlet*
+                          (read-position *replay-streamlet*)
+                          nil)))))))
 
 (defun handle-in-event (record-streamlet log-record name version args
                         replay-streamlet insertable
                         replay-values replay-condition
                         replay-eoj-error-p)
-  (let* ((replay-in-event (and replay-streamlet (peek-event replay-streamlet)))
+  (when (and replay-streamlet *skip-events*)
+    ;; With WITH-REPLAY-FILTER :SKIP, we must defer skipping in-events
+    ;; from the BASE-DEPTH (see EAT-EVENTS) until we are sure that
+    ;; their frames are really nested in WITH-REPLAY-FILTER. We know
+    ;; that's the case for the frames around the event being recorded.
+    (skip-events-and-maybe->recording record-streamlet replay-streamlet t))
+  (let* ((replay-in-event (peek-mapped-replay-event replay-streamlet))
          (in-event (make-in-event* replay-in-event name version args))
          (strategy (replay-strategy in-event insertable
                                     record-streamlet replay-streamlet
@@ -3214,7 +3252,8 @@
            (let ((replayed-out-event nil))
              (when (and (external-event-p in-event)
                         (setq replayed-out-event
-                              (peek-at-out-event replay-streamlet)))
+                              (peek-at-out-event replay-streamlet))
+                        (replaying-outcome-allowed-p replayed-out-event))
                ;; If :UPGRADE, then this is an upgrade to :INFINITY.
                ;; If :MATCH, then normal @REPLAYING-THE-OUTCOME.
                (maybe-replay-outcome record-streamlet replay-streamlet
@@ -3230,12 +3269,13 @@
                     :replay-event replayed-in-event
                     :upgrade-restart t)))
 
-(defun skip-events-and-maybe->recording (record-streamlet replay-streamlet)
-  (skip-events replay-streamlet)
+(defun skip-events-and-maybe->recording (record-streamlet replay-streamlet
+                                         &optional in-or-leaf-event-p)
+  (skip-events replay-streamlet in-or-leaf-event-p)
   (when (->recording-p record-streamlet replay-streamlet)
     (set-journal-state record-streamlet :recording)))
 
-(defun skip-events (replay-streamlet)
+(defun skip-events (replay-streamlet in-or-leaf-event-p)
   (when (and replay-streamlet
              ;; Prevent infinite recursion with MAYBE-HANDLE-INVOKED.
              (not (and *skipped-events-until*
@@ -3243,14 +3283,14 @@
                           (read-position replay-streamlet)))))
     (setq *skipped-events-until* nil)
     (if *skip-events*
-        (funcall *skip-events*)
+        (funcall *skip-events* in-or-leaf-event-p)
         (skip-log-events replay-streamlet))
     (let ((event (peek-event replay-streamlet)))
       (and event (in-event-p event)
            (maybe-handle-invoked event)))))
 
 (defun skip-log-events (streamlet)
-  (loop for event = (peek-event streamlet)
+  (loop for event = (peek-mapped-replay-event streamlet)
         while (and event (log-event-p event))
         do (read-event streamlet nil)))
 
@@ -3317,7 +3357,7 @@
 ;;; corresponding out-event without changing the read position. Return
 ;;; NIL if the out-event is not present."
 (defun peek-at-out-event (streamlet)
-  (let ((next-event (peek-event streamlet)))
+  (let ((next-event (peek-mapped-replay-event streamlet)))
     (if (out-event-p next-event)
         next-event
         (let ((end-of-frame-position (end-of-frame-position streamlet)))
@@ -3332,7 +3372,7 @@
 (defun end-of-frame-position (streamlet &key (depth 1))
   (save-excursion (streamlet)
     (or (loop for read-position = (read-position streamlet)
-              for event = (read-event streamlet nil)
+              for event = (read-mapped-replay-event streamlet)
               while event
               do (cond ((in-event-p event)
                         (incf depth))
@@ -3379,7 +3419,11 @@
     condition (in EVENT-OUTCOME) is signalled as
     IN `(ERROR (EVENT-OUTCOME REPLAY-EVENT))`. If REPLAY-CONDITION is
     specified, it is called instead of ERROR. REPLAY-CONDITION must
-    not return normally.")
+    not return normally.
+
+  WITH-REPLAY-FILTER's NO-REPLAY-OUTCOME can selectively turn off
+  replaying the outcome. See @TESTING-ON-MULTIPLE-LEVELS, for an
+  example.")
 
 ;;; This performs a non-local exit if it replays the outcome, either
 ;;; by throwing to REPLAY-VALUES-HAPPENED or by signalling an error.
@@ -3406,7 +3450,7 @@
 ;;; all events up to and including the frame's out-event. If
 ;;; OUTPUT-STREAMLET is not NIL, write all events read to it.
 (defun echo-current-frame (input-streamlet output-streamlet)
-  (let ((next-event (peek-event input-streamlet)))
+  (let ((next-event (peek-mapped-replay-event input-streamlet)))
     (cond
       ((null next-event))
       ;; The most common case by far is for EXTERNAL-EVENTs not to
@@ -3420,7 +3464,7 @@
        (let ((end-of-frame-position (end-of-frame-position input-streamlet)))
          (when end-of-frame-position
            (loop for i upfrom 0
-                 for event = (peek-event input-streamlet)
+                 for event = (peek-mapped-replay-event input-streamlet)
                  do (unless (maybe-handle-invoked event)
                       (read-event input-streamlet)
                       (when output-streamlet
@@ -3501,8 +3545,7 @@
                                replay-condition replay-eoj-error-p))))
       (labels
           ((peek-replay-event ()
-             (and replay-streamlet
-                  (peek-event replay-streamlet)))
+             (peek-mapped-replay-event replay-streamlet))
            (handle-return (values)
              (with-journaling-failure-on-nlx
                (handle-out (make-out-event* (peek-replay-event)
@@ -3610,7 +3653,7 @@
        (read-event replay-streamlet)
        (skip-events-and-maybe->recording record-streamlet replay-streamlet))
       ((:match)
-       (let ((replay-event (peek-event replay-streamlet)))
+       (let ((replay-event (peek-mapped-replay-event replay-streamlet)))
          (check-outcome out-event replay-event)
          (when record-streamlet
            (write-event out-event record-streamlet))
@@ -3851,7 +3894,7 @@
     option is equivalent to
 
           (let ((*force-insertable* t))
-            (with-replay-filter (:patterns '((:name nil)))
+            (with-replay-filter (:skip '((:name nil)))
               42))
 
   - Rerecording the journal without replay might be another option if
@@ -3886,6 +3929,11 @@
     (with-replay-streamlet (streamlet)
       (peek-event streamlet))
   ```
+
+  except PEEK-REPLAY-EVENT takes into account WITH-REPLAY-FILTER
+  :MAP, and it may return `(:INDETERMINATE)` if WITH-REPLAY-FILTER
+  :SKIP is in effect and what events are to be skipped cannot be
+  decided until the next in-event generated by the code.
 
   Imagine a business process for paying an invoice. In the first
   version of this process, we just pay the invoice:
@@ -3939,24 +3987,45 @@
                       (= (random 2) 0)))
             (replayed (pay)))))))
   ```"
-  (when *replay-streamlet*
-    (peek-event *replay-streamlet*)))
+  (if (replay-filter-at-base-depth-p)
+      '(:indeterminate)
+      (peek-mapped-replay-event *replay-streamlet*)))
 
-(defmacro with-replay-filter ((&key patterns) &body body)
-  "If there is a REPLAY-JOURNAL, then, in addition to filtering out
-  LOG-EVENTs (which happens all time during replay), filter out all
-  events that belong to descendant frames that match any of PATTERNS.
-  Filtered out events are never seen by JOURNALED as it replays
-  events. All patterns are of the format `(&KEY NAME VERSION<)`, where
-  VERSION< is a valid [EVENT-VERSION][type], and NAME may be NIL,
-  which acts as a wildcard.
+(defmacro with-replay-filter ((&key map skip no-replay-outcome) &body body)
+  "WITH-REPLAY-FILTER performs journal upgrade during replay by
+  allowing events to be transformed as they are read from the replay
+  journal or skipped if they match some patterns. For how to add new
+  blocks in a code upgrade, see JOURNALED's :INSERTABLE argument. In
+  addition, it also allows some control over @REPLAYING-THE-OUTCOME.
+
+  - MAP: A function called with an event read from the replay journal
+    which returns a transformed event. See @EVENTS-REFERENCE. MAP
+    takes effect before before SKIP.
+
+  - SKIP: In addition to filtering out LOG-EVENTs (which always
+    happens during replay), filter out all events that belong to
+    descendant frames that match any of its SKIP patterns. Filtered
+    out events are never seen by JOURNALED as it replays events. SKIP
+    patterns are of the format `(&KEY NAME VERSION<)`, where VERSION<
+    is a valid [EVENT-VERSION][type], and NAME may be NIL, which acts
+    as a wildcard.
+
+      SKIP is for when JOURNALED @BLOCKs are removed from the code,
+      which would render replaying previously recorded journals
+      impossible. Note that, for reasons of safety, it is not possible
+      to filter EXTERNAL-EVENTs.
+
+  - NO-REPLAY-OUTCOME is a list of EVENT-NAMEs. @REPLAYING-THE-OUTCOME
+    is prevented for frames with EQUAL names. See
+    @TESTING-ON-MULTIPLE-LEVELS for an example.
 
   WITH-REPLAY-FILTER affects only the immediately enclosing
   WITH-JOURNALING. A WITH-REPLAY-FILTER nested within another in the
-  same WITH-JOURNALING inherits PATTERNS of its parent, to which it
-  add its own PATTERNS.
+  same WITH-JOURNALING inherits the SKIP patterns of its parent, to
+  which it adds its own. The MAP function is applied to before the
+  parent's MAP.
 
-  Examples:
+  Examples of SKIP patterns:
 
   ```
   ;; Match events with name FOO and version 1, 2, 3 or 4
@@ -3971,7 +4040,7 @@
   ()
   ```
 
-  Filtering can be thought of as removing nodes of the tree of frames,
+  Skipping can be thought of as removing nodes of the tree of frames,
   connecting its children to its parent. The following example removes
   frames `J1` and `J2` from around `J3`, the `J1` frame from within
   `J3`, and the third `J1` frame.
@@ -3990,55 +4059,66 @@
     ;; Filter out all occurrences of VERSIONED-EVENTs named J1 and
     ;; J2 from the replay, leaving only J3 to match.
     (with-journaling (:replay journal :record t :replay-eoj-error-p t)
-      (with-replay-filter (:patterns '((:name j1) (:name j2)))
+      (with-replay-filter (:skip '((:name j1) (:name j2)))
         (checked (j3)
           42))))
   ```
+  "
+  (alexandria:once-only (map)
+    (alexandria:with-gensyms (with-filtering-body eat pred depth
+                               in-or-leaf-event-p)
+      `(flet ((,with-filtering-body () ,@body))
+         (declare (dynamic-extent #',with-filtering-body))
+         (if *replay-streamlet*
+             (let* ((*skip-patterns* (append *skip-patterns* ,skip))
+                    (,pred (patterns-to-disjunction *skip-patterns*))
+                    (,depth (%depth *replay-streamlet*))
+                    (*replay-filter-base-depth* ,depth)
+                    (*replay-event-mapper*
+                      (if *replay-event-mapper*
+                          (alexandria:compose *replay-event-mapper* ,map)
+                          ,map))
+                    (*no-replay-outcome-names*
+                      (append *no-replay-outcome-names* ,no-replay-outcome)))
+               (flet ((,eat (,in-or-leaf-event-p)
+                        (eat-events ,pred *replay-streamlet* ,depth
+                                    ,in-or-leaf-event-p)))
+                 (unwind-protect
+                      (let ((*skip-events* #',eat))
+                        (with-journaling-failure-on-nlx
+                          (skip-events-and-maybe->recording
+                           *record-streamlet* *replay-streamlet*))
+                        (,with-filtering-body))
+                   ;; Being in a cleanup form, be conservative about
+                   ;; potentially piling more errors on top of
+                   ;; unrecoverable ones.
+                   (unless *journaling-failure*
+                     (with-journaling-failure-on-nlx
+                       ;; When the whole frame is filterable,
+                       ;; sometimes it is ambiguous whether the replay
+                       ;; events would be within the dynamic extent of
+                       ;; WITH-REPLAY-FILTER because there is no
+                       ;; unfiltered event to follow them. In this
+                       ;; case, we choose to greedily filter the
+                       ;; events.
+                       (eat-full-frames-of-events ,pred *replay-streamlet*
+                                                  ,depth)
+                       ;; If there is an enclosing WITH-REPLAY-FILTER
+                       ;; without an intervening JOURNALED, then its
+                       ;; *SKIP-EVENTS* filter must be run. This also
+                       ;; performs the :REPLAYING -> :RECORDING
+                       ;; transition after EAT-FULL-FRAMES-OF-EVENTS.
+                       (skip-events-and-maybe->recording
+                        *record-streamlet* *replay-streamlet*))))))
+             (,with-filtering-body))))))
 
-  WITH-REPLAY-FILTER is intended to assist in upgrades where some
-  JOURNALED @BLOCKs are removed from the code, which would render
-  replaying previously recorded journals impossible. Note that, for
-  reasons of safety, it is not possible to filter EXTERNAL-EVENTs.
+(defvar *replay-filter-base-depth* nil)
 
-  For how to add new blocks in a code upgrade, see JOURNALED's
-  :INSERTABLE argument."
-  (alexandria:with-gensyms (with-filtering-body eat pred depth)
-    `(flet ((,with-filtering-body () ,@body))
-       (declare (dynamic-extent #',with-filtering-body))
-       (if *replay-streamlet*
-           (let* ((*patterns* (append *patterns* ,patterns))
-                  (,pred (patterns-to-disjunction *patterns*))
-                  (,depth (%depth *replay-streamlet*)))
-             (flet ((,eat ()
-                      (eat-events ,pred *replay-streamlet* ,depth)))
-               (unwind-protect
-                    (let ((*skip-events* #',eat))
-                      (with-journaling-failure-on-nlx
-                        (skip-events-and-maybe->recording
-                         *record-streamlet* *replay-streamlet*))
-                      (,with-filtering-body))
-                 ;; Being in a cleanup form, be conservative about
-                 ;; potentially piling more errors on top of
-                 ;; unrecoverable ones.
-                 (unless *journaling-failure*
-                   (with-journaling-failure-on-nlx
-                     ;; When the whole frame is filterable, sometimes
-                     ;; it is ambiguous whether the replay events
-                     ;; would be within the dynamic extent of
-                     ;; WITH-REPLAY-FILTER because there is no
-                     ;; unfiltered event to follow them. In this case,
-                     ;; we choose to greedily filter the events.
-                     (eat-full-frames-of-events ,pred *replay-streamlet* ,depth)
-                     ;; If there is an enclosing WITH-REPLAY-FILTER
-                     ;; without an intervening JOURNALED, then its
-                     ;; *SKIP-EVENTS* filter must be run. This also
-                     ;; performs the :REPLAYING -> :RECORDING
-                     ;; transition.
-                     (skip-events-and-maybe->recording
-                      *record-streamlet* *replay-streamlet*))))))
-           (,with-filtering-body)))))
+(defun replay-filter-at-base-depth-p ()
+  (and *replay-filter-base-depth*
+       (= *replay-filter-base-depth* (%depth *replay-streamlet*))))
 
-(defvar *patterns* ())
+(defvar *skip-patterns* ())
 
 (defun patterns-to-disjunction (patterns)
   (let ((preds (mapcar #'pattern-to-pred patterns)))
@@ -4051,49 +4131,71 @@
     (check-type name (not null))
     (check-type version< event-version)
     (lambda (event)
-      (and (or (null name)
-               (equal (event-name event) name))
-           (version< (event-version event)
-                     (or version< :infinity))))))
+      (or (log-event-p event)
+          (and (or (null name)
+                   (equal (event-name event) name))
+               (version< (event-version event)
+                         (or version< :infinity)))))))
 
 ;;; Consume all consecutive log-events and those that match PRED.
-(defun eat-events (pred streamlet base-depth)
+(defun eat-events (pred streamlet base-depth in-or-leaf-event-p)
   (loop
     (let ((depth (%depth streamlet))
-          (event (peek-event streamlet)))
+          (event (peek-mapped-replay-event streamlet)))
       (cond ((and event
                   ;; Filter LOG-EVENTs and those matching PRED unless
                   ;; DEPTH would go below BASE-DEPTH.
                   (or (log-event-p event)
                       (funcall pred event))
                   (or (< base-depth depth)
-                      (not (out-event-p event))))
-             (read-event streamlet)
+                      in-or-leaf-event-p))
+             (eat-event event streamlet)
+             (assert (<= base-depth (%depth streamlet)))
              (when (= base-depth (%depth streamlet))
                (return)))
             (t
              (return))))))
 
+(defun eat-event (event streamlet)
+  ;; Skipping a non-log event counts as divergence.
+  (maybe-mark-record-as-divergent (event-version event))
+  (read-event streamlet))
+
 (defun eat-full-frames-of-events (pred streamlet base-depth)
   (if (= (%depth streamlet) base-depth)
-      (loop for read-position = (every-event-in-frame pred streamlet)
-            while read-position
-            do (setf (read-position streamlet) read-position))
+      (loop
+        (multiple-value-bind (read-position first-non-log-event-read-position)
+            (every-event-in-frame pred streamlet)
+          (unless read-position
+            (return))
+          (maybe-mark-record-as-divergent t first-non-log-event-read-position)
+          (setf (read-position streamlet) read-position)))
       (assert (eq (journal-state (record-journal)) :mismatched))))
 
 ;;; Return true if PRED is true for every event in the non-empty frame
 ;;; next read from STREAMLET.
-;;;
-;;; FIXME: PRED vs LOG-EVENTs?
 (defun every-event-in-frame (pred streamlet)
   (save-excursion (streamlet)
-    (let ((end-of-frame-position (end-of-frame-position streamlet :depth 0)))
+    (let ((end-of-frame-position (end-of-frame-position streamlet :depth 0))
+          (first-non-log-event-read-position nil))
       (when end-of-frame-position
-        (loop for event = (read-event streamlet)
+        (loop for read-position-before-event = (read-position streamlet)
+              for event = (read-mapped-replay-event streamlet)
               do (unless (funcall pred event)
                    (return-from every-event-in-frame nil))
+                 (when (and (not (log-event-p event))
+                            (null first-non-log-event-read-position))
+                   (setq first-non-log-event-read-position
+                         read-position-before-event))
               while (<= (read-position streamlet) end-of-frame-position))
-        (return-from every-event-in-frame (read-position streamlet))))))
+        (return-from every-event-in-frame
+          (values (read-position streamlet)
+                  first-non-log-event-read-position))))))
+
+(defvar *no-replay-outcome-names* ())
+
+(defun replaying-outcome-allowed-p (in-event)
+  (not (member (event-name in-event) *no-replay-outcome-names* :test #'equal)))
 
 
 (defsection @testing (:title "Testing")
@@ -4218,7 +4320,8 @@
   direct inspection of a journal with the low-level events api (see
   @EVENTS-REFERENCE) can facilitate checking non-local invariants.
   """
-  (define-file-bundle-test macro))
+  (define-file-bundle-test macro)
+  (@testing-on-multiple-levels section))
 
 (defmacro define-file-bundle-test ((name &key directory (equivalentp t))
                                    &body body)
@@ -4258,6 +4361,51 @@
                          equivalent.~:@>"
                          (pathname-of (record-journal))
                          (pathname-of (replay-journal)))))))))))
+
+(defsection @testing-on-multiple-levels (:title "Testing on multiple levels")
+  """Nesting REPLAYEDs (that is, @FRAMEs of EXTERNAL-EVENTs) is not
+  obviously useful since the outer REPLAYED will be replayed by
+  outcome, and the inner one will be just echoed to the record
+  journal. However, if we turn off @REPLAYING-THE-OUTCOME for the
+  outer, the inner will be replayed.
+
+  This is useful for testing layered communication. For example, we
+  might have written code that takes input from an external
+  system (READ-LINE) and does some complicated
+  processing (READ-FROM-STRING) before returning the input in a form
+  suitable for further processing. Suppose we wrap REPLAYED around
+  READ-FROM-STRING for @PERSISTENCE because putting it around
+  READ-LINE would expose low-level protocol details in the journal,
+  making protocol changes difficult.
+
+  However, upon realizing that READ-FROM-STRING was not the best tool
+  for the job and switching to PARSE-INTEGER, we want to test by
+  replaying all previously recorded journals. For this, we prevent the
+  outer REPLAYED from being replayed by outcome with
+  WITH-REPLAY-FILTER:
+
+  ```
+  (let ((bundle (make-in-memory-bundle)))
+    ;; Original with READ-FROM-STRING
+    (with-bundle (bundle)
+      (replayed ("accept-number")
+        (values (read-from-string (replayed ("input-number")
+                                    (read-line))))))
+    ;; Switch to PARSE-INTEGER and test by replay.
+    (with-bundle (bundle)
+      (with-replay-filter (:no-replay-outcome '("accept-number"))
+        (replayed ("accept-number")
+          ;; 1+ is our bug.
+          (values (1+ (parse-integer (replayed ("input-number")
+                                       (read-line)))))))))
+  ```
+
+  The inner `input-number` block is replayed by outcome, and
+  PARSE-INTEGER is called with the string READ-LINE returned in the
+  original invocation. The outcome of the outer `accept-number` block
+  checked as if it was a VERSIONED-EVENT and we get a
+  REPLAY-OUTCOME-MISMATCH due to the bug.
+  """)
 
 
 (defsection @persistence (:title "Persistence")
