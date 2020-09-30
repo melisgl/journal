@@ -2077,102 +2077,118 @@
   (let ((db ())
         (db-since-prev-sync ())
         (sync-pos nil)
-        (n-syncs 0))
-    (labels ((sync-to-db (journal)
-               (when (and (member (journal-state journal)
-                                  '(:recording :logging :completed))
-                          (journal-divergent-p journal))
-                 (setq db (coerce (journal-events journal) 'list))
-                 (setq sync-pos (journal-previous-sync-position journal))
-                 (setq db-since-prev-sync
-                       (coerce (subseq (journal-events journal) sync-pos)
-                               'list))
-                 (incf n-syncs)))
-             (make-db-backed-record-journal ()
-               (make-in-memory-journal :sync-fn #'sync-to-db))
-             (make-db-backed-replay-journal ()
-               (make-in-memory-journal :events db)))
-      (with-journaling (:record (make-db-backed-record-journal)
-                                :replay (make-db-backed-replay-journal))
-        (journaled (log))
-        (assert (= n-syncs 0))
-        (journaled (versioned :version 1))
-        (assert (= n-syncs 0))
-        (journaled (a :version :infinity)
+        (n-syncs 0)
+        (sync-pos-in-invoked nil)
+        (n-syncs-in-invoked 0))
+    (flet-invoked ((invoked (x) ("inv")
+                            (setq sync-pos-in-invoked sync-pos)
+                            (setq n-syncs-in-invoked n-syncs)
+                            (1+ x)))
+      (labels ((sync-to-db (journal)
+                 (when (and (member (journal-state journal)
+                                    '(:recording :logging :completed))
+                            (journal-divergent-p journal))
+                   (setq db (coerce (journal-events journal) 'list))
+                   (setq sync-pos (journal-previous-sync-position journal))
+                   (setq db-since-prev-sync
+                         (coerce (subseq (journal-events journal) sync-pos)
+                                 'list))
+                   (incf n-syncs)))
+               (make-db-backed-record-journal ()
+                 (make-in-memory-journal :sync-fn #'sync-to-db))
+               (make-db-backed-replay-journal ()
+                 (make-in-memory-journal :events db)))
+        (with-journaling (:record (make-db-backed-record-journal)
+                                  :replay (make-db-backed-replay-journal))
+          (framed (log))
           (assert (= n-syncs 0))
-          2)
-        (assert (equal db-since-prev-sync
-                       '((:in log)
-                         (:out log :values (nil))
-                         (:in versioned :version 1)
-                         (:out versioned :version 1 :values (nil))
-                         (:in a :version :infinity)
-                         (:out a :version :infinity :values (2)))))
-        (assert (= sync-pos 0))
-        (assert (= n-syncs 1))
-        (assert-error (some-error)
-          (journaled (b :version :infinity)
+          (checked (versioned))
+          (assert (= n-syncs 0))
+          (invoked 1)
+          (assert (= sync-pos-in-invoked 0))
+          (assert (= n-syncs-in-invoked 1))
+          (assert (equal db-since-prev-sync
+                         '((:in log)
+                           (:out log :values (nil))
+                           (:in versioned :version 1)
+                           (:out versioned :version 1 :values (nil))
+                           (:in "inv" :version 1 :args (1)))))
+          (assert (= sync-pos 0))
+          (assert (= n-syncs 1))
+          (replayed (a)
             (assert (= n-syncs 1))
-            (error 'some-error)))
-        (assert (= n-syncs 1)))
-      ;; SYNC-STREAMLET is called in CLOSE-STREAMLET, but it does
-      ;; nothing because no events were written since the previous
-      ;; sync.
-      (assert (= n-syncs 2))
+            2)
+          (assert (equal db-since-prev-sync
+                         '((:out "inv" :version 1 :values (2))
+                           (:in a :version :infinity)
+                           (:out a :version :infinity :values (2)))))
+          (assert (= sync-pos 5))
+          (assert (= n-syncs 2))
+          (assert-error (some-error)
+            (replayed (b)
+              (assert (= n-syncs 2))
+              (error 'some-error)))
+          (assert (= n-syncs 2)))
+        ;; SYNC-STREAMLET is called in CLOSE-STREAMLET, but it does
+        ;; nothing because no events were written since the previous
+        ;; sync.
+        (assert (= n-syncs 3))
 
-      ;; Replay
-      (setq db-since-prev-sync ()
-            sync-pos nil
-            n-syncs 0)
-      (with-journaling (:record (make-db-backed-record-journal)
-                                :replay (make-db-backed-replay-journal))
-        ;; We don't repeat the log block, it doesn't matter.
-        (journaled (versioned :version 1))
-        (assert (= n-syncs 0))
-        (journaled (a :version :infinity)
+        ;; Replay
+        (setq db-since-prev-sync ()
+              sync-pos nil
+              n-syncs 0
+              sync-pos-in-invoked nil
+              n-syncs-in-invoked 0)
+        (with-journaling (:record (make-db-backed-record-journal)
+                                  :replay (make-db-backed-replay-journal))
+          ;; We don't repeat the log block, it doesn't matter.
+          (checked (versioned))
+          ;; INVOKED gets invoked before this.
           (assert (= n-syncs 0))
-          2)
-        (assert (= n-syncs 0))
-        ;; This fixes up the error in the previous run and must
-        ;; trigger a sync.
-        (journaled (b :version :infinity)
-          3)
-        (assert (= n-syncs 1))
-        (assert (= sync-pos 0))
-        (assert (equal db-since-prev-sync
-                       '((:in versioned :version 1)
-                         (:out versioned :version 1 :values (nil))
-                         (:in a :version :infinity)
-                         (:out a :version :infinity :values (2))
-                         (:in b :version :infinity)
-                         (:out b :version :infinity :values (3)))))
-        ;; Extend the replay with events that don't trigger syncing ...
-        (journaled (c :version 1))
-        (assert (= n-syncs 1)))
-      ;; ... and check that CLOSE-STREAMLET syncs.
-      (assert (= n-syncs 2))
+          (replayed (a) 2)
+          (assert (= n-syncs 0))
+          ;; This fixes up the error in the previous run and must
+          ;; trigger a sync.
+          (replayed (b)
+            3)
+          (assert (= n-syncs 1))
+          (assert (= sync-pos 0))
+          (assert (equal db-since-prev-sync
+                         '((:in versioned :version 1)
+                           (:out versioned :version 1 :values (nil))
+                           (:in "inv" :version 1 :args (1))
+                           (:out "inv" :version 1 :values (2))
+                           (:in a :version :infinity)
+                           (:out a :version :infinity :values (2))
+                           (:in b :version :infinity)
+                           (:out b :version :infinity :values (3)))))
+          ;; Extend the replay with events that don't trigger syncing ...
+          (journaled (c :version 1))
+          (assert (= n-syncs 1)))
+        ;; ... and check that CLOSE-STREAMLET syncs.
+        (assert (= n-syncs 2))
 
-      ;; Second replay
-      (setq db-since-prev-sync ()
-            sync-pos nil
-            n-syncs 0)
-      (with-journaling (:record (make-db-backed-record-journal)
-                                :replay (make-db-backed-replay-journal))
-        (journaled (versioned :version 1))
-        (assert (= n-syncs 0))
-        (journaled (a :version :infinity)
+        ;; Second replay
+        (setq db-since-prev-sync ()
+              sync-pos nil
+              n-syncs 0
+              sync-pos-in-invoked nil
+              n-syncs-in-invoked 0)
+        (with-journaling (:record (make-db-backed-record-journal)
+                                  :replay (make-db-backed-replay-journal))
+          (checked (versioned))
           (assert (= n-syncs 0))
-          2)
-        (assert (= n-syncs 0))
-        (journaled (b :version :infinity)
-          3)
-        (assert (= n-syncs 0))
-        (journaled (c :version 1))
-        (assert (not (journal-divergent-p (record-journal))))
-        ;; No sync upon :REPLAYING -> :RECORDING.
-        (assert (= n-syncs 0)))
-      ;; No sync in CLOSE-STREAMLET.
-      (assert (= n-syncs 0)))))
+          (replayed (a) 2)
+          (assert (= n-syncs 0))
+          (replayed (b) 3)
+          (assert (= n-syncs 0))
+          (checked (c))
+          (assert (not (journal-divergent-p (record-journal))))
+          ;; No sync upon :REPLAYING -> :RECORDING.
+          (assert (= n-syncs 0)))
+        ;; No sync in CLOSE-STREAMLET.
+        (assert (= n-syncs 0))))))
 
 
 (defun foo (x)
@@ -2675,6 +2691,274 @@
                          :sync (not (slot-value bundle 'jrn::sync)))))))
 
 
+(defun test-invoked ()
+  (test-invoked-without-external)
+  (test-error-in-invoked-without-external)
+  (test-throw-in-invoked-without-external)
+  (test-invoked-without-external/two)
+  (test-invoked-without-external/two-separated)
+  (test-invoked-successful-external)
+  (test-invoked-in-failed-external/first-child)
+  (test-invoked-in-failed-external/second-child)
+  (test-invoked-in-failed-external/nested-in-child)
+  (test-invoked-in-mismatched-triggered-on-in-event)
+  (test-invoked-in-logging-triggered-on-in-event))
+
+(defvar *var-for-invoked*)
+
+(define-invoked invoked-0 (x) ("name-invoked-0")
+  (setq *var-for-invoked* (+ x 0)))
+
+(define-invoked invoked-1 (x) ("name-invoked-1")
+  (setq *var-for-invoked* (+ x 1)))
+
+(defun test-invoked-without-external ()
+  (let ((bundle (make-in-memory-bundle)))
+    (let ((*var-for-invoked* nil))
+      (with-bundle (bundle)
+        (assert (endp
+                 (multiple-value-list
+                  (if (zerop (framed (input :log-record :record) (random 2)))
+                      (invoked-0 3)
+                      (invoked-1 4)))))
+        (checked (c :args `(,*var-for-invoked*)))))
+    (let ((*var-for-invoked* nil))
+      (with-bundle (bundle)
+        (checked (c :args `(,*var-for-invoked*)))))))
+
+(defvar *fail-in-invoked* t)
+
+(define-invoked erroring-invoked (x) ("erroring-invoked")
+  (if *fail-in-invoked*
+      (error 'some-error)
+      (setq *var-for-invoked* x)))
+
+(define-invoked throwing-invoked (x) ("throwing-invoked")
+  (if *fail-in-invoked*
+      (throw 'catch-invoked nil)
+      (setq *var-for-invoked* x)))
+
+(defun test-error-in-invoked-without-external ()
+  (let ((journal-1 (funcall *make-journal*)))
+    ;; Fail in INVOKED.
+    (with-journaling (:record journal-1)
+      (assert-error (some-error)
+        (erroring-invoked 42)))
+    (assert (equal (list-events journal-1)
+                   '((:in "erroring-invoked" :version 1 :args (42))
+                     (:out "erroring-invoked"
+                      :error ("SOME-ERROR" "SOME-ERROR was signalled.")))))
+    ;; Not yet fixed. Replay triggers the same error.
+    (let ((journal-2 (funcall *make-journal*)))
+      (assert-error (some-error)
+        (with-journaling (:record journal-2 :replay journal-1)))
+      #+nil
+      (assert (eq (journal-state journal-2) :completed))
+      (assert (equal (list-events journal-2)
+                     '((:in "erroring-invoked" :version 1 :args (42))
+                       (:out "erroring-invoked"
+                        :error ("SOME-ERROR" "SOME-ERROR was signalled."))))))
+    ;; Fixed.
+    (let ((journal-3 (funcall *make-journal*)))
+      (let ((*var-for-invoked* nil)
+            (*fail-in-invoked* nil))
+        (with-journaling (:record journal-3 :replay journal-1)
+          (assert (eql *var-for-invoked* 42)))
+        (assert (eq (journal-state journal-3) :completed))
+        (assert (equal (list-events journal-3)
+                       '((:in "erroring-invoked" :version 1 :args (42))
+                         (:out "erroring-invoked" :version 1 :values (42))))))
+      ;; Fail again.
+      (let ((*var-for-invoked* nil)
+            (journal-4 (funcall *make-journal*)))
+        (assert-error (replay-unexpected-outcome)
+          (unwind-but-dont-receive some-error
+            (with-journaling (:record journal-4 :replay journal-3))))
+        #+nil
+        (assert (eq (journal-state journal-4) :failed))
+        (assert (equal (list-events journal-4)
+                       '((:in "erroring-invoked" :version 1 :args (42))
+                         (:out "erroring-invoked" :version 1
+                          :error ("SOME-ERROR"
+                                  "SOME-ERROR was signalled.")))))))))
+
+(defun test-throw-in-invoked-without-external ()
+  (let ((journal-1 (funcall *make-journal*)))
+    ;; Fail in INVOKED.
+    (with-journaling (:record journal-1)
+      (catch 'catch-invoked
+        (throwing-invoked 42)))
+    (assert (equal (list-events journal-1)
+                   '((:in "throwing-invoked" :version 1 :args (42))
+                     (:out "throwing-invoked" :nlx nil))))
+    ;; Not yet fixed. Replay triggers the same error.
+    (let ((journal-2 (funcall *make-journal*)))
+      (catch 'catch-invoked
+        (with-journaling (:record journal-2 :replay journal-1)))
+      #+nil
+      (assert (eq (journal-state journal-2) :completed))
+      (assert (equal (list-events journal-2)
+                     '((:in "throwing-invoked" :version 1 :args (42))
+                       (:out "throwing-invoked" :nlx nil)))))
+    ;; Fixed.
+    (let ((journal-3 (funcall *make-journal*)))
+      (let ((*var-for-invoked* nil)
+            (*fail-in-invoked* nil))
+        (with-journaling (:record journal-3 :replay journal-1)
+          (assert (eql *var-for-invoked* 42)))
+        (assert (eq (journal-state journal-3) :completed))
+        (assert (equal (list-events journal-3)
+                       '((:in "throwing-invoked" :version 1 :args (42))
+                         (:out "throwing-invoked" :version 1 :values (42))))))
+      ;; Fail again.
+      (let ((*var-for-invoked* nil)
+            (journal-4 (funcall *make-journal*)))
+        (assert-error (replay-unexpected-outcome)
+          (catch 'catch-invoked
+            (with-journaling (:record journal-4 :replay journal-3))))
+        #+nil
+        (assert (eq (journal-state journal-4) :failed))
+        (assert (equal (list-events journal-4)
+                       '((:in "throwing-invoked" :version 1 :args (42))
+                         (:out "throwing-invoked" :version 1 :nlx nil))))))))
+
+(defun test-invoked-without-external/two ()
+  (let ((bundle (make-in-memory-bundle)))
+    (let ((*var-for-invoked* nil))
+      (with-bundle (bundle)
+        (invoked-0 3)
+        (invoked-1 *var-for-invoked*)
+        (checked (c :args `(,*var-for-invoked*)))))
+    (let ((*var-for-invoked* nil))
+      (with-bundle (bundle)
+        (checked (c :args `(,*var-for-invoked*)))
+        (assert (equal (list-events)
+                       '((:in "name-invoked-0" :version 1 :args (3))
+                         (:out "name-invoked-0" :version 1 :values (3))
+                         (:in "name-invoked-1" :version 1 :args (3))
+                         (:out "name-invoked-1" :version 1 :values (4))
+                         (:in c :version 1 :args (4))
+                         (:out c :version 1 :values (nil)))))))))
+
+(defun test-invoked-without-external/two-separated ()
+  (let ((bundle (make-in-memory-bundle)))
+    (let ((*var-for-invoked* nil))
+      (with-bundle (bundle)
+        (invoked-0 3)
+        (checked (c :args `(,*var-for-invoked*)))
+        (invoked-1 *var-for-invoked*)
+        (checked (c :args `(,*var-for-invoked*)))))
+    (let ((*var-for-invoked* nil))
+      (with-bundle (bundle)
+        (checked (c :args `(,*var-for-invoked*)))
+        (checked (c :args `(,*var-for-invoked*)))
+        (assert (equal (list-events)
+                       '((:in "name-invoked-0" :version 1 :args (3))
+                         (:out "name-invoked-0" :version 1 :values (3))
+                         (:in c :version 1 :args (3))
+                         (:out c :version 1 :values (nil))
+                         (:in "name-invoked-1" :version 1 :args (3))
+                         (:out "name-invoked-1" :version 1 :values (4))
+                         (:in c :version 1 :args (4))
+                         (:out c :version 1 :values (nil)))))))))
+
+(defun test-invoked-successful-external ()
+  (let ((bundle (make-in-memory-bundle)))
+    (with-bundle (bundle)
+      (let ((*var-for-invoked* nil))
+        (replayed ("accept-input")
+          (if (zerop (framed (input :log-record :record) (random 2)))
+              (invoked-0 3)
+              (invoked-1 4))
+          42)
+        (checked (c :args `(,*var-for-invoked*)))))
+    (with-bundle (bundle)
+      (let ((*var-for-invoked* nil))
+        (replayed ("accept-input")
+          (assert nil))
+        (checked (c :args `(,*var-for-invoked*)))))))
+
+;;; Check that INVOKED events are replayed when the enclosing
+;;; REPLAYED is not replayed by outcome, and the INVOKED is the first
+;;; child.
+(defun test-invoked-in-failed-external/first-child ()
+  (let ((bundle (make-in-memory-bundle)))
+    (with-bundle (bundle)
+      (let ((*var-for-invoked* nil))
+        (catch 'some
+          (replayed ("accept-input")
+            (invoked-0 3)
+            (throw 'some nil)))
+        (checked (c :args `(,*var-for-invoked*)))))
+    (with-bundle (bundle)
+      (let ((*var-for-invoked* nil))
+        (replayed ("accept-input")
+          (assert (eql *var-for-invoked* 3)))
+        (checked (c :args `(,*var-for-invoked*)))))))
+
+(defun test-invoked-in-failed-external/second-child ()
+  (let ((bundle (make-in-memory-bundle)))
+    (with-bundle (bundle)
+      (let ((*var-for-invoked* nil))
+        (catch 'some
+          (replayed ("accept-input")
+            (checked (c1))
+            (invoked-0 3)
+            (throw 'some nil)))
+        (checked (c :args `(,*var-for-invoked*)))))
+    (with-bundle (bundle)
+      (let ((*var-for-invoked* nil))
+        (replayed ("accept-input")
+          (assert (null *var-for-invoked*))
+          (checked (c1)
+            (assert (null *var-for-invoked*)))
+          (assert (eql *var-for-invoked* 3)))
+        (checked (c :args `(,*var-for-invoked*)))))))
+
+(defun test-invoked-in-failed-external/nested-in-child ()
+  (let ((bundle (make-in-memory-bundle)))
+    (with-bundle (bundle)
+      (let ((*var-for-invoked* nil))
+        (catch 'some
+          (replayed ("accept-input")
+            (checked (c1)
+              (invoked-0 3)
+              nil)
+            (throw 'some nil)))
+        (checked (c :args `(,*var-for-invoked*)))))
+    (with-bundle (bundle)
+      (let ((*var-for-invoked* nil))
+        (replayed ("accept-input")
+          (assert (null *var-for-invoked*))
+          (checked (c1)
+            (assert (= *var-for-invoked* 3))))
+        (checked (c :args `(,*var-for-invoked*)))))))
+
+(defun test-invoked-in-mismatched-triggered-on-in-event ()
+  (flet-invoked ((invoked () ("inv")))
+    (let ((bundle (make-in-memory-bundle)))
+      (with-bundle (bundle)
+        (checked (c :args '(1))))
+      (with-bundle (bundle)
+        (assert-error (replay-args-mismatch)
+          (checked (c :args '(2))))
+        (assert (eq (journal-state (record-journal)) :mismatched))
+        (assert (equal (peek-replay-event) '(:in c :version 1 :args (1))))
+        (assert-error (data-event-lossage)
+          (invoked))))))
+
+(defun test-invoked-in-logging-triggered-on-in-event ()
+  (flet-invoked ((invoked () ("inv")))
+    (let ((bundle (make-in-memory-bundle)))
+      (with-bundle (bundle)
+        (catch 'not-finished
+          (checked (c)
+            (throw 'not-finished nil)))
+        (assert (eq (journal-state (record-journal)) :logging))
+        (assert-error (data-event-lossage)
+          (invoked))))))
+
+
 (defun test ()
   (test-events-to-frames)
   (test-in-memory-journal)
@@ -2691,7 +2975,8 @@
   (test-file-journal-error-handling)
   (test-define-file-bundle-test)
   (test-make-file-journal)
-  (test-make-file-bundle))
+  (test-make-file-bundle)
+  (test-invoked))
 
 #+nil
 (test)

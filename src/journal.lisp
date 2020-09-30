@@ -998,6 +998,9 @@
 
 ;;; An override mechanism for SKIP-LOG-EVENTS for WITH-REPLAY-FILTER.
 (defvar *skip-events* nil)
+;;; Infinite recursion protection for DEFINE-INVOKED, when triggered
+;;; from SKIP-EVENTS.
+(defvar *skipped-events-until* nil)
 
 (defun call-with-journaling (fn record replay replay-eoj-error-p)
   (let ((record (and record (to-journal record)))
@@ -1005,7 +1008,8 @@
         (*journaling-failure* nil)
         (*replay-failure* nil)
         (*record-journal-state* :new)
-        (*skip-events* nil))
+        (*skip-events* nil)
+        (*skipped-events-until* nil))
     (check-journal-state "Record" record :new)
     (check-journal-state "Replay" replay :completed)
     (with-open-journal (*record-streamlet* record :direction :output)
@@ -1723,10 +1727,10 @@
   signalling this condition, JOURNAL-STATE is set to :LOGGING, thus no
   more events can be recorded that will affect replay of the journal
   being recorded. The event that triggered this condition is recorded
-  in state :LOGGING, with its version downgraded. Since @REPLAY is
-  built on the assumption that control flow is deterministic, an
-  unexpected outcome is significant because it makes this assumption
-  to hold unlikely.
+  in state :LOGGING, with its version downgraded. Since
+  @REPLAY (except INVOKED) is built on the assumption that control
+  flow is deterministic, an unexpected outcome is significant because
+  it makes this assumption to hold unlikely.
 
   Also see REPLAY-UNEXPECTED-OUTCOME.")
   (:report (lambda (condition stream)
@@ -2655,7 +2659,30 @@
   (event-version type)
   (log-event type)
   (versioned-event type)
-  (external-event type))
+  (external-event type)
+  "Built on top of JOURNALED, the macros below record a pair of
+  @IN-EVENTS and @OUT-EVENTS, but differ in how they are replayed and
+  the requirements on their @BLOCKs. The following table names the
+  type of EVENT produced (`Event`), how @IN-EVENTS are
+  replayed (`In-e.`), whether the block is always run (`Run`), how
+  @OUT-EVENTS are replayed (`Out-e.`), whether the block must be
+  deterministic (`Det`) or side-effect free (`SEF`).
+
+      |          | Event     | In-e.  | Run | Out-e. | Det | SEF |
+      |----------+-----------+--------+-----+--------+-----+-----|
+      | FRAMED   | log       | skip   | y   | skip   | n   | n   |
+      | CHECKED  | versioned | match  | y   | match  | y   | n   |
+      | REPLAYED | external  | match  | n   | replay | n   | y   |
+      | INVOKED  | versioned | replay | y   | match  | y   | n   |
+
+  Note that the replay-replay combination is not implemented because
+  there is nowhere to return values from replay-triggered functions."
+  (framed macro)
+  (checked macro)
+  (replayed macro)
+  (invoked glossary-term)
+  (define-invoked macro)
+  (flet-invoked macro))
 
 (defvar *force-insertable* nil
   "The default value of the INSERTABLE argument of JOURNALED for
@@ -2752,6 +2779,153 @@
                      :replay-condition ,replay-condition)
      ,@body))
 
+(define-glossary-term invoked (:title "Invoked")
+  "Invoked refers to functions and blocks defined by DEFINE-INVOKED or
+  FLET-INVOKED. Invoked frames may be recorded in response to
+  asynchronous events, and at replay the presence of its in-event
+  triggers the execution of the function associated with the name of
+  the event.
+
+  On one hand, FRAMED, CHECKED, REPLAYED or plain JOURNALED have
+  @IN-EVENTS that are always predictable from the code and the
+  preceding events. The control flow - on the level of recorded frames
+  - is deterministic in this sense. On the other hand, Invoked encodes
+  in its IN-EVENT what function to call next, introducing
+  non-deterministic control flow.
+
+  By letting events choose the code to run, Invoked resembles typical
+  [Event Sourcing][event-sourcing] frameworks. When Invoked is used
+  exclusively, the journal becomes a sequence of events. In contrast,
+  JOURNALED and its wrappers put code first, and the journal will be a
+  projection of the call tree.")
+
+(defvar *invoked-event-name-to-function-name* (make-hash-table :test #'equal))
+;;; Name-to-function alist
+(defvar *local-invoked-event-name-to-function* ())
+#+sbcl
+(declaim (sb-ext:always-bound *invoked-event-name-to-function-name*
+                              *local-invoked-event-name-to-function*))
+
+(defmacro define-invoked (function-name args
+                          (name &key (version 1) insertable)
+                          &body body)
+  """DEFINE-INVOKED is intended for recording asynchronous function
+  invocations like event or signal handlers. It defines a function
+  that records VERSIONED-EVENTs with ARGS set to the actual arguments.
+  At replay, it is invoked whenever the recorded IN-EVENT becomes the
+  REPLAY-EVENT.
+
+  DEFUN and CHECKED rolled into one, DEFINE-INVOKED defines a
+  top-level function with FUNCTION-NAME and ARGS (only simple
+  positional arguments are allowed) and wraps CHECKED with NAME, the
+  same ARGS and INSERTABLE around BODY. Whenever an IN-EVENT becomes
+  the REPLAY-EVENT and it has a DEFINE-INVOKED defined with the name
+  of the event, then FUNCTION-NAME is invoked with EVENT-ARGS.
+
+  While BODY's return values are recorded as usual, the defined
+  function returns no values to make it less likely to affect control
+  flow in a way that's not possible to reproduce when the function is
+  called by the replay mechanism.
+
+  ```
+  (defvar *state*)
+
+  (define-invoked foo (x) ("foo")
+    (setq *state* (1+ x)))
+
+  (define-invoked bar (x) ("bar")
+    (setq *state* (+ 2 x)))
+
+  (if (zerop (random 2))
+      (foo 0)
+      (bar 1))
+  ```
+
+  The above can be alternatively implemented with REPLAYED explicitly
+  encapsulating the non-determinism:
+
+  ```
+  (let ((x (replayed (choose) (random 2))))
+    (if (zerop x)
+        (checked (foo :args `(,x))
+          (setq *state* (1+ x)))
+        (checked (bar :args `(,x))
+          (setq *state* (+ 2 x)))))
+  ```
+  """
+  `(progn
+     (setf (gethash ',name *invoked-event-name-to-function-name*)
+           ',function-name)
+     (defun ,@(invoked/1 function-name args name version insertable body))))
+
+(defun invoked/1 (function-name args name version insertable body)
+  `(,function-name
+    ,args
+    (assert (and ,version (not (eq ,version :infinity))))
+    ;; KLUDGE: Prevent another call SKIP-EVENTS, which might trigger
+    ;; this INVOKED again.
+    (when *replay-streamlet*
+      (setq *skipped-events-until* (read-position *replay-streamlet*)))
+    (checked (,name :version ,version :args (list ,@args)
+                    :insertable ,insertable)
+      ,@body)
+    (values)))
+
+(defmacro flet-invoked (definitions &body body)
+  """Like DEFINE-INVOKED, but with FLET instead of DEFUN. The event
+  name and the function are associated in the dynamic extent of BODY.
+  WITH-JOURNALING does not change the bindings. The example in
+  DEFINE-INVOKED can be rewritten as:
+
+  ```
+  (let ((state nil))
+    (flet-invoked ((foo (x) ("foo")
+                     (setq state (1+ x)))
+                   (bar (x) ("bar")
+                     (setq state (+ 2 x))))
+      (if (zerop (random 2))
+        (foo 0)
+        (bar 1))))
+  ```
+  """
+  (let ((entries (loop for definition in definitions
+                       collect (flet-invoked/1 definition))))
+    `(flet ,(mapcar #'third entries)
+       (let ((*local-invoked-event-name-to-function*
+               *local-invoked-event-name-to-function*))
+         ,@(mapcar (lambda (entry)
+                     `(push (cons ,(first entry) #',(second entry))
+                            *local-invoked-event-name-to-function*))
+                   entries)
+         ,@body))))
+
+(defun flet-invoked/1 (definition)
+  (destructuring-bind (function-name args
+                       (name &key (version 1) insertable)
+                       &body body)
+      definition
+    (list name function-name
+          (invoked/1 function-name args name version insertable body))))
+
+(defun invoked-function (event-name)
+  (or (alexandria:assoc-value *local-invoked-event-name-to-function* event-name
+                              :test #'equal)
+      (let ((symbol
+              (gethash event-name *invoked-event-name-to-function-name*)))
+        (cond ((and (symbol-package symbol)
+                    (fboundp symbol))
+               symbol)
+              ;; Handle UNINTERNed and MAKUNBOUND functions.
+              (t
+               (remhash event-name *invoked-event-name-to-function-name*)
+               nil)))))
+
+(defun maybe-handle-invoked (in-event)
+  (when (versioned-event-p in-event)
+    (let ((function (invoked-function (event-name in-event))))
+      (when function
+        (apply function (event-args in-event))
+        t))))
 
 
 (defsection @bundles (:title "Bundles")
@@ -3050,6 +3224,7 @@
                                      replayed-out-event
                                      replay-values replay-condition)))
         (skip-events-and-maybe->recording record-streamlet replay-streamlet)))
+    (maybe-sync-after-in-event in-event record-streamlet)
     strategy))
 
 (defun check-args (in-event replayed-in-event)
@@ -3064,10 +3239,18 @@
     (set-journal-state record-streamlet :recording)))
 
 (defun skip-events (replay-streamlet)
-  (when replay-streamlet
+  (when (and replay-streamlet
+             ;; Prevent infinite recursion with MAYBE-HANDLE-INVOKED.
+             (not (and *skipped-events-until*
+                       (= *skipped-events-until*
+                          (read-position replay-streamlet)))))
+    (setq *skipped-events-until* nil)
     (if *skip-events*
         (funcall *skip-events*)
-        (skip-log-events replay-streamlet))))
+        (skip-log-events replay-streamlet))
+    (let ((event (peek-event replay-streamlet)))
+      (and event (in-event-p event)
+           (maybe-handle-invoked event)))))
 
 (defun skip-log-events (streamlet)
   (loop for event = (peek-event streamlet)
@@ -3177,8 +3360,9 @@
     nested in the current one are skipped over in the replay journal.
 
   - All events (including LOG-EVENTs) skipped over are echoed to the
-    record journal. This only serves to keep a trail of what happened
-    during the original recording.
+    record journal. This serves to keep a trail of what happened
+    during the original recording. Note that functions corresponding
+    to INVOKED frames are called when their IN-EVENT is skipped over.
 
   - The out-event corresponding to the in-event being processed is
     then read from the replay journal and is recorded again (to allow
@@ -3238,9 +3422,12 @@
        ;; General case
        (let ((end-of-frame-position (end-of-frame-position input-streamlet)))
          (when end-of-frame-position
-           (loop for event = (read-event input-streamlet nil)
-                 do (when output-streamlet
-                      (write-event event output-streamlet))
+           (loop for i upfrom 0
+                 for event = (peek-event input-streamlet)
+                 do (unless (maybe-handle-invoked event)
+                      (read-event input-streamlet)
+                      (when output-streamlet
+                        (write-event event output-streamlet)))
                  while (<= (read-position input-streamlet)
                            end-of-frame-position))))))))
 
@@ -3415,31 +3602,20 @@
                                        replay-eoj-error-p))))
     (ecase strategy
       ((:insert)
-       (route-event out-event record-streamlet log-record)
-       (maybe-sync out-event record-streamlet))
+       (route-event out-event record-streamlet log-record))
       ((:upgrade)
        (when record-streamlet
          (write-event out-event record-streamlet))
        (read-event replay-streamlet)
-       (skip-events-and-maybe->recording record-streamlet replay-streamlet)
-       (maybe-sync out-event record-streamlet))
+       (skip-events-and-maybe->recording record-streamlet replay-streamlet))
       ((:match)
        (let ((replay-event (peek-event replay-streamlet)))
          (check-outcome out-event replay-event)
          (when record-streamlet
            (write-event out-event record-streamlet))
          (read-event replay-streamlet)
-         (skip-events-and-maybe->recording record-streamlet replay-streamlet)
-         (maybe-sync out-event record-streamlet))))))
-
-;;; Tests for :RECORDING, thus must be called after reading the replay
-;;; event and calling SKIP-EVENTS.
-(defun maybe-sync (out-event record-streamlet)
-  (when (and record-streamlet
-             (slot-value record-streamlet 'sync)
-             (external-event-p out-event)
-             (eq *record-journal-state* :recording))
-    (sync-streamlet record-streamlet)))
+         (skip-events-and-maybe->recording record-streamlet replay-streamlet))))
+    (maybe-sync-after-out-event out-event record-streamlet)))
 
 (defun check-outcome (out-event replayed-out-event)
   (assert (expected-outcome-p replayed-out-event))
@@ -4245,18 +4421,37 @@
   bugs.")
 
 (define-glossary-term data-event (:title "data event")
-  "An EXTERNAL-EVENT that is also and OUT-EVENT is called a data
-  event. Data events are the only events that may be
-  non-deterministic. They are to capture any data which might change
-  if the journal is replayed. Data events typically correspond to
-  interactions with the user, servers or even the random number
-  generator. Due to their non-determinism, they are the only parts of
-  the journal not reproducible by rerunning the code. In this sense,
-  only data events are not redundant with the code and whether other
-  events are persisted does not affect durability.
+  "Data events are the only events that may be non-deterministic. They
+  record information which could change if the same code were run
+  multiple times. Data events typically correspond to interactions
+  with the user, servers or even the random number generator. Due to
+  their non-determinism, they are the only parts of the journal not
+  reproducible by rerunning the code. In this sense, only data events
+  are not redundant with the code and whether other events are
+  persisted does not affect durability. There are two kinds of data
+  events:
 
-  If an EXTERNAL-EVENT has an UNEXPECTED-OUTCOME,
-  RECORD-UNEXPECTED-OUTCOME is signalled.")
+  - An EXTERNAL-EVENT that is also an OUT-EVENT.
+
+  - The IN-EVENT of an INVOKED function, which lies outside the
+    normal, deterministic control flow.")
+
+;;; These functions test for :RECORDING, thus must be called after
+;;; reading the replay event and calling SKIP-EVENTS.
+(defun maybe-sync-after-in-event (in-event record-streamlet)
+  (when (and record-streamlet
+             (slot-value record-streamlet 'sync)
+             (eq *record-journal-state* :recording)
+             (versioned-event-p in-event)
+             (invoked-function (event-name in-event)))
+    (sync-streamlet record-streamlet)))
+
+(defun maybe-sync-after-out-event (out-event record-streamlet)
+  (when (and record-streamlet
+             (slot-value record-streamlet 'sync)
+             (external-event-p out-event)
+             (eq *record-journal-state* :recording))
+    (sync-streamlet record-streamlet)))
 
 (defsection @synchronization-strategies (:title "Synchronization strategies")
   "When a journal or bundle is created (see MAKE-IN-MEMORY-JOURNAL,
