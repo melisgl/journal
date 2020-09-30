@@ -479,11 +479,11 @@
   "After replay finished (i.e. WITH-JOURNALING completed), we can ask
   the question whether there were any changes produced. This is
   answered in the strictest sense by IDENTICAL-JOURNALS-P, and
-  somewhat more functionally by EQUIVALENT-JOURNALS-P.
+  somewhat more functionally by EQUIVALENT-REPLAY-JOURNALS-P.
 
   Also see JOURNAL-DIVERGENT-P."
   (identical-journals-p generic-function)
-  (equivalent-journals-p generic-function))
+  (equivalent-replay-journals-p generic-function))
 
 (defgeneric identical-journals-p (journal-1 journal-2)
   (:documentation "Compare two journals in a strict sense: whether
@@ -507,21 +507,22 @@
     (eq (not (not will-be-completed-1))
         (not (not will-be-completed-2)))))
 
-(defgeneric equivalent-journals-p (journal-1 journal-2)
-  (:documentation "Compare two journals allowing for some minor
-  variation. EQUIVALENT-JOURNALS-P is like IDENTICAL-JOURNALS-P, but
-  allows events with EVENT-EXIT :ERROR to differ in their outcomes,
-  which may very well be implementation specific, anyway. Also, it
-  considers two groups of states as different :NEW, :REPLAYING,
-  :MISMATCHED, :FAILED vs :RECORDING, :LOGGING, COMPLETED.")
+(defgeneric equivalent-replay-journals-p (journal-1 journal-2)
+  (:documentation "See if two journals are equivalent when used the
+  for REPLAY in WITH-JOURNALING. EQUIVALENT-REPLAY-JOURNALS-P is like
+  IDENTICAL-JOURNALS-P, but it ignores LOG-EVENTs and allows events
+  with EVENT-EXIT :ERROR to differ in their outcomes, which may very
+  well be implementation specific, anyway. Also, it considers two
+  groups of states as different :NEW, :REPLAYING, :MISMATCHED, :FAILED
+  vs :RECORDING, :LOGGING, COMPLETED.")
   (:method :around (journal-1 journal-2)
     (and (equivalent-states-p (journal-state journal-1)
                               (journal-state journal-2))
          (call-next-method)))
   ;; Generic, inefficient version based on LIST-EVENTS.
   (:method (journal-1 journal-2)
-    (let ((events-1 (list-events journal-1))
-          (events-2 (list-events journal-2)))
+    (let ((events-1 (remove-if #'log-event-p (list-events journal-1)))
+          (events-2 (remove-if #'log-event-p (list-events journal-2))))
       (and (= (length events-1) (length events-2))
            (every #'event= events-1 events-2)))))
 
@@ -4053,10 +4054,10 @@
 
   Furthermore, if BODY returns normally, and it is a replay of a
   previous run, and EQUIVALENTP, then it is ASSERTed that the record
-  and replay journals are EQUIVALENT-JOURNALS-P. If this check fails,
-  RECORD-JOURNAL is discarded when the function returns. In addition
-  to the replay consistency, this checks that no inserts or upgrades
-  were performed (see @THE-REPLAY-STRATEGY)."
+  and replay journals are EQUIVALENT-REPLAY-JOURNALS-P. If this check
+  fails, RECORD-JOURNAL is discarded when the function returns. In
+  addition to the replay consistency, this checks that no inserts or
+  upgrades were performed (see @THE-REPLAY-STRATEGY)."
   (alexandria:with-gensyms (dir)
     `(defun ,name (&key rerecord)
        (let ((,dir ,directory))
@@ -4066,8 +4067,8 @@
            (multiple-value-prog1
                (progn ,@body)
              (when (and (replay-journal) ,equivalentp)
-               (unless (equivalent-journals-p (record-journal)
-                                              (replay-journal))
+               (unless (equivalent-replay-journals-p (record-journal)
+                                                     (replay-journal))
                  ;; KLUDGE: This is not a normal transition and it is
                  ;; not reflected in the file. However this is enough
                  ;; to make WITH-BUNDLE reap the journal due to the
@@ -4451,11 +4452,6 @@
                                  (journal-2 in-memory-journal))
   (and (= (length (events journal-1)) (length (events journal-2)))
        (every #'equal (events journal-1) (events journal-2))))
-
-(defmethod equivalent-journals-p ((journal-1 in-memory-journal)
-                                  (journal-2 in-memory-journal))
-  (and (= (length (events journal-1)) (length (events journal-2)))
-       (every #'event= (events journal-1) (events journal-2))))
 
 (defclass in-memory-streamlet (streamlet)
   ((%read-position :initform 0 :reader read-position)
