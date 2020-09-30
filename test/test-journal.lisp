@@ -967,6 +967,8 @@
                   (get-message))))))
 
 
+;;;; Recording and replay of external events
+
 (defun test-replay-condition ()
   (let ((journal-1 (funcall *make-journal*))
         (journal-2 (funcall *make-journal*)))
@@ -1273,7 +1275,7 @@
 ;;; This the first of the at-end-of-replay tests, designed to test
 ;;; that the :REPLAYING -> :RECORDING transition takes place. With no
 ;;; child blocks, this particular case is handled by the
-;;; SKIP-EVENTS-AND-MAYBE-SET-STATE-TO-RECORDING call in
+;;; SKIP-EVENTS-AND-MAYBE-SET-STATE->RECORDING call in
 ;;; WITH-REPLAY-FILTER itself.
 (defun test-with-replay-filter-with-no-children-left-at-end-of-replay ()
   (labels ((inner (x y)
@@ -1329,9 +1331,8 @@
                   (:out outer :version 1 :values (3)))))))))
 
 ;;; This case is also handled by the
-;;; SKIP-EVENTS-AND-MAYBE-SET-STATE-TO-RECORDING in
-;;; WITH-REPLAY-FILTER, we just test the :INSERTABLE does not screw
-;;; things up.
+;;; SKIP-EVENTS-AND-MAYBE->TO-RECORDING in WITH-REPLAY-FILTER, we just
+;;; test the :INSERTABLE does not screw things up.
 (defun test-with-replay-filter-with-insert-at-end-of-replay ()
   (labels ((inner (x y)
              (journaled (inner :version 1)
@@ -2330,16 +2331,16 @@
   (let ((journal-1 (funcall *make-journal*)))
     ;; Record
     (with-journaling (:record journal-1)
-      (journaled (b1 :version 1)
-        (journaled (b2 :version 1)
+      (checked (b1)
+        (checked (b2)
           2)
         1))
     ;; Fail the replay in B2.
     (dolist (journal-2 (list (funcall *make-journal*) nil))
       (assert-error (replay-outcome-mismatch)
         (with-journaling (:replay journal-1 :record journal-2)
-          (journaled (b1 :version 1)
-            (journaled (b2 :version 1)
+          (checked (b1)
+            (checked (b2)
               7)
             1)))
       (when journal-2
@@ -2351,9 +2352,9 @@
                        '((:in b1 :version 1)
                          (:in b2 :version 1)
                          (:out b2 :version 1 :values (7))
-                         (:out b1 :version 1 :error
+                         (:out b1 :error
                           ("REPLAY-OUTCOME-MISMATCH"
-                           "The EXITs and OUTCOMEs of the new (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (7)) and the replay (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) events are not equal.")))))))))
+                           "The EXITs and OUTCOMEs of the new event (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (7)) and the REPLAY-EVENT (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) are not equal.")))))))))
 
 (defun test-replay-failure-two-deep-with-error ()
   (let ((journal-1 (funcall *make-journal*)))
@@ -2382,9 +2383,9 @@
                          (:in b2 :version 1)
                          (:out b2 :version 1
                           :error ("SOME-ERROR" "SOME-ERROR was signalled."))
-                         (:out b1 :version 1 :error
+                         (:out b1 :error
                           ("REPLAY-UNEXPECTED-OUTCOME"
-                           "The new event (:OUT JOURNAL-TEST::B2 :VERSION 1 :ERROR (\"SOME-ERROR\" \"SOME-ERROR was signalled.\")) has an unexpected outcome while the replay event (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) has not.")))))))))
+                           "The new event (:OUT JOURNAL-TEST::B2 :VERSION 1 :ERROR (\"SOME-ERROR\" \"SOME-ERROR was signalled.\")) has an unexpected outcome while the REPLAY-EVENT (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) has not.")))))))))
 
 (defun test-values-fn-failure-recording ()
   (let* ((journal-1 (funcall *make-journal*))
