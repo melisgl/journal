@@ -1529,7 +1529,7 @@
   (journaling-failure condition)
   (journaling-failure-embedded-condition (reader journaling-failure))
   (record-unexpected-outcome condition)
-  (external-event-downgrade condition)
+  (data-event-lossage condition)
   (journal-error condition)
   (end-of-journal condition))
 
@@ -1707,7 +1707,7 @@
                        condition)
     (finalize-journal-state record-streamlet t))
   (cond ((typep condition 'journaling-failure)
-         (assert (typep condition 'external-event-downgrade))
+         (assert (typep condition 'data-event-lossage))
          (when (in-with-journaling-p)
            (setq *journaling-failure* condition)))
         (t
@@ -1740,19 +1740,15 @@
              (format stream "~@<Record journal was set to ~
                             JOURNAL-STATE :LOGGING.~:@>"))))
 
-(define-condition external-event-downgrade (journaling-failure)
+(define-condition data-event-lossage (journaling-failure)
   ()
-  (:documentation "Signalled when an IN-EVENT EXTERNAL-EVENT is to be
-  recorded in JOURNAL-STATE :LOGGING. In that state, the version of
-  generated events is forced to NIL, making them LOG-EVENTs, but that
-  would constitute data loss (also see DATA-EVENTs). To be :LOGGING,
-  there must have been RECORD-UNEXPECTED-OUTCOME.")
+  (:documentation "Signalled when a DATA-EVENT is about to be recorded
+  in JOURNAL-STATE :MISMATCHED or :LOGGING. Since the data event will
+  not be replayed that constitutes data loss.")
   (:report (lambda (condition stream)
              (maybe-print-resignalling-message condition stream)
-             (format stream "~@<An EXTERNAL-EVENT would need downgrading ~
-                            to log while in JOURNAL-STATE :LOGGING. ~
-                            There must have been a RECORD-UNEXPECTED-OUTCOME ~
-                            previusly.~:@>~%")
+             (format stream "~@<A DATA-EVENT is about to be recorded ~
+                            in JOURNAL-STATE :MISMATCHED or :LOGGING.~:@>~%")
              (print-record-closed stream))))
 
 (define-condition journal-error (error)
@@ -2597,16 +2593,17 @@
     been replayed successfuly, but there are more, non-log events to
     replay.
 
-  - __:MISMATCHED__: There was a REPLAY-FAILURE.
+  - __:MISMATCHED__: There was a REPLAY-FAILURE. In this state,
+    VERSIONED-EVENTs generated are downgraded to LOG-EVENTs,
+    EXTERNAL-EVENTs and INVOKED trigger a DATA-EVENT-LOSSAGE.
 
   - __:RECORDING__: All events from the replay journal were
     successfully replayed and now new events are being recorded
     without being matched to the replay journal.
 
-  - __:LOGGING__: There was a RECORD-UNEXPECTED-OUTCOME.
-    VERSIONED-EVENTs generated in this state are downgraded to
-    LOG-EVENTs, and EXTERNAL-EVENTs trigger a
-    EXTERNAL-EVENT-DOWNGRADE.
+  - __:LOGGING__: There was a RECORD-UNEXPECTED-OUTCOME. In this
+    state, VERSIONED-EVENTs generated are downgraded to LOG-EVENTs,
+    EXTERNAL-EVENTs and INVOKED trigger a DATA-EVENT-LOSSAGE.
 
   - __:FAILED__: The journal is to be discarded. It encountered a
     JOURNALING-FAILURE or a REPLAY-FAILURE without completing the
@@ -3496,7 +3493,8 @@
             (with-journaling-failure-on-nlx
               ;; This may be the version for the out-event, too. But
               ;; downgrades may happen later in HANDLE-NLX below.
-              (setq version (maybe-downgrade-version version record-streamlet))
+              (setq version (maybe-downgrade-version version name
+                                                     record-streamlet))
               (handle-in-event record-streamlet log-record
                                name version args
                                replay-streamlet insertable replay-values
@@ -3534,12 +3532,14 @@
         (nlx-protect (:on-return #'handle-return :on-nlx #'handle-nlx)
           (funcall function))))))
 
-(defun maybe-downgrade-version (version record-streamlet)
+(defun maybe-downgrade-version (version name record-streamlet)
   (cond ((and record-streamlet
-              (eq *record-journal-state* :logging))
-         (when (eq version :infinity)
+              (or (eq *record-journal-state* :mismatched)
+                  (eq *record-journal-state* :logging)))
+         (when (or (eq version :infinity)
+                   (and version (invoked-function name)))
            (check-within-with-journaling-failure-on-nlx)
-           (error 'external-event-downgrade))
+           (error 'data-event-lossage))
          nil)
         (t
          version)))
@@ -3570,7 +3570,8 @@
                  (set-journal-state record-streamlet :logging)
                  (setq gone-logging t)
                  (setq version nil))
-                ((eq state :logging)
+                ((or (eq state :mismatched)
+                     (eq state :logging))
                  (setq version nil)))))
       (values gone-logging version exit outcome))))
 
