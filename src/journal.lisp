@@ -867,7 +867,7 @@
   (@working-with-unreadable-values section)
   (@journal-utilities section)
   (@pretty-printing section)
-  (@error-handling section))
+  (@journal-error-handling section))
 
 (defgeneric to-journal (designator)
   (:documentation "Return the journal designated by DESIGNATOR or
@@ -1531,7 +1531,7 @@
         nil)))
 
 
-(defsection @error-handling (:title "Error handling")
+(defsection @journal-error-handling (:title "Error handling")
   (journaling-failure condition)
   (journaling-failure-embedded-condition (reader journaling-failure))
   (record-unexpected-outcome condition)
