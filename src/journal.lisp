@@ -558,7 +558,7 @@
    ;; N-IN-EVENTS - N-OUT-EVENTS read from the streamlet. Not
    ;; meaningful if the read position is altered manually (i.e. not
    ;; via SAVE-EXCURSION).
-   (depth :initform 0 :accessor %depth)
+   (in-depth :initform 0 :accessor %in-depth)
    ;; Same as this streamlet's JOURNAL's SYNC.
    (sync :initform t :initarg :sync)
    ;; Suppresses checks for DIRECTION and being open.
@@ -732,9 +732,9 @@
       (check-open-streamlet-p streamlet))
     (check-okay-for-input streamlet)
     (let ((event (call-next-method streamlet eoj-error-p)))
-      (with-slots (depth) streamlet
-        (cond ((in-event-p event) (incf depth))
-              ((out-event-p event) (decf depth))))
+      (with-slots (in-depth) streamlet
+        (cond ((in-event-p event) (incf in-depth))
+              ((out-event-p event) (decf in-depth))))
       event)))
 
 ;;; Although we rely on READ-POSITION (and FILE-POSITION behind the
@@ -755,13 +755,13 @@
   "Save READ-POSITION of STREAMLET, execute BODY, and make sure to
   restore the saved read position."
   (alexandria:once-only (streamlet)
-    (alexandria:with-gensyms (read-position depth)
+    (alexandria:with-gensyms (read-position in-depth)
       `(let ((,read-position (read-position ,streamlet))
-             (,depth (%depth ,streamlet)))
+             (,in-depth (%in-depth ,streamlet)))
          (unwind-protect
               (progn ,@body)
            (setf (read-position ,streamlet) ,read-position)
-           (setf (%depth ,streamlet) ,depth))))))
+           (setf (%in-depth ,streamlet) ,in-depth))))))
 
 (defgeneric peek-event (streamlet)
   (:documentation "Read the next event from STREAMLET without changing
@@ -1993,7 +1993,7 @@
 
 (defclass pprint-streamlet (streamlet)
   (;; For indenting the events in the file.
-   (depth :initform 0 :accessor %depth)))
+   (out-depth :initform 0 :accessor %out-depth)))
 
 (defun make-pprint-journal
     (&key (stream (make-synonym-stream '*standard-output*))
@@ -2017,18 +2017,18 @@
          (stream (slot-value journal 'stream))
          (pretty (symbol-value (slot-value (journal streamlet) 'pretty))))
     (when (out-event-p event)
-      (decf (%depth streamlet)))
+      (decf (%out-depth streamlet)))
     (cond (pretty
            (funcall (pprint-journal-prettifier journal)
-                    event (%depth streamlet) stream))
+                    event (%out-depth streamlet) stream))
           (t
-           (let ((indent (make-string (* 2 (%depth streamlet))
+           (let ((indent (make-string (* 2 (%out-depth streamlet))
                                       :initial-element #\Space)))
              (format stream "~%~A" indent))
            (prin1 event stream)))
     (force-output stream)
     (when (in-event-p event)
-      (incf (%depth streamlet)))))
+      (incf (%out-depth streamlet)))))
 
 (defmethod request-completed-on-abort ((streamlet pprint-streamlet))
   t)
@@ -4065,15 +4065,15 @@
   ```
   "
   (alexandria:once-only (map)
-    (alexandria:with-gensyms (with-filtering-body eat pred depth
+    (alexandria:with-gensyms (with-filtering-body eat pred in-depth
                                in-or-leaf-event-p)
       `(flet ((,with-filtering-body () ,@body))
          (declare (dynamic-extent #',with-filtering-body))
          (if *replay-streamlet*
              (let* ((*skip-patterns* (append *skip-patterns* ,skip))
                     (,pred (patterns-to-disjunction *skip-patterns*))
-                    (,depth (%depth *replay-streamlet*))
-                    (*replay-filter-base-depth* ,depth)
+                    (,in-depth (%in-depth *replay-streamlet*))
+                    (*replay-filter-base-depth* ,in-depth)
                     (*replay-event-mapper*
                       (if *replay-event-mapper*
                           (alexandria:compose *replay-event-mapper* ,map)
@@ -4081,7 +4081,7 @@
                     (*no-replay-outcome-names*
                       (append *no-replay-outcome-names* ,no-replay-outcome)))
                (flet ((,eat (,in-or-leaf-event-p)
-                        (eat-events ,pred *replay-streamlet* ,depth
+                        (eat-events ,pred *replay-streamlet* ,in-depth
                                     ,in-or-leaf-event-p)))
                  (unwind-protect
                       (let ((*skip-events* #',eat))
@@ -4102,7 +4102,7 @@
                        ;; case, we choose to greedily filter the
                        ;; events.
                        (eat-full-frames-of-events ,pred *replay-streamlet*
-                                                  ,depth)
+                                                  ,in-depth)
                        ;; If there is an enclosing WITH-REPLAY-FILTER
                        ;; without an intervening JOURNALED, then its
                        ;; *SKIP-EVENTS* filter must be run. This also
@@ -4116,7 +4116,7 @@
 
 (defun replay-filter-at-base-depth-p ()
   (and *replay-filter-base-depth*
-       (= *replay-filter-base-depth* (%depth *replay-streamlet*))))
+       (= *replay-filter-base-depth* (%in-depth *replay-streamlet*))))
 
 (defvar *skip-patterns* ())
 
@@ -4140,7 +4140,7 @@
 ;;; Consume all consecutive log-events and those that match PRED.
 (defun eat-events (pred streamlet base-depth in-or-leaf-event-p)
   (loop
-    (let ((depth (%depth streamlet))
+    (let ((depth (%in-depth streamlet))
           (event (peek-mapped-replay-event streamlet)))
       (cond ((and event
                   ;; Filter LOG-EVENTs and those matching PRED unless
@@ -4150,8 +4150,8 @@
                   (or (< base-depth depth)
                       in-or-leaf-event-p))
              (eat-event event streamlet)
-             (assert (<= base-depth (%depth streamlet)))
-             (when (= base-depth (%depth streamlet))
+             (assert (<= base-depth (%in-depth streamlet)))
+             (when (= base-depth (%in-depth streamlet))
                (return)))
             (t
              (return))))))
@@ -4162,7 +4162,7 @@
   (read-event streamlet))
 
 (defun eat-full-frames-of-events (pred streamlet base-depth)
-  (if (= (%depth streamlet) base-depth)
+  (if (= (%in-depth streamlet) base-depth)
       (loop
         (multiple-value-bind (read-position first-non-log-event-read-position)
             (every-event-in-frame pred streamlet)
@@ -4945,7 +4945,7 @@
    (read-file-position :initform nil :accessor read-file-position)
    (peeked :initform nil)
    ;; For indenting the events in the file.
-   (depth :initform 0 :accessor %depth)
+   (out-depth :initform 0 :accessor %out-depth)
    (txn-start-file-position :initform nil)
    (set-complete-on-abort-on-commit-p :initform nil)))
 
@@ -5021,9 +5021,9 @@
                        :direction direction
                        ;; Only applies to :OUTPUT or :IO.
                        :if-exists :error
-                       :if-does-not-exist (if (input-direction-p direction)
-                                              :error
-                                              :create)))
+                       :if-does-not-exist (if (output-direction-p direction)
+                                              :create
+                                              :error)))
          (streamlet (make-instance 'file-streamlet
                                    :journal journal
                                    :direction direction
@@ -5107,10 +5107,10 @@
   (position-to-write streamlet)
   (let ((stream (%stream streamlet)))
     (when (out-event-p event)
-      (decf (%depth streamlet)))
+      (decf (%out-depth streamlet)))
     (ensure-txn streamlet stream)
     (with-standard-io-syntax
-      (loop repeat (* 2 (%depth streamlet))
+      (loop repeat (* 2 (%out-depth streamlet))
             do (write-char #\Space stream))
       (prin1 event stream)
       (terpri stream))
@@ -5120,7 +5120,7 @@
     ;; fsync() in SYNC-STREAMLET.
     (finish-output stream)
     (when (in-event-p event)
-      (incf (%depth streamlet)))))
+      (incf (%out-depth streamlet)))))
 
 (defmethod write-position ((streamlet file-streamlet))
   (let ((stream (%stream streamlet)))
