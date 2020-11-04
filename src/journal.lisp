@@ -1905,8 +1905,9 @@
                     events)))
     (call-with-open-journal journal :output
                             (lambda (streamlet)
-                              (dolist (event events)
-                                (write-event event streamlet)))))
+                              (map nil (lambda (event)
+                                         (write-event event streamlet))
+                                   events))))
   (values))
 
 (defun prettify-event (event depth stream)
