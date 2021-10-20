@@ -1,10 +1,19 @@
 # Journal manual
 
 ###### \[in package JOURNAL with nicknames JRN\]
-## journal ASDF System Details
+## JOURNAL ASDF System Details
 
 - Version: 0.1.0
 - Description: A library for logging, tracing, testing and persistence.
+- Long Description: Logging, tracing, testing, and persistence are
+  about what happened during code execution. Recording
+  machine-readable logs and traces can be repurposed for white-box
+  testing. More, when the code is rerun, selected frames may return
+  their recorded values without executing the code, which could serve
+  as a [mock][mock-object] framework for writing tests. This ability
+  to isolate external interactions and to reexecute traces is
+  sufficient to reconstruct the state of a program, achieving simple
+  persistence not unlike a journaling filesystem or Event Sourcing.
 - Licence: MIT, see COPYING.
 - Author: Gábor Melis <mega@retes.hu>
 - Homepage: [http://github.com/melisgl/journal](http://github.com/melisgl/journal)
