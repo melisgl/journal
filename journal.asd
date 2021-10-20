@@ -18,8 +18,9 @@
   to isolate external interactions and to reexecute traces is
   sufficient to reconstruct the state of a program, achieving simple
   persistence not unlike a journaling filesystem or Event Sourcing."
-  :depends-on (#:alexandria #:mgl-pax #:trivial-features #:trivial-garbage
-                            #:osicat #:local-time)
+  :depends-on (#:alexandria #:bordeaux-threads #:cl-fad  #:local-time
+                            #:mgl-pax #:trivial-features #:trivial-garbage
+                            #:osicat)
   :components ((:module "src"
                 :serial t
                 :components ((:file "package")
@@ -33,7 +34,7 @@
   :version "0.0.1"
   :author "Gábor Melis <mega@retes.hu>"
   :description "Tests for Journal."
-  :depends-on (#:alexandria #:journal #:cl-fad)
+  :depends-on (#:alexandria #:journal)
   :components ((:module "test"
                 :serial t
                 :components ((:file "package")
