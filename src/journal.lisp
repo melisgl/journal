@@ -5281,7 +5281,7 @@
       (setf (slot-value streamlet 'txn-start-file-position) nil)
       t)))
 
-(defun fsync (fd)
+(defun %fsync (fd)
   #-darwin
   (progn
     #+allegro
@@ -5295,15 +5295,20 @@
     #-(or allegro cmucl sbcl)
     (osicat-posix:fsync fd))
   #+darwin
-  (let ((f-fullsync 51))
+  (let ((f-fullfsync 51))
     #+allegro
-    (foreign-functions::fcntl fd f-fullsync 0)
+    (foreign-functions::fcntl fd f-fullfsync 0)
     #+cmucl
-    (unix:unix-fcntl fd f-fullsync 0)
+    (unix:unix-fcntl fd f-fullfsync 0)
     #+sbcl
-    (sb-posix:fcntl f-fullsync)
+    (sb-posix:fcntl f-fullfsync)
     #-(or allegro cmucl sbcl)
-    (osicat-posix:fcntl fd f-fullsync)))
+    (osicat-posix:fcntl fd f-fullfsync)))
+
+(defun fsync (fd)
+  (let ((retval (%fsync fd)))
+    (unless (zerop retval)
+      (error "fsync() failed with ~S" retval))))
 
 (defun stream-fd (stream)
   #+allegro

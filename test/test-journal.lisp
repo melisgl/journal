@@ -2353,6 +2353,11 @@
         (assert (= n-syncs 0))))))
 
 
+(defun test-fsync ()
+  (assert-error (error)
+    (jrn::fsync 32433)))
+
+
 (defun foo (x)
   (1+ x))
 
@@ -3152,6 +3157,7 @@
   (test-file-sync)
   (test-file-sync-garbage)
   (test-sync-t)
+  (test-fsync)
   (test-jtrace)
   (test-single-writer)
   (test-in-memory-journal-error-handling)
