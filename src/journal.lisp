@@ -4921,9 +4921,9 @@
     :COMPLETED).
 
   - If the journal has SYNC (see @SYNCHRONIZATION-STRATEGIES), then in
-    between events, there may be `#\Del` or `#\Ack`
-    characters (CHAR-CODE 127 and 6). `#\Del` marks the end of the
-    journal contents which may be read back: it's kind of an
+    between events, there may be `#\Del` (also called `#\Rubout`) or
+    `#\Ack` characters (CHAR-CODE 127 and 6). `#\Del` marks the end of
+    the journal contents which may be read back: it's kind of an
     uncommitted-transaction marker for the events that follow it.
     `#\Ack` characters, of which there may be many in the file, mark
     the sequence of events until the next marker of either kind as
@@ -5182,7 +5182,7 @@
   (let ((char (peek-char t stream nil eof)))
     (cond ((eq char eof) eof)
           ;; An unfinished transaction
-          ((char= char #\Del)
+          ((char= char #\Rubout)
            eof)
           ;; A finished transaction
           ((char= char #\Ack)
@@ -5196,7 +5196,7 @@
              (not (slot-value streamlet 'txn-start-file-position)))
     (setf (slot-value streamlet 'txn-start-file-position)
           (file-position stream))
-    (write-char #\Del stream)))
+    (write-char #\Rubout stream)))
 
 (defmethod request-completed-on-abort ((streamlet file-streamlet))
   ;; We defer this until the end of the current transaction, if any.

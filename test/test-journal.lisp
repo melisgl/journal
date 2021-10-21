@@ -2222,7 +2222,7 @@
         (prin1 '(:in b :version 1) stream)
         (prin1 '(:in c :version 1) stream)
         ;; Unfinished transaction
-        (write-char #\Del stream)
+        (write-char #\Rubout stream)
         (format stream "(:in d :ve")))
     (assert (equal (list-events (make-file-journal filename :sync t))
                    '((:in a :version 1)
