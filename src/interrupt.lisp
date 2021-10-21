@@ -7,23 +7,32 @@
   `(progn ,@body))
 
 #+allegro
-(defmacro without-interrupts (&body body)
-  `(excl:with-delayed-interrupts ,@body))
-#+allegro
-(defmacro with-interrupts (&body body)
-  `(let ((excl::*without-interrupts* nil))
-     ,@body))
+(progn
+  (defmacro without-interrupts (&body body)
+    `(excl:with-delayed-interrupts ,@body))
+  (defmacro with-interrupts (&body body)
+    `(let ((excl::*without-interrupts* nil))
+       ,@body)))
 
 #+ccl
-(defmacro without-interrupts (&body body)
-  `(ccl:without-interrupts ,@body))
-#+ccl
-(defmacro with-interrupts (&body body)
-  `(ccl:with-interrupts-enabled ,@body))
+(progn
+  (defmacro without-interrupts (&body body)
+    `(ccl:without-interrupts ,@body))
+  (defmacro with-interrupts (&body body)
+    `(ccl:with-interrupts-enabled ,@body)))
 
 #+cmucl
 (defmacro without-interrupts (&body body)
   `(sys:without-interrupts ,@body))
+
+#+ecl
+(progn
+  (defmacro without-interrupts (&body body)
+    `(mp:without-interrupts
+       (mp:allow-with-interrupts
+         ,@body)))
+  (defmacro with-interrupts (&body body)
+    `(mp:with-interrupts ,@body)))
 
 #+lispworks
 (defmacro without-interrupts (&body body)

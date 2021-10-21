@@ -435,7 +435,7 @@
     LOG-EVENTs before they are written to a journal. The only allowed
     transformation is to _append_ a plist to the event, which is a
     plist itself. The keys can be anything.")
-   (lock :initform (bt:make-lock))
+   (lock :initform (bt:make-recursive-lock "a journal-lock"))
    (n-readers :initform 0)
    (n-writers :initform 0)
    (replay-mismatch
@@ -631,8 +631,9 @@
 ;;; recreated because its file was deleted.
 (defun invalidate-journal (journal)
   (with-journal-locked (journal)
-    (check-concurrent-write-access journal)
-    (setf (slot-value journal 'n-writers) :invalidated)))
+    (unless (eq (slot-value journal 'n-writers) :invalidated)
+      (check-concurrent-write-access journal)
+      (setf (slot-value journal 'n-writers) :invalidated))))
 
 (defun check-open-streamlet-p (streamlet)
   (unless (open-streamlet-p streamlet)
@@ -5019,7 +5020,7 @@
 (defun delete-file-journal (journal)
   (invalidate-journal journal)
   (bt:with-lock-held (*file-journal-lock*)
-    (remhash (pathname-of journal) *truename-to-file-journal*)
+    (remhash (truename (pathname-of journal)) *truename-to-file-journal*)
     (delete-file (pathname-of journal))))
 
 (defun %truename (pathname)
@@ -5389,7 +5390,7 @@
     journals of [JOURNAL-STATE][type] :COMPLETED in the bundle exceeds
     its value, then some journals (starting with the oldest) are
     deleted.")
-   (lock :initform (bt:make-lock))
+   (lock :initform (bt:make-recursive-lock "a bundle-lock"))
    (n-writers :initform 0))
   (:documentation "This is an abstract base class. Direct subclasses
   are IN-MEMORY-BUNDLE and FILE-BUNDLE.

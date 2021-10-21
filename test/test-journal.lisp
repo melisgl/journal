@@ -2430,17 +2430,18 @@
 (defun test-concurrent-log-record ()
   (when bt:*supports-threads-p*
     (let ((journal (funcall *make-journal*))
-          (phase nil))
+          (in-sem (bt:make-semaphore))
+          (out-sem (bt:make-semaphore)))
       (bt:make-thread (lambda ()
-                        (loop until (eq phase :in))
+                        (bt:wait-on-semaphore in-sem)
                         (unwind-protect
                              (assert-error (journal-error
                                             "Concurrent write access")
                                (journaled (foo :log-record journal)))
-                          (setq phase :done))))
+                          (bt:signal-semaphore out-sem))))
       (with-journaling (:record journal)
-        (setq phase :in)
-        (loop until (eq phase :done))))))
+        (bt:signal-semaphore in-sem)
+        (bt:wait-on-semaphore out-sem)))))
 
 (defun test-nested-with-bundle ()
   (let ((bundle (make-in-memory-bundle)))
@@ -2451,17 +2452,18 @@
 (defun test-concurrent-with-bundle ()
   (when bt:*supports-threads-p*
     (let ((bundle (make-in-memory-bundle))
-          (phase nil))
+          (in-sem (bt:make-semaphore))
+          (out-sem (bt:make-semaphore)))
       (bt:make-thread (lambda ()
-                        (loop until (eq phase :in))
+                        (bt:wait-on-semaphore in-sem)
                         (unwind-protect
                              (assert-error (journal-error
                                             "Concurrent write access")
                                (with-bundle (bundle)))
-                          (setq phase :done))))
+                          (bt:signal-semaphore out-sem))))
       (with-bundle (bundle)
-        (setq phase :in)
-        (loop until (eq phase :done))))))
+        (bt:signal-semaphore in-sem)
+        (bt:wait-on-semaphore out-sem)))))
 
 (defun test-single-writer ()
   (test-nested-with-journaling)
