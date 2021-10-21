@@ -467,8 +467,15 @@
 
 (defmethod print-object ((journal journal) stream)
   (print-unreadable-object (journal stream :type t)
-    (format stream "~S~A" (ignore-errors (journal-state journal))
-            (ignore-errors (if (journal-sync journal) " SYNC" "")))))
+    (%print-journal-object-slots journal stream)))
+
+;;; For reuse in PRINT-OBJECT methods of subclasses of JOURNAL.
+(defun %print-journal-object-slots (journal stream)
+  (format stream "~S~A~A" (journal-state journal)
+          (if (eql 0 (slot-value journal 'n-writers))
+              ""
+              (format nil " ~S" (slot-value journal 'n-writers)))
+          (if (journal-sync journal) " SYNC" "")))
 
 (defmacro with-journal-locked ((journal) &body body)
   `(bt:with-recursive-lock-held ((slot-value ,journal 'lock))
@@ -4792,8 +4799,8 @@
 
 (defmethod print-object ((journal in-memory-journal) stream)
   (print-unreadable-object (journal stream :type t)
-    (format stream "~S ~S ~S" (ignore-errors (journal-state journal))
-            :n-events (ignore-errors (length (events journal))))))
+    (%print-journal-object-slots journal stream)
+    (format stream " ~S ~S" :n-events (length (events journal)))))
 
 (defmethod identical-journals-p ((journal-1 in-memory-journal)
                                  (journal-2 in-memory-journal))
@@ -4936,8 +4943,8 @@
 
 (defmethod print-object ((journal file-journal) stream)
   (print-unreadable-object (journal stream :type t)
-    (format stream "~S ~S" (ignore-errors (pathname-of journal))
-            (ignore-errors (journal-state journal)))))
+    (format stream "~S " (pathname-of journal))
+    (%print-journal-object-slots journal stream)))
 
 (defclass file-streamlet (streamlet)
   ((stream :initarg :stream :type (or stream null) :accessor %stream)
