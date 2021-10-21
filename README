@@ -5,15 +5,6 @@
 
 - Version: 0.1.0
 - Description: A library for logging, tracing, testing and persistence.
-- Long Description: Logging, tracing, testing, and persistence are
-  about what happened during code execution. Recording
-  machine-readable logs and traces can be repurposed for white-box
-  testing. More, when the code is rerun, selected frames may return
-  their recorded values without executing the code, which could serve
-  as a [mock][mock-object] framework for writing tests. This ability
-  to isolate external interactions and to reexecute traces is
-  sufficient to reconstruct the state of a program, achieving simple
-  persistence not unlike a journaling filesystem or Event Sourcing.
 - Licence: MIT, see COPYING.
 - Author: Gábor Melis <mega@retes.hu>
 - Homepage: [http://github.com/melisgl/journal](http://github.com/melisgl/journal)
@@ -26,6 +17,10 @@ Here is the [official repository](https://github.com/melisgl/journal)
 and the [HTML
 documentation](http://melisgl.github.io/mgl-pax-world/journal-manual.html)
 for the latest version.
+
+## Portability
+
+Tested on AllegroCL, CCL, ECL, CMUCL, and SBCL.
 
 ## Background
 
@@ -391,12 +386,11 @@ There is a further grouping of outcomes into expected and unexpected.
 ### Working with unreadable values
 
 The events recorded often need to be @READABLE. This is always
-required with FILE-JOURNALs, often with
-@SYNCHRONIZATION-WITH-IN-MEMORY-JOURNALS, but never with
-PPRINT-JOURNALs. By choosing an appropriate identifier or string
-representation of the unreadable object to journal, this is not a
-problem in practice. JOURNALED provides the VALUES hook for this
-purpose.
+required with FILE-JOURNALs, often with IN-MEMORY-JOURNALs, but
+never with PPRINT-JOURNALs. By choosing an appropriate identifier or
+string representation of the unreadable object to journal, this is
+not a problem in practice. JOURNALED provides the VALUES hook for
+this purpose.
 
 With EXTERNAL-EVENTs, whose outcome is replayed (see
 @REPLAYING-THE-OUTCOME), we also need to be able to reverse the
@@ -2849,9 +2843,9 @@ The rest of section is about concrete subclasses of [JOURNAL][class].
       :COMPLETED).
     
     - If the journal has SYNC (see @SYNCHRONIZATION-STRATEGIES), then in
-      between events, there may be `#\Del` or `#\Ack`
-      characters (CHAR-CODE 127 and 6). `#\Del` marks the end of the
-      journal contents which may be read back: it's kind of an
+      between events, there may be `#\Del` (also called `#\Rubout`) or
+      `#\Ack` characters (CHAR-CODE 127 and 6). `#\Del` marks the end of
+      the journal contents which may be read back: it's kind of an
       uncommitted-transaction marker for the events that follow it.
       `#\Ack` characters, of which there may be many in the file, mark
       the sequence of events until the next marker of either kind as
