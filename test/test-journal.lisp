@@ -2354,7 +2354,7 @@
   (foo (+ x 2))
   (error "xxx"))
 
-(defun test-jtrace ()
+(defun test-jtrace-basic ()
   (let ((*package* (find-package :journal-test)))
     (juntrace)
     (jtrace foo bar)
@@ -2368,17 +2368,31 @@
                (with-output-to-string (*trace-output*)
                  (foo 1)))
              (format nil "~%(:IN FOO :ARGS (1))~%~
-                        (:OUT FOO :VALUES (2))")))
+                         (:OUT FOO :VALUES (2))")))
     (assert (equal
              (with-output-to-string (*trace-output*)
                (assert-error (simple-error "xxx")
                  (bar 1)))
              (format nil "~%(BAR 1)~%  (FOO 3)~%  => 4~%~
-                       =E \"SIMPLE-ERROR\" \"xxx\"")))
+                         =E \"SIMPLE-ERROR\" \"xxx\"")))
     (juntrace bar)
     (assert (equal (sort (jtrace) #'string< :key #'symbol-name) '(foo)))
     (juntrace)
     (assert (endp (jtrace)))))
+
+(defun muck-with-user (user)
+  user)
+
+(defun test-jtrace-with-print-readably ()
+  (let ((*print-readably* t))
+    (jtrace muck-with-user)
+    ;; This used to fail with *PRINT-READABLY*.
+    (with-output-to-string (*trace-output*)
+      (muck-with-user *user7*))))
+
+(defun test-jtrace ()
+  (test-jtrace-basic)
+  (test-jtrace-with-print-readably))
 
 
 ;;;; Single-writer

@@ -1363,11 +1363,11 @@
 (defsection @working-with-unreadable-values
     (:title "Working with unreadable values")
   """The events recorded often need to be @READABLE. This is always
-  required with FILE-JOURNALs, and often with
-  @SYNCHRONIZATION-WITH-IN-MEMORY-JOURNALS. By choosing an appropriate
-  identifier or string representation of the unreadable object to
-  journal, this is not a problem in practice. JOURNALED provides the
-  VALUES hook for this purpose.
+  required with FILE-JOURNALs, often with IN-MEMORY-JOURNALs, but
+  never with PPRINT-JOURNALs. By choosing an appropriate identifier or
+  string representation of the unreadable object to journal, this is
+  not a problem in practice. JOURNALED provides the VALUES hook for
+  this purpose.
 
   With EXTERNAL-EVENTs, whose outcome is replayed (see
   @REPLAYING-THE-OUTCOME), we also need to be able to reverse the
@@ -1990,7 +1990,8 @@
   writes that event to a stream in a customizable format. They are
   intended for producing prettier output for @LOGGING and @TRACING,
   but they do not support reads so they cannot be used as a
-  REPLAY-JOURNAL, or in LIST-EVENTS, for example."))
+  REPLAY-JOURNAL, or in LIST-EVENTS, for example. On the other hand,
+  events written to PPRINT-JOURNALs need not be @READABLE."))
 
 (defclass pprint-streamlet (streamlet)
   (;; For indenting the events in the file.
@@ -2016,7 +2017,8 @@
 (defmethod write-event (event (streamlet pprint-streamlet))
   (let* ((journal (journal streamlet))
          (stream (slot-value journal 'stream))
-         (pretty (symbol-value (slot-value (journal streamlet) 'pretty))))
+         (pretty (symbol-value (slot-value (journal streamlet) 'pretty)))
+         (*print-readably* nil))
     (when (out-event-p event)
       (decf (%out-depth streamlet)))
     (cond (pretty

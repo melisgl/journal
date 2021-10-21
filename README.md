@@ -493,11 +493,12 @@ There is a further grouping of outcomes into expected and unexpected.
 ### 5.3 Working with unreadable values
 
 The events recorded often need to be [readable][531d]. This is always
-required with [`FILE-JOURNAL`][f6b2]s, and often with
-[Synchronization with in-memory journals][86a2]. By choosing an appropriate
-identifier or string representation of the unreadable object to
-journal, this is not a problem in practice. [`JOURNALED`][4f52] provides the
-`VALUES` hook for this purpose.
+required with [`FILE-JOURNAL`][f6b2]s, often with
+[Synchronization with in-memory journals][86a2], but never with
+[`PPRINT-JOURNAL`][2123]s. By choosing an appropriate identifier or string
+representation of the unreadable object to journal, this is not a
+problem in practice. [`JOURNALED`][4f52] provides the `VALUES` hook for this
+purpose.
 
 With [`EXTERNAL-EVENT`][eed7]s, whose outcome is replayed (see
 [Replaying the outcome][b6d1]), we also need to be able to reverse the
@@ -3259,7 +3260,8 @@ The rest of section is about concrete subclasses of [`JOURNAL`][86bc].
     writes that event to a stream in a customizable format. They are
     intended for producing prettier output for [Logging][77df] and [Tracing][7849],
     but they do not support reads so they cannot be used as a
-    [`REPLAY-JOURNAL`][103b], or in [`LIST-EVENTS`][3c76], for example.
+    [`REPLAY-JOURNAL`][103b], or in [`LIST-EVENTS`][3c76], for example. On the other hand,
+    events written to `PPRINT-JOURNAL`s need not be [readable][531d].
 
 <a id='x-28JOURNAL-3AMAKE-PPRINT-JOURNAL-20FUNCTION-29'></a>
 

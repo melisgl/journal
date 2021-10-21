@@ -391,11 +391,12 @@ There is a further grouping of outcomes into expected and unexpected.
 ### Working with unreadable values
 
 The events recorded often need to be @READABLE. This is always
-required with FILE-JOURNALs, and often with
-@SYNCHRONIZATION-WITH-IN-MEMORY-JOURNALS. By choosing an appropriate
-identifier or string representation of the unreadable object to
-journal, this is not a problem in practice. JOURNALED provides the
-VALUES hook for this purpose.
+required with FILE-JOURNALs, often with
+@SYNCHRONIZATION-WITH-IN-MEMORY-JOURNALS, but never with
+PPRINT-JOURNALs. By choosing an appropriate identifier or string
+representation of the unreadable object to journal, this is not a
+problem in practice. JOURNALED provides the VALUES hook for this
+purpose.
 
 With EXTERNAL-EVENTs, whose outcome is replayed (see
 @REPLAYING-THE-OUTCOME), we also need to be able to reverse the
@@ -2891,7 +2892,8 @@ The rest of section is about concrete subclasses of [JOURNAL][class].
     writes that event to a stream in a customizable format. They are
     intended for producing prettier output for @LOGGING and @TRACING,
     but they do not support reads so they cannot be used as a
-    REPLAY-JOURNAL, or in LIST-EVENTS, for example.
+    REPLAY-JOURNAL, or in LIST-EVENTS, for example. On the other hand,
+    events written to PPRINT-JOURNALs need not be @READABLE.
 
 - [function] MAKE-PPRINT-JOURNAL &KEY (STREAM (MAKE-SYNONYM-STREAM '\*STANDARD-OUTPUT\*)) (PRETTY T) (PRETTIFIER 'PRETTIFY-EVENT) LOG-DECORATOR
 
