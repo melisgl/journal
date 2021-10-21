@@ -14,6 +14,13 @@
   `(let ((excl::*without-interrupts* nil))
      ,@body))
 
+#+ccl
+(defmacro without-interrupts (&body body)
+  `(ccl:without-interrupts ,@body))
+#+ccl
+(defmacro with-interrupts (&body body)
+  `(ccl:with-interrupts-enabled ,@body))
+
 #+cmucl
 (defmacro without-interrupts (&body body)
   `(sys:without-interrupts ,@body))
@@ -53,8 +60,14 @@
     `(progn ,@body)))
 
 (defmacro unwind-protect* (protected &body cleanup)
+  #-ccl
   `(without-interrupts
      (unwind-protect
           (with-interrupts
             ,protected)
-       ,@cleanup)))
+       ,@cleanup))
+  ;; CCL cleanups are already protected from interrupts.
+  #+ccl
+  `(unwind-protect
+        ,protected
+     ,@cleanup))

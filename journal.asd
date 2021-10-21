@@ -19,7 +19,8 @@
   sufficient to reconstruct the state of a program, achieving simple
   persistence not unlike a journaling filesystem or Event Sourcing."
   :depends-on (#:alexandria #:bordeaux-threads #:local-time
-                            #:mgl-pax #:trivial-features #:trivial-garbage)
+               #:mgl-pax #:trivial-features #:trivial-garbage
+               (:feature (:not (:or :allegro :sbcl)) :osicat))
   :components ((:module "src"
                 :serial t
                 :components ((:file "package")

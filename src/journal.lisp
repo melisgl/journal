@@ -2013,7 +2013,8 @@
 
 (defmethod open-streamlet ((journal pprint-journal) &key direction)
   (unless (eq direction :output)
-    (error 'journal-error "PPRINT-JOURNALs do not support reads."))
+    (error 'journal-error
+           :format-control "PPRINT-JOURNALs do not support reads."))
   (make-instance 'pprint-streamlet :journal journal :direction direction))
 
 (defmethod close-streamlet ((streamlet pprint-streamlet)))
@@ -3452,8 +3453,9 @@
          (turn-off-with-journaling-failure-on-nlx)
          (funcall (or replay-condition #'error)
                   (event-outcome replayed-out-event))
-         (error 'journal-error "The REPLAY-CONDITION argument of JOURNALED ~
-                               must not return normally."))))
+         (error 'journal-error
+                :format-control "The REPLAY-CONDITION argument of JOURNALED ~
+                                must not return normally."))))
 
 ;;; Assuming the frame's in-event has just been read from
 ;;; INPUT-STREAMLET and the frame's out-event is present in it, read
@@ -5033,7 +5035,11 @@
                        :if-exists :error
                        :if-does-not-exist (if (output-direction-p direction)
                                               :create
-                                              :error)))
+                                              :error)
+                       ;; On CCL without this, the stream finalizer,
+                       ;; that runs in another thread, will run afoul
+                       ;; of the :SHARING :PRIVATE default.
+                       #+ccl :sharing #+ccl :external))
          (streamlet (make-instance 'file-streamlet
                                    :journal journal
                                    :direction direction
@@ -5269,21 +5275,23 @@
     #+allegro
     (excl.osi::syscall-fsync fd)
     #+sbcl
-    (sb-posix:fsync fd))
+    (sb-posix:fsync fd)
+    #-(or allegro sbcl)
+    (osicat-posix:fsync fd))
   #+darwin
   (let ((f-fullsync 51))
     #+allegro
     (foreign-functions::fcntl fd f-fullsync 0)
     #+sbcl
-    (sb-posix:fcntl f-fullsync))
-  #-(or allegro sbcl)
-  (error "Don't know to fsync."))
+    (sb-posix:fcntl f-fullsync)
+    #-(or allegro sbcl)
+    (osicat-posix:fcntl fd f-fullsync)))
 
 (defun stream-fd (stream)
   #+allegro
   (excl.osi::stream-to-fd stream)
   #+ccl
-  (cll::stream-device stream :output)
+  (ccl::stream-device stream :output)
   #+clisp
   (nth-value 1 (ext:stream-handles stream))
   #+cmucl
@@ -5296,8 +5304,14 @@
   (error "Don't know how to get the unix fd from a STREAM."))
 
 (defun fsync-directory (pathname)
+  #+(or allegro sbcl)
   (with-open-file (s pathname)
-    (fsync (stream-fd s))))
+    (fsync (stream-fd s)))
+  #-(or allegro sbcl)
+  (let ((cdir (osicat-posix:opendir pathname)))
+    (unwind-protect*
+        (osicat-posix:dirfd cdir)
+      (osicat-posix:closedir cdir))))
 
 
 (defsection @safety (:title "Safety")
