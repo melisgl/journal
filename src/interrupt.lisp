@@ -22,8 +22,14 @@
     `(ccl:with-interrupts-enabled ,@body)))
 
 #+cmucl
-(defmacro without-interrupts (&body body)
-  `(sys:without-interrupts ,@body))
+(progn
+  (defmacro without-interrupts (&body body)
+    `(sys:without-interrupts ,@body))
+  (defmacro with-interrupts (&body body)
+    `(let ((unix::*interrupts-enabled* t))
+       (when unix::*interrupt-pending*
+         (unix::do-pending-interrupt))
+       ,@body)))
 
 #+ecl
 (progn

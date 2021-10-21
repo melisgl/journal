@@ -5,6 +5,7 @@
 (defsection @journal-manual (:title "Journal manual")
   (journal asdf:system)
   (@journal-links section)
+  (@journal-portability section)
   (@journal-background section)
   (@journal-features section)
   (@journal-basics section)
@@ -26,6 +27,9 @@
   and the [HTML
   documentation](http://melisgl.github.io/mgl-pax-world/journal-manual.html)
   for the latest version.")
+
+(defsection @journal-portability (:title "Portability")
+  "Tested on AllegroCL, CCL, ECL, CMUCL, and SBCL.")
 
 (defsection @journal-background (:title "Background")
   "Logging, tracing, testing, and persistence are about what happened
@@ -2469,7 +2473,7 @@
   #-sbcl
   (loop for name being each hash-key in *traced-functions*
         do (unless (jtracedp name)
-             (eval `(trace name)))
+             (eval `(jtrace ,name)))
         collect name))
 
 (defmacro jtrace (&rest names)
@@ -2519,15 +2523,22 @@
             (apply ,fn ,args))))
        (setf (gethash ',name *traced-functions*) t)))
   #-sbcl
-  (alexandria:with-gensyms (fn args)
+  (alexandria:with-gensyms (fn args encapsulation)
     `(unless (jtracedp ',name)
        (let ((,fn (symbol-function ',name)))
          (flet ((jtrace-encapsulation (&rest ,args)
                   (journaled (,name :args ,args :log-record *trace-journal*)
                     (apply ,fn ,args))))
-           (setf (symbol-function ',name) #'jtrace-encapsulation)
-           (setf (gethash ',name *traced-functions*)
-                 (cons ,fn #'jtrace-encapsulation))))
+           (let ((,encapsulation nil))
+             ;; KLUDGE: On CMUCL, two evaluations
+             ;; #'JTRACE-ENCAPSULATION are not always EQ, and we need
+             ;; that in JTRACEDP. The LET above and the SETQ below
+             ;; seem to change its mind. Somewhat related discussion:
+             ;; https://groups.google.com/g/comp.lang.lisp/c/Cg3c6BJ92ew?pli=1
+             (setq ,encapsulation #'jtrace-encapsulation)
+             (setf (symbol-function ',name) ,encapsulation)
+             (setf (gethash ',name *traced-functions*)
+                   (cons ,fn ,encapsulation)))))
        t)))
 
 (defun jtracedp (name)
@@ -5275,17 +5286,23 @@
   (progn
     #+allegro
     (excl.osi::syscall-fsync fd)
+    #+cmucl
+    (alien:alien-funcall (alien:extern-alien "fsync"
+                                             (function alien:integer (integer)))
+                         fd)
     #+sbcl
     (sb-posix:fsync fd)
-    #-(or allegro sbcl)
+    #-(or allegro cmucl sbcl)
     (osicat-posix:fsync fd))
   #+darwin
   (let ((f-fullsync 51))
     #+allegro
     (foreign-functions::fcntl fd f-fullsync 0)
+    #+cmucl
+    (unix:unix-fcntl fd f-fullsync 0)
     #+sbcl
     (sb-posix:fcntl f-fullsync)
-    #-(or allegro sbcl)
+    #-(or allegro cmucl sbcl)
     (osicat-posix:fcntl fd f-fullsync)))
 
 (defun stream-fd (stream)
@@ -5305,10 +5322,10 @@
   (error "Don't know how to get the unix fd from a STREAM."))
 
 (defun fsync-directory (pathname)
-  #+(or allegro sbcl)
+  #+(or allegro cmucl sbcl)
   (with-open-file (s pathname)
     (fsync (stream-fd s)))
-  #-(or allegro sbcl)
+  #-(or allegro cmucl sbcl)
   (let ((cdir (osicat-posix:opendir pathname)))
     (unwind-protect*
         (osicat-posix:dirfd cdir)

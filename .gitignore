@@ -3,4 +3,5 @@
 *.*fsl
 *.fas
 *.lib
+*.sse2f
 doc/

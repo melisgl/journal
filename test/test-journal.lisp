@@ -1238,7 +1238,11 @@
                             (< #+sbcl
                                (sb-ext:truly-the
                                 fixnum (event-version replay-process-event))
-                               #-sbcl
+                               #+cmucl
+                               (ext:truly-the
+                                fixnum
+                                (event-version replay-process-event))
+                               #-(or cmucl sbcl)
                                (the fixnum
                                     (event-version replay-process-event))
                                2))
@@ -2375,8 +2379,13 @@
              (with-output-to-string (*trace-output*)
                (assert-error (simple-error "xxx")
                  (bar 1)))
+             #-cmucl
              (format nil "~%(BAR 1)~%  (FOO 3)~%  => 4~%~
-                         =E \"SIMPLE-ERROR\" \"xxx\"")))
+                         =E \"SIMPLE-ERROR\" \"xxx\"")
+             #+cmucl
+             (format nil "~%(BAR 1)~%  (FOO 3)~%  => 4~%~
+                         =E \"SIMPLE-ERROR\" ~
+                         \"Error in function JOURNAL-TEST::BAR:  xxx\"")))
     (juntrace bar)
     (assert (equal (sort (jtrace) #'string< :key #'symbol-name) '(foo)))
     (juntrace)
@@ -2470,8 +2479,12 @@
   (test-concurrent-writers)
   (test-nested-log-record)
   (test-log-record-before-journaled)
+  ;; KLUDGE: We get "Function with declared result type NIL returned:
+  ;; BORDEAUX-THREADS:CONDITION-WAIT".
+  #-cmucl
   (test-concurrent-log-record)
   (test-nested-with-bundle)
+  #-cmucl
   (test-concurrent-with-bundle))
 
 

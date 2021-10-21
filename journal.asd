@@ -9,18 +9,9 @@
   :bug-tracker "http://github.com/melisgl/journal/issues"
   :source-control (:git "https://github.com/melisgl/journal.git")
   :description "A library for logging, tracing, testing and persistence."
-  :long-description "Logging, tracing, testing, and persistence are
-  about what happened during code execution. Recording
-  machine-readable logs and traces can be repurposed for white-box
-  testing. More, when the code is rerun, selected frames may return
-  their recorded values without executing the code, which could serve
-  as a [mock][mock-object] framework for writing tests. This ability
-  to isolate external interactions and to reexecute traces is
-  sufficient to reconstruct the state of a program, achieving simple
-  persistence not unlike a journaling filesystem or Event Sourcing."
   :depends-on (#:alexandria #:bordeaux-threads #:local-time
                #:mgl-pax #:trivial-features #:trivial-garbage
-               (:feature (:not (:or :allegro :sbcl)) :osicat))
+               (:feature (:not (:or :allegro :sbcl :cmucl)) :osicat))
   :components ((:module "src"
                 :serial t
                 :components ((:file "package")
