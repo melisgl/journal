@@ -5265,10 +5265,19 @@
 
 (defun fsync (fd)
   #-darwin
-  (osicat-posix:fsync fd)
+  (progn
+    #+allegro
+    (excl.osi::syscall-fsync fd)
+    #+sbcl
+    (sb-posix:fsync fd))
   #+darwin
   (let ((f-fullsync 51))
-    (osicat-posix:fcntl fd f-fullsync)))
+    #+allegro
+    (foreign-functions::fcntl fd f-fullsync 0)
+    #+sbcl
+    (sb-posix:fcntl f-fullsync))
+  #-(or allegro sbcl)
+  (error "Don't know to fsync."))
 
 (defun stream-fd (stream)
   #+allegro
@@ -5489,7 +5498,8 @@
   (with-slots (sync sync-fn) bundle
     (make-in-memory-journal :sync sync :sync-fn sync-fn)))
 
-(defmethod delete-journal-from-bundle ((bundle in-memory-bundle) journal))
+(defmethod delete-journal-from-bundle ((bundle in-memory-bundle) journal)
+  (declare (ignore journal)))
 
 
 (defsection @file-bundles (:title "File bundles")

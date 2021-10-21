@@ -1100,7 +1100,9 @@
 (defun test-expected-type ()
   (assert (string= (funcall (expected-type '(member :a :b)) :a)
                    (with-standard-io-syntax
-                     (prin1-to-string 'cl:keyword)))))
+                     (prin1-to-string
+                      #+allegro 'cl:symbol
+                      #-allegro 'cl:keyword)))))
 
 
 ;;;; Test replay mismatch

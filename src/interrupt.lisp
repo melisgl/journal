@@ -9,6 +9,10 @@
 #+allegro
 (defmacro without-interrupts (&body body)
   `(excl:with-delayed-interrupts ,@body))
+#+allegro
+(defmacro with-interrupts (&body body)
+  `(let ((excl::*without-interrupts* nil))
+     ,@body))
 
 #+cmucl
 (defmacro without-interrupts (&body body)
@@ -27,7 +31,7 @@
   (defmacro with-interrupts (&body body)
     `(sb-sys:with-interrupts ,@body)))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
+(eval-when (:load-toplevel :execute)
   ;; This is very bad. See @SAFETY.
   (unless (fboundp 'without-interrupts)
     (error "WITHOUT-INTERRUPTS not implemented."))
