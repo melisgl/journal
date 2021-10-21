@@ -5522,7 +5522,7 @@
   MAX-N-FAILED, MAX-N-COMPLETED and SYNC options, else JOURNAL-ERROR
   is signalled."
   (check-sync-value sync)
-  (let ((directory (cl-fad:pathname-as-directory directory)))
+  (let ((directory (uiop/pathname:ensure-directory-pathname directory)))
     ;; Ensure it exists first so that TRUENAME doesn't fail.
     (ensure-directories-exist directory)
     (bt:with-lock-held (*file-bundle-lock*)
@@ -5579,7 +5579,7 @@
   directory if empty after the journal files were deleted, else signal
   an error. Existing FILE-BUNDLE objects are not updated, so
   MAKE-FILE-JOURNAL with FORCE-RELOAD may be required."
-  (let ((directory (cl-fad:pathname-as-directory directory))
+  (let ((directory (uiop/pathname:ensure-directory-pathname directory))
         (pattern (make-pathname :name :wild :type "jrn" :defaults directory)))
     (dolist (pathname (directory pattern))
       (delete-file pathname))

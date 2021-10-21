@@ -18,9 +18,8 @@
   to isolate external interactions and to reexecute traces is
   sufficient to reconstruct the state of a program, achieving simple
   persistence not unlike a journaling filesystem or Event Sourcing."
-  :depends-on (#:alexandria #:bordeaux-threads #:cl-fad  #:local-time
-                            #:mgl-pax #:trivial-features #:trivial-garbage
-                            #:osicat)
+  :depends-on (#:alexandria #:bordeaux-threads #:local-time
+                            #:mgl-pax #:trivial-features #:trivial-garbage)
   :components ((:module "src"
                 :serial t
                 :components ((:file "package")

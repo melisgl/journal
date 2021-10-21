@@ -2015,8 +2015,9 @@
   (dolist (sync sync)
     (let ((files-created ()))
       (flet ((make-temp-file-journal ()
-               (let ((pathname (cl-fad:with-open-temporary-file (stream)
-                                 (pathname stream))))
+               (let ((pathname (uiop/stream:with-temporary-file
+                                   (:pathname pathname)
+                                 pathname)))
                  (push pathname files-created)
                  (make-file-journal pathname :sync sync))))
         (let ((*make-journal* #'make-temp-file-journal))
@@ -2098,12 +2099,11 @@
   (call-with-file-bundle #'test-file-bundle*))
 
 (defun call-with-file-bundle (fn)
-  ;; CL-FAD sets up logical pathname translation for TEMPORARY-FILES.
   (let* ((random-string (format nil "~:@(~36,8,'0R~)"
                                 (random (expt 36 8) (make-random-state t))))
          (directory (merge-pathnames
                      (format nil "journal-test-~A/" random-string)
-                     (translate-logical-pathname "TEMPORARY-FILES:")))
+                     (uiop:temporary-directory)))
          (bundle (make-file-bundle directory :max-n-failed 1
                                    :max-n-completed nil)))
     (unwind-protect
@@ -2188,7 +2188,7 @@
                                 (random (expt 36 8) (make-random-state t))))
          (filename (merge-pathnames
                     (format nil "file-sync-test-~A" random-string)
-                    (translate-logical-pathname "TEMPORARY-FILES:"))))
+                    (uiop:temporary-directory))))
     (with-standard-io-syntax
       (with-open-file (stream filename :direction :output)
         ;; :COMPLETED
@@ -2199,7 +2199,7 @@
         (prin1 '(:in b :version 1) stream)
         (prin1 '(:in c :version 1) stream)
         ;; Unfinished transaction
-        (write-char #\Del stream)
+        (write-char #\Rubout stream)
         (prin1 '(:in d :version 1) stream)))
     (assert (equal (list-events (make-file-journal filename :sync t))
                    '((:in a :version 1)
@@ -2211,7 +2211,7 @@
                                 (random (expt 36 8) (make-random-state t))))
          (filename (merge-pathnames
                     (format nil "file-sync-test-~A" random-string)
-                    (translate-logical-pathname "TEMPORARY-FILES:"))))
+                    (uiop:temporary-directory))))
     (with-standard-io-syntax
       (with-open-file (stream filename :direction :output)
         ;; :COMPLETED
