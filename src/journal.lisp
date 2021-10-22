@@ -29,8 +29,11 @@
   for the latest version.")
 
 (defsection @journal-portability (:title "Portability")
-  "Tested on AllegroCL, CCL, CMUCL, ECL, and SBCL. ABCL and CLISP seem
-  to lack support for disabling and enabling handling of interrupts.")
+  "Tested on AllegroCL, CCL, CMUCL, ECL, and SBCL. On Lisps, that seem
+  to lack support for disabling and enabling of interrupts, such as
+  ABCL and CLISP, durability is compromised, and any attempt to
+  SYNC-JOURNAL (see @SYNCHRONIZATION-STRATEGIES and @SAFETY) will be a
+  runtime error.")
 
 (defsection @journal-background (:title "Background")
   "Logging, tracing, testing, and persistence are about what happened
@@ -610,7 +613,12 @@
   :IO and it has the same purpose as the similarly named argument of
   CL:OPEN.")
   (:method :around (journal &key (direction :input))
-    (let ((outputp (output-direction-p direction)))
+    (let ((outputp (output-direction-p direction))
+          ;; Tell CLISP not to complain about opening the same file
+          ;; read and write. We take care of syncing ourself (e.g in
+          ;; LIST-EVENTS).
+          #+clisp
+          (custom:*reopen-open-file* nil))
       (with-journal-locked (journal)
         (when outputp
           (check-concurrent-write-access journal))
@@ -1561,14 +1569,20 @@
                              (pop events)))))
       (to-frames))))
 
+(defmacro with-standard-io-syntax* (&body body)
+  `(with-standard-io-syntax
+     ;; With *PRINT-READABLY*, CLISP insists on printing FOO as |FOO|.
+     (let (#+clisp (*print-readably* nil))
+       ,@body)))
+
 (defun expected-type (type)
   "Return a function suitable as the CONDITION argument of JOURNALED,
   which returns the type of its single argument as a string if it is
   of TYPE, else NIL."
   (lambda (object)
     (if (typep object type)
-        (with-standard-io-syntax
-          (cleanup (prin1-to-string (type-of object))))
+        (with-standard-io-syntax*
+          (prin1-to-string (cleanup (type-of object))))
         nil)))
 
 
@@ -4660,6 +4674,9 @@
   a noop JOURNAL-SYNC is NIL. This function is safe to call from any
   thread."
   (check-type journal journal)
+  (assert *without-interrupts-available* ()
+          "~@<Cannot SYNC-JOURNAL without a working WITHOUT-INTERRUPTS. ~
+          See JOURNAL:@SAFETY for more.~:@>")
   (when (slot-value journal 'sync)
     (if (eq journal (record-journal))
         ;; Thread-safe because we are in WITH-JOURNALING, and it is
@@ -5194,10 +5211,12 @@
   [ext4-writeback]: https://ext4.wiki.kernel.org/index.php/Ext3_Data=Ordered_vs_Data=Writeback_mode")
 
 (defun read-file-journal-state (pathname)
-  (with-open-file (stream pathname)
-    (if (eql (read-char stream nil nil) #\Newline)
-        :completed
-        :failed)))
+  (let (#+clisp
+        (custom:*reopen-open-file* nil))
+    (with-open-file (stream pathname)
+      (if (eql (read-char stream nil nil) #\Newline)
+          :completed
+          :failed))))
 
 (defun write-file-journal-state (stream state)
   (assert (eq state :new))

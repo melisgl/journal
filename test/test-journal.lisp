@@ -21,7 +21,7 @@
                 (,condition-type (,c)
                   (if (or (null ,substring)
                           (search ,substring
-                                  (with-standard-io-syntax
+                                  (jrn::with-standard-io-syntax*
                                     (princ-to-string ,c))))
                       (setq ,got-it t)
                       (setq ,got-it ,c))))
@@ -29,7 +29,7 @@
                    "~@<Didn't get expected ~S containing ~S. Got a ~S ~
                     saying ~S.~:@>"
                    ',condition-type ,substring (type-of ,got-it)
-                   (with-standard-io-syntax
+                   (jrn::with-standard-io-syntax*
                      (princ-to-string ,got-it))))))))
 
 (defmacro assert-signalled ((condition-type &optional substring) &body body)
@@ -41,7 +41,7 @@
                   ((,condition-type (lambda (,c)
                                       (if (or (null ,substring)
                                               (search ,substring
-                                                      (with-standard-io-syntax
+                                                      (jrn::with-standard-io-syntax*
                                                         (princ-to-string ,c))))
                                           (setq ,got-it t)
                                           (setq ,got-it ,c)))))
@@ -49,7 +49,7 @@
            (assert (eq ,got-it t) ()
                    "~@<Didn't get expected ~S containing ~S. Got ~S.~:@>"
                    ',condition-type ,substring
-                   (with-standard-io-syntax
+                   (jrn::with-standard-io-syntax*
                      (princ-to-string ,got-it))))))))
 
 (defmacro unwind-but-dont-receive (condition-type &body body)
@@ -1099,7 +1099,7 @@
 
 (defun test-expected-type ()
   (assert (string= (funcall (expected-type '(member :a :b)) :a)
-                   (with-standard-io-syntax
+                   (jrn::with-standard-io-syntax*
                      (prin1-to-string
                       #+allegro 'cl:symbol
                       #-allegro 'cl:keyword)))))
@@ -2195,7 +2195,7 @@
          (filename (merge-pathnames
                     (format nil "file-sync-test-~A" random-string)
                     (uiop:temporary-directory))))
-    (with-standard-io-syntax
+    (jrn::with-standard-io-syntax*
       (with-open-file (stream filename :direction :output)
         ;; :COMPLETED
         (write-char #\Newline stream)
@@ -2218,7 +2218,7 @@
          (filename (merge-pathnames
                     (format nil "file-sync-test-~A" random-string)
                     (uiop:temporary-directory))))
-    (with-standard-io-syntax
+    (jrn::with-standard-io-syntax*
       (with-open-file (stream filename :direction :output)
         ;; :COMPLETED
         (write-char #\Newline stream)

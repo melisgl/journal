@@ -53,15 +53,27 @@
   (defmacro with-interrupts (&body body)
     `(sb-sys:with-interrupts ,@body)))
 
-(eval-when (:load-toplevel :execute)
-  ;; This is very bad. See @SAFETY.
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  ;; We define a stub WITHOUT-INTERRUPTS below. Reloading must not set
+  ;; *WITHOUT-INTERRUPTS-AVAILABLE* to T, hence we use DEFVAR and not
+  ;; DEFPARAMETER.
+  (defvar *without-interrupts-available* t)
   (unless (fboundp 'without-interrupts)
-    (error "WITHOUT-INTERRUPTS not implemented."))
+    (setq *without-interrupts-available* nil)
+    (format *error-output*
+            "~@<WITHOUT-INTERRUPTS is not implemented on this Lisp. ~
+            Proceeding, but any attempt to SYNC-JOURNAL will be a ~
+            runtime error. See JOURNAL:@SAFETY for more.~:@>")
+    (signal 'style-warning)
+    (defmacro without-interrupts (&body body)
+      `(progn ,@body)))
   ;; This is milder, but it means that UNWIND-PROTECT*'s protected
   ;; form will not be interruptible.
   (unless (fboundp 'with-interrupts)
-    (warn "~@<WITH-INTERRUPTS not implemented. Some code ~
-          will not be interruptible.~:@>")
+    (format *error-output*
+            "~@<WITH-INTERRUPTS is not implemented on this Lisp. ~
+            Some code will not be interruptible.~:@>")
+    (signal 'style-warning)
     (defmacro with-interrupts (&body body)
       `(progn ,@body))))
 

@@ -1,4 +1,5 @@
 *~
+*.abcl-tmp
 *.fasl
 *.*fsl
 *.fas
