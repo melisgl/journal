@@ -29,7 +29,8 @@
   for the latest version.")
 
 (defsection @journal-portability (:title "Portability")
-  "Tested on AllegroCL, CCL, ECL, CMUCL, and SBCL.")
+  "Tested on AllegroCL, CCL, CMUCL, ECL, and SBCL. ABCL and CLISP seem
+  to lack support for disabling and enabling handling of interrupts.")
 
 (defsection @journal-background (:title "Background")
   "Logging, tracing, testing, and persistence are about what happened

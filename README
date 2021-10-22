@@ -20,7 +20,8 @@ for the latest version.
 
 ## Portability
 
-Tested on AllegroCL, CCL, ECL, CMUCL, and SBCL.
+Tested on AllegroCL, CCL, CMUCL, ECL, and SBCL. ABCL and CLISP seem
+to lack support for disabling and enabling handling of interrupts.
 
 ## Background
 
