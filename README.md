@@ -85,12 +85,12 @@ for the latest version.
 
 ## 3 Portability
 
-Tested on CCL, CMUCL, ECL, and SBCL. AllegroCL Express edition runs
-out of heap while running the tests. Lispworks is not tested. On
-Lisps, that seem to lack support for disabling and enabling of
-interrupts, such as ABCL and CLISP, durability is compromised, and
-any attempt to [`SYNC-JOURNAL`][6bc6] (see [Synchronization strategies][355b] and
-[Safety][7224]) will be a runtime error.
+Tested on CCL, CLISP, CMUCL, ECL, and SBCL. AllegroCL Express
+edition runs out of heap while running the tests. Lispworks is not
+tested. On Lisps that seem to lack support for disabling and
+enabling of interrupts, such as ABCL and CLISP, durability is
+compromised, and any attempt to [`SYNC-JOURNAL`][6bc6] (see
+[Synchronization strategies][355b] and [Safety][7224]) will be a runtime error.
 
 <a id='x-28JOURNAL-3A-40JOURNAL-BACKGROUND-20MGL-PAX-3ASECTION-29'></a>
 

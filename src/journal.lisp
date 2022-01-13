@@ -29,12 +29,12 @@
   for the latest version.")
 
 (defsection @journal-portability (:title "Portability")
-  "Tested on CCL, CMUCL, ECL, and SBCL. AllegroCL Express edition runs
-  out of heap while running the tests. Lispworks is not tested. On
-  Lisps that seem to lack support for disabling and enabling of
-  interrupts, such as ABCL and CLISP, durability is compromised, and
-  any attempt to SYNC-JOURNAL (see @SYNCHRONIZATION-STRATEGIES and
-  @SAFETY) will be a runtime error.")
+  "Tested on CCL, CLISP, CMUCL, ECL, and SBCL. AllegroCL Express
+  edition runs out of heap while running the tests. Lispworks is not
+  tested. On Lisps that seem to lack support for disabling and
+  enabling of interrupts, such as ABCL and CLISP, durability is
+  compromised, and any attempt to SYNC-JOURNAL (see
+  @SYNCHRONIZATION-STRATEGIES and @SAFETY) will be a runtime error.")
 
 (defsection @journal-background (:title "Background")
   "Logging, tracing, testing, and persistence are about what happened
@@ -4668,6 +4668,8 @@
 (defun check-sync-value (sync)
   (check-type sync (member nil t)))
 
+(defvar *testing* nil)
+
 (defun sync-journal (&optional (journal (record-journal)))
   "Durably persist all preceding writes made to JOURNAL during an
   enclosing WITH-JOURNALING or via LOG-RECORD from any thread. Writes
@@ -4676,6 +4678,8 @@
   a noop JOURNAL-SYNC is NIL. This function is safe to call from any
   thread."
   (check-type journal journal)
+  (when (and *testing* (not *without-interrupts-available*))
+    (funcall (read-from-string "try:skip-trial")))
   (assert *without-interrupts-available* ()
           "~@<Cannot SYNC-JOURNAL without a working WITHOUT-INTERRUPTS. ~
           See JOURNAL:@SAFETY for more.~:@>")

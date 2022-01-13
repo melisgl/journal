@@ -1977,7 +1977,7 @@
 
 (deftest test-file-journal ()
   (call-with-file-journal-settings #'test-events)
-  (call-with-file-journal-settings #'test-depth :sync nil))
+  (call-with-file-journal-settings #'test-depth :sync '(nil)))
 
 (defun call-with-file-journal-settings (fn &key (sync '(nil t)))
   (dolist (sync sync)
@@ -3108,6 +3108,11 @@
 
 
 (deftest test-all ()
+  ;; Tests which would fail due to the lack of WITHOUT-INTERRUPTS are
+  ;; skipped. Let's leave a reminder.
+  (with-failure-expected ((alexandria:featurep '(:or :clisp :abcl)))
+    (is jrn::*without-interrupts-available*)
+    (is jrn::*with-interrupts-available*))
   (test-events-to-frames)
   (test-in-memory-journal)
   (test-file-journal)
@@ -3133,7 +3138,8 @@
   (let ((*package* (find-package :common-lisp))
         (*print-duration* nil)
         (*print-compactly* nil)
-        (*defer-describe* nil))
+        (*defer-describe* nil)
+        (jrn::*testing* t))
     (warn-on-tests-not-run ((find-package :journal-test))
       (print (try 'test-all :debug debug :print print :describe describe)))))
 
