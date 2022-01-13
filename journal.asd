@@ -25,7 +25,7 @@
   :version "0.0.1"
   :author "Gábor Melis <mega@retes.hu>"
   :description "Tests for Journal."
-  :depends-on (#:alexandria #:journal)
+  :depends-on (#:alexandria #:journal #:try)
   :components ((:module "test"
                 :serial t
                 :components ((:file "package")

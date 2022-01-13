@@ -61,7 +61,7 @@
   (unless (fboundp 'without-interrupts)
     (setq *without-interrupts-available* nil)
     (format *error-output*
-            "~@<WITHOUT-INTERRUPTS is not implemented on this Lisp. ~
+            "~&~@<WITHOUT-INTERRUPTS is not implemented on this Lisp. ~
             Proceeding, but any attempt to SYNC-JOURNAL will be a ~
             runtime error. See JOURNAL:@SAFETY for more.~:@>")
     (signal 'style-warning)
@@ -71,7 +71,7 @@
   ;; form will not be interruptible.
   (unless (fboundp 'with-interrupts)
     (format *error-output*
-            "~@<WITH-INTERRUPTS is not implemented on this Lisp. ~
+            "~&~@<WITH-INTERRUPTS is not implemented on this Lisp. ~
             Some code will not be interruptible.~:@>")
     (signal 'style-warning)
     (defmacro with-interrupts (&body body)

@@ -12,87 +12,46 @@
              (declare (ignore condition))
              (format stream "ANOTHER-ERROR was signalled."))))
 
-(defmacro assert-error ((condition-type &optional substring) &body body)
-  (alexandria:once-only (substring)
-    (alexandria:with-gensyms (got-it c)
-      `(let ((,got-it nil))
-         (unwind-protect
-              (handler-case (progn ,@body)
-                (,condition-type (,c)
-                  (if (or (null ,substring)
-                          (search ,substring
-                                  (jrn::with-standard-io-syntax*
-                                    (princ-to-string ,c))))
-                      (setq ,got-it t)
-                      (setq ,got-it ,c))))
-           (assert (eq ,got-it t) ()
-                   "~@<Didn't get expected ~S containing ~S. Got a ~S ~
-                    saying ~S.~:@>"
-                   ',condition-type ,substring (type-of ,got-it)
-                   (jrn::with-standard-io-syntax*
-                     (princ-to-string ,got-it))))))))
-
-(defmacro assert-signalled ((condition-type &optional substring) &body body)
-  (alexandria:once-only (substring)
-    (alexandria:with-gensyms (got-it c)
-      `(let ((,got-it nil))
-         (unwind-protect
-              (handler-bind
-                  ((,condition-type (lambda (,c)
-                                      (if (or (null ,substring)
-                                              (search ,substring
-                                                      (jrn::with-standard-io-syntax*
-                                                        (princ-to-string ,c))))
-                                          (setq ,got-it t)
-                                          (setq ,got-it ,c)))))
-                (progn ,@body))
-           (assert (eq ,got-it t) ()
-                   "~@<Didn't get expected ~S containing ~S. Got ~S.~:@>"
-                   ',condition-type ,substring
-                   (jrn::with-standard-io-syntax*
-                     (princ-to-string ,got-it))))))))
-
 (defmacro unwind-but-dont-receive (condition-type &body body)
   (alexandria:with-gensyms (c)
     `(handler-case (progn ,@body)
        (,condition-type (,c)
-         (assert nil () "Oops. Received condition ~S." ,c)))))
+         (is nil :msg (list "Oops. Received condition ~S." ,c))))))
 
 (defun check-file-journal-state (journal state)
   (when (typep journal 'file-journal)
-    (assert (probe-file (pathname-of journal)))
-    ;; KLUDGE: We want a new instance pointing to the same
-    ;; directory.
+    (is (probe-file (pathname-of journal)))
+    ;; KLUDGE: We want a new instance pointing to the same directory.
     (let* ((jrn::*truename-to-file-journal* (make-hash-table :test #'equal))
            (new-journal (make-file-journal (pathname-of journal))))
-      (assert (eq (journal-state new-journal) state)))))
+      (is (eq (journal-state new-journal) state)))))
 
 (defparameter *make-journal* 'make-in-memory-journal)
 
 
-(defun test-events-to-frames ()
-  (assert (equal (events-to-frames '((:in foo :args (1 2))
-                                     (:leaf "l1")
-                                     (:in bar :args (7))
-                                     (:leaf "l2")
-                                     (:out bar :values (8))
-                                     (:leaf "l3")
-                                     (:in bar2)
-                                     (:out bar2 :values ())
-                                     (:out foo :values (2))
-                                     (:in foo :args (3 4))
-                                     (:in bar :args (8))))
-                 '(((:in foo :args (1 2))
-                    (:leaf "l1")
-                    ((:in bar :args (7))
-                     (:leaf "l2")
-                     (:out bar :values (8)))
-                    (:leaf "l3")
-                    ((:in bar2)
-                     (:out bar2 :values ()))
-                    (:out foo :values (2)))
-                   ((:in foo :args (3 4))
-                    ((:in bar :args (8))))))))
+(deftest test-events-to-frames ()
+  (is (equal (events-to-frames '((:in foo :args (1 2))
+                                 (:leaf "l1")
+                                 (:in bar :args (7))
+                                 (:leaf "l2")
+                                 (:out bar :values (8))
+                                 (:leaf "l3")
+                                 (:in bar2)
+                                 (:out bar2 :values ())
+                                 (:out foo :values (2))
+                                 (:in foo :args (3 4))
+                                 (:in bar :args (8))))
+             '(((:in foo :args (1 2))
+                (:leaf "l1")
+                ((:in bar :args (7))
+                 (:leaf "l2")
+                 (:out bar :values (8)))
+                (:leaf "l3")
+                ((:in bar2)
+                 (:out bar2 :values ()))
+                (:out foo :values (2)))
+               ((:in foo :args (3 4))
+                ((:in bar :args (8))))))))
 
 (defun identical-events-p (events-1 events-2)
   (and (= (length events-1) (length events-2))
@@ -105,107 +64,107 @@
 
 ;;;; Test recording of log events
 
-(defun test-log-values-record ()
+(deftest test-log-values-record ()
   (let ((journal (funcall *make-journal*)))
-    (assert (eq (journal-state journal) :new))
+    (is (eq (journal-state journal) :new))
     (with-journaling (:record journal)
-      (assert (eq (journal-state journal) :recording))
-      (assert (= 42 (journaled (foo) 42)))
-      (assert (eq (journal-state journal) :recording))
-      (assert (equal (list-events journal)
+      (is (eq (journal-state journal) :recording))
+      (is (= 42 (journaled (foo) 42)))
+      (is (eq (journal-state journal) :recording))
+      (is (equal (list-events journal)
                      '((:in foo)
                        (:out foo :values (42))))))
-    (assert (eq (journal-state journal) :completed))
+    (is (eq (journal-state journal) :completed))
     (check-file-journal-state journal :completed)))
 
-(defun test-log-condition-record ()
+(deftest test-log-condition-record ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
-      (assert (eq (journal-state journal) :recording))
-      (assert-error (some-error)
+      (is (eq (journal-state journal) :recording))
+      (signals (some-error)
         (journaled ("foo" :condition (constantly 'eh))
           (error 'some-error)
           42))
-      (assert (eq (journal-state journal) :recording))
-      (assert (equal (list-events journal)
+      (is (eq (journal-state journal) :recording))
+      (is (equal (list-events journal)
                      '((:in "foo")
                        (:out "foo" :condition eh)))))
-    (assert (eq (journal-state journal) :completed))
+    (is (eq (journal-state journal) :completed))
     (check-file-journal-state journal :completed)))
 
-(defun test-log-error-record ()
+(deftest test-log-error-record ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
-      (assert (eq (journal-state journal) :recording))
-      (assert-error (some-error)
+      (is (eq (journal-state journal) :recording))
+      (signals (some-error)
         (journaled (foo)
           (error 'some-error)
           42))
-      (assert (eq (journal-state journal) :recording))
-      (assert (equivalent-events-p (list-events journal)
+      (is (eq (journal-state journal) :recording))
+      (is (equivalent-events-p (list-events journal)
                                    '((:in foo)
                                      (:out foo :error this-is-not-compared)))))
-    (assert (eq (journal-state journal) :completed))
+    (is (eq (journal-state journal) :completed))
     (check-file-journal-state journal :completed)))
 
-(defun test-log-nlx-record ()
+(deftest test-log-nlx-record ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
-      (assert (eq (journal-state journal) :recording))
-      (assert (= 42 (catch 'foo
+      (is (eq (journal-state journal) :recording))
+      (is (= 42 (catch 'foo
                       (journaled (foo)
                         (throw 'foo 42)))))
-      (assert (eq (journal-state journal) :recording))
-      (assert (equal (list-events)
+      (is (eq (journal-state journal) :recording))
+      (is (equal (list-events)
                      '((:in foo)
                        (:out foo :nlx nil)))))
-    (assert (eq (journal-state journal) :completed))
+    (is (eq (journal-state journal) :completed))
     (check-file-journal-state journal :completed)))
 
 
 ;;;; Test LOG-RECORD
 
-(defun test-log-record-without-with-journaling ()
+(deftest test-log-record-without-with-journaling ()
   (let ((journal (funcall *make-journal*)))
-    (assert (eq (journal-state journal) :new))
-    (assert (= 42 (framed (foo :log-record journal) 42)))
+    (is (eq (journal-state journal) :new))
+    (is (= 42 (framed (foo :log-record journal) 42)))
     (checked (bar) 42)
     (replayed (bar) 42)
-    (assert (equal (list-events journal)
+    (is (equal (list-events journal)
                    '((:in foo)
                      (:out foo :values (42)))))
-    (assert (eq (journal-state journal) :new))
+    (is (eq (journal-state journal) :new))
     ;; TEST-LOG-RECORDING-TO-FAILED-JOURNAL is related.
     (check-file-journal-state journal :failed)))
 
-(defun test-log-record-in-with-journaling ()
+(deftest test-log-record-in-with-journaling ()
   (let ((log-journal (funcall *make-journal*))
         (journal (funcall *make-journal*)))
-    (assert (eq (journal-state journal) :new))
+    (is (eq (journal-state journal) :new))
     (with-journaling (:record journal)
-      (assert (eq (journal-state journal) :recording))
+      (is (eq (journal-state journal) :recording))
       (framed (foo :log-record log-journal) 42)
       (checked (bar) 42)
       (replayed (bar) 42))
-    (assert (eq (journal-state journal) :completed))
-    (assert (equal (list-events journal)
+    (is (eq (journal-state journal) :completed))
+    (is (equal (list-events journal)
                    '((:in bar :version 1)
                      (:out bar :version 1 :values (42))
                      (:in bar :version :infinity)
                      (:out bar :version :infinity :values (42)))))
-    (assert (equal (list-events log-journal)
+    (is (equal (list-events log-journal)
                    '((:in foo)
                      (:out foo :values (42)))))))
 
-(defun test-log-record-to-record-journal ()
+(deftest test-log-record-to-record-journal ()
   (let ((journal (funcall *make-journal*)))
-    (assert (eq (journal-state journal) :new))
+    (is (eq (journal-state journal) :new))
     (with-journaling (:record journal)
-      (assert (eq (journal-state journal) :recording))
+      (is (eq (journal-state journal) :recording))
       (framed (foo :log-record journal) 42)
       (checked (bar) 7))
-    (assert (eq (journal-state journal) :completed))
-    (assert (equal (list-events journal)
+    (is (eq (journal-state journal) :completed))
+    (is (equal (list-events journal)
                    '((:in foo)
                      (:out foo :values (42))
                      (:in bar :version 1)
@@ -214,416 +173,416 @@
 
 ;;;; Test LOGGED
 
-(defun test-logged-without-with-journaling ()
+(deftest test-logged-without-with-journaling ()
   (let ((journal (funcall *make-journal*)))
-    (assert (eq (journal-state journal) :new))
-    (assert (null (logged (journal) "42")))
-    (assert (equal (list-events journal)
+    (is (eq (journal-state journal) :new))
+    (is (null (logged (journal) "42")))
+    (is (equal (list-events journal)
                    '((:leaf "42"))))
-    (assert (eq (journal-state journal) :new))
+    (is (eq (journal-state journal) :new))
     (check-file-journal-state journal :failed)))
 
-(defun test-logged-in-with-journaling ()
+(deftest test-logged-in-with-journaling ()
   (let ((log-journal (funcall *make-journal*))
         (journal (funcall *make-journal*)))
-    (assert (eq (journal-state journal) :new))
+    (is (eq (journal-state journal) :new))
     (with-journaling (:record journal)
-      (assert (eq (journal-state journal) :recording))
+      (is (eq (journal-state journal) :recording))
       (logged () "7")
       (logged (log-journal) "42"))
-    (assert (eq (journal-state journal) :completed))
-    (assert (equal (list-events journal)
+    (is (eq (journal-state journal) :completed))
+    (is (equal (list-events journal)
                    '((:leaf "7"))))
-    (assert (equal (list-events log-journal)
+    (is (equal (list-events log-journal)
                    '((:leaf "42"))))))
 
-(defun test-logged-to-record-journal ()
+(deftest test-logged-to-record-journal ()
   (let ((journal (funcall *make-journal*)))
-    (assert (eq (journal-state journal) :new))
+    (is (eq (journal-state journal) :new))
     (with-journaling (:record journal)
-      (assert (eq (journal-state journal) :recording))
+      (is (eq (journal-state journal) :recording))
       (logged (journal) "~S" 42))
-    (assert (eq (journal-state journal) :completed))
-    (assert (equal (list-events journal)
+    (is (eq (journal-state journal) :completed))
+    (is (equal (list-events journal)
                    '((:leaf "42"))))))
 
 
 ;;;; Test LOG-DECORATOR
 
-(defun test-log-decorator ()
+(deftest test-log-decorator ()
   (let ((*time* t)
         (journal (funcall *make-journal*)))
     (declare (special *time*))
-    (assert (eq (journal-state journal) :new))
+    (is (eq (journal-state journal) :new))
     (setf (journal-log-decorator journal)
           (make-log-decorator :thread t :time '*time*))
     (framed (foo :log-record journal) 42)
     (destructuring-bind (e1 e2) (list-events journal)
-      (assert (getf e1 :time))
-      (assert (getf e1 :thread))
-      (assert (getf e2 :time))
-      (assert (getf e2 :thread)))
+      (is (getf e1 :time))
+      (is (getf e1 :thread))
+      (is (getf e2 :time))
+      (is (getf e2 :thread)))
     (let ((*time* nil))
       (declare (special *time*))
       (logged (journal) "42")
-      (assert (= (length (list-events journal)) 3))
+      (is (= (length (list-events journal)) 3))
       (destructuring-bind (e3) (subseq (list-events journal) 2)
-        (assert (not (getf e3 :time)))
-        (assert (getf e3 :thread))))))
+        (is (not (getf e3 :time)))
+        (is (getf e3 :thread))))))
 
 
 ;;;;; Test replay corner cases
 
-(defun test-replay-end-of-journal-p-at-in-event ()
+(deftest test-replay-end-of-journal-p-at-in-event ()
   (let ((journal-1 (make-in-memory-journal :state :completed))
         (journal-2 (funcall *make-journal*)))
-    (assert-error (end-of-journal)
+    (signals (end-of-journal)
       (with-journaling (:replay journal-1 :record journal-2
                                 :replay-eoj-error-p t)
-        (assert (not (journal-divergent-p journal-2)))
-        (assert (eq (journal-state journal-2) :recording))
+        (is (not (journal-divergent-p journal-2)))
+        (is (eq (journal-state journal-2) :recording))
         (checked (foo)
-          (assert (journal-divergent-p journal-2))
+          (is (journal-divergent-p journal-2))
           42)))
-    (assert (eq (journal-state journal-2) :completed))
+    (is (eq (journal-state journal-2) :completed))
     (check-file-journal-state journal-2 :completed)))
 
-(defun test-replay-end-of-journal-p-at-out-event ()
+(deftest test-replay-end-of-journal-p-at-out-event ()
   (let ((journal-1 (make-in-memory-journal))
         (journal-2 (funcall *make-journal*)))
     ;; Let's create a truncated journal by hand, where the out-event
     ;; is missing entirely.
     (write-event '(:in foo :version 1) journal-1)
     (setf (jrn::%state journal-1) :completed)
-    (assert-error (end-of-journal)
+    (signals (end-of-journal)
       (with-journaling (:replay journal-1 :record journal-2
                                 :replay-eoj-error-p t)
-        (assert (eq (journal-state journal-2) :replaying))
+        (is (eq (journal-state journal-2) :replaying))
         (checked (foo)
-          (assert (not (journal-divergent-p journal-2)))
+          (is (not (journal-divergent-p journal-2)))
           42)
-        (assert (journal-divergent-p journal-2))))
-    (assert (eq (journal-state journal-2) :completed))
+        (is (journal-divergent-p journal-2))))
+    (is (eq (journal-state journal-2) :completed))
     (check-file-journal-state journal-2 :completed)))
 
-(defun test-replay-incomplete ()
+(deftest test-replay-incomplete ()
   (let ((journal-1 (funcall *make-journal*))
         (journal-2 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
       (checked (foo) 42))
-    (assert-error (replay-incomplete)
+    (signals (replay-incomplete)
       (with-journaling (:record journal-2 :replay journal-1)))
-    (assert (not (journal-divergent-p journal-2)))
-    (assert (eq (journal-state journal-2) :failed))
+    (is (not (journal-divergent-p journal-2)))
+    (is (eq (journal-state journal-2) :failed))
     (check-file-journal-state journal-2 :failed)))
 
-(defun test-replay-incomplete-without-record ()
+(deftest test-replay-incomplete-without-record ()
   (let ((journal-1 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
       (checked (foo) 42))
-    (assert-error (replay-incomplete)
+    (signals (replay-incomplete)
       (with-journaling (:replay journal-1)))))
 
 ;;; Check that REPLAY-INCOMPLETE is not signalled if
 ;;; WITH-JOURNALING did not finish normally.
-(defun test-replay-incomplete-not-signalled-case ()
+(deftest test-replay-incomplete-not-signalled-case ()
   (let ((journal-1 (funcall *make-journal*))
         (journal-2 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
       (checked (foo) 42))
-    (assert-error (simple-error "eh")
+    (signals (simple-error :pred "eh")
       (with-journaling (:record journal-2 :replay journal-1)
         (error "eh")))
-    (assert (not (journal-divergent-p journal-2)))))
+    (is (not (journal-divergent-p journal-2)))))
 
-(defun test-replay-incomplete-not-signalled-case-without-record ()
+(deftest test-replay-incomplete-not-signalled-case-without-record ()
   (let ((journal-1 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
       (checked (foo) 42))
-    (assert-error (simple-error "eh")
+    (signals (simple-error :pred "eh")
       (with-journaling (:replay journal-1)
         (error "eh")))))
 
-(defun test-recording-to-completed-journal ()
+(deftest test-recording-to-completed-journal ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
       (= (framed (foo) 42)))
-    (assert (eq (journal-state journal) :completed))
-    (assert-error (journal-error "is not in state :NEW")
+    (is (eq (journal-state journal) :completed))
+    (signals (journal-error :pred "is not in state :NEW")
       (with-journaling (:record journal)))))
 
-(defun test-log-recording-to-completed-journal ()
+(deftest test-log-recording-to-completed-journal ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
       (= (framed (foo) 42)))
-    (assert (eq (journal-state journal) :completed))
-    (assert-error (journal-error "Refusing to log to journal")
+    (is (eq (journal-state journal) :completed))
+    (signals (journal-error :pred "Refusing to log to journal")
       (framed (foo :log-record journal)))))
 
-(defun test-recording-to-failed-journal ()
+(deftest test-recording-to-failed-journal ()
   (let ((journal (funcall *make-journal*)))
     (setf (jrn::%state journal) :failed)
-    (assert-error (journal-error "is not in state :NEW")
+    (signals (journal-error :pred "is not in state :NEW")
       (with-journaling (:record journal)))))
 
-(defun test-recording-to-mismatched-journal ()
+(deftest test-recording-to-mismatched-journal ()
   (let ((journal (funcall *make-journal*)))
     (setf (jrn::%state journal) :mismatched)
-    (assert-error (journal-error "is not in state :NEW")
+    (signals (journal-error :pred "is not in state :NEW")
       (with-journaling (:record journal)))))
 
-(defun test-log-recording-to-failed-journal ()
+(deftest test-log-recording-to-failed-journal ()
   (let ((journal (funcall *make-journal*)))
     (setf (jrn::%state journal) :failed)
     ;; Also see TEST-LOG-RECORD-WITHOUT-WITH-JOURNALING.
     (framed (foo :log-record journal))))
 
-(defun test-skip-log-with-no-record ()
+(deftest test-skip-log-with-no-record ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
       (framed (j1)))
     (with-journaling (:replay journal :replay-eoj-error-p t))))
 
-(defun test-recording-after-replay-failure ()
+(deftest test-recording-after-replay-failure ()
   (let ((journal-1 (funcall *make-journal*))
         (journal-2 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
       (checked (j1))
       (checked (j1)))
     (with-journaling (:replay journal-1 :record journal-2)
-      (assert-error (replay-name-mismatch)
+      (signals (replay-name-mismatch)
         (checked (j2)))
-      (assert (eq (journal-state journal-2) :mismatched))
+      (is (eq (journal-state journal-2) :mismatched))
       (let ((read-position (read-position jrn::*replay-streamlet*)))
         (checked (j3))
         ;; We switch to the :INSERT replay strategy in :MISMATCHED.
-        (assert (= read-position (read-position jrn::*replay-streamlet*))))
-      (assert (equal (list-events)
+        (is (= read-position (read-position jrn::*replay-streamlet*))))
+      (is (equal (list-events)
                      '((:in j2 :version 1)
-                       (:in j3 :version 1)
-                       (:out j3 :version 1 :values (nil))))))))
+                       (:in j3)
+                       (:out j3 :values (nil))))))))
 
 
 ;;;; Recording and replay of versioned events
 
-(defun test-values-replay ()
+(deftest test-values-replay ()
   (let ((journal-1 (funcall *make-journal*)))
     ;; Record
     (with-journaling (:record journal-1)
       (journaled (foo :version 1)
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in foo :version 1))))
         42))
     ;; Check what was recorded.
-    (assert (equal (list-events journal-1)
+    (is (equal (list-events journal-1)
                    '((:in foo :version 1)
                      (:out foo :version 1 :values (42)))))
-    (assert (journal-divergent-p journal-1))
+    (is (journal-divergent-p journal-1))
 
     ;; Replay with the same :VALUES outcome.
     (let ((journal-2 (funcall *make-journal*)))
       (with-journaling (:replay journal-1 :record journal-2)
-        (assert (eq (journal-state journal-2) :replaying))
+        (is (eq (journal-state journal-2) :replaying))
         (journaled (foo :version 1)
-          (assert (eq (journal-state journal-2) :replaying))
+          (is (eq (journal-state journal-2) :replaying))
           42)
-        (assert (eq (journal-state journal-2) :recording)))
-      (assert (eq (journal-state journal-2) :completed))
+        (is (eq (journal-state journal-2) :recording)))
+      (is (eq (journal-state journal-2) :completed))
       (check-file-journal-state journal-2 :completed)
-      (assert (not (journal-divergent-p journal-2))))
+      (is (not (journal-divergent-p journal-2))))
 
     ;; Replay with different :VALUES outcome.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (replay-outcome-mismatch)
+      (signals (replay-outcome-mismatch)
         (with-journaling (:replay journal-1 :record journal-2)
-          (assert (eq (journal-state journal-2) :replaying))
+          (is (eq (journal-state journal-2) :replaying))
           (journaled (foo :version 1) 7)
-          (assert nil)))
-      (assert (equal (list-events journal-2)
+          (is nil)))
+      (is (equal (list-events journal-2)
                      '((:in foo :version 1)
                        (:out foo :version 1 :values (7)))))
-      (assert (eq (journal-state journal-2) :failed))
+      (is (eq (journal-state journal-2) :failed))
       (check-file-journal-state journal-2 :failed)
-      (assert (journal-divergent-p journal-2)))
+      (is (journal-divergent-p journal-2)))
 
     ;; Replay with :CONDITION outcome.
     (let ((journal-2 (funcall *make-journal*)))
       (unwind-but-dont-receive some-error
-        (assert-error (replay-outcome-mismatch)
+        (signals (replay-outcome-mismatch)
           (with-journaling (:replay journal-1 :record journal-2)
             (journaled (foo :version 1 :condition (constantly 'eh))
-              (assert (eq (journal-state journal-2) :replaying))
+              (is (eq (journal-state journal-2) :replaying))
               (error 'some-error)))))
-      (assert (eq (journal-state journal-2) :failed))
+      (is (eq (journal-state journal-2) :failed))
       (check-file-journal-state journal-2 :failed)
-      (assert (journal-divergent-p journal-2)))
+      (is (journal-divergent-p journal-2)))
 
     ;; Replay with :ERROR outcome.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (replay-unexpected-outcome)
+      (signals (replay-unexpected-outcome)
         (with-journaling (:replay journal-1 :record journal-2)
           (unwind-but-dont-receive some-error
             (journaled (foo :version 1)
-              (assert (eq (journal-state journal-2) :replaying))
+              (is (eq (journal-state journal-2) :replaying))
               (error 'some-error)))))
-      (assert (eq (journal-state journal-2) :failed))
+      (is (eq (journal-state journal-2) :failed))
       (check-file-journal-state journal-2 :failed)
-      (assert (journal-divergent-p journal-2)))
+      (is (journal-divergent-p journal-2)))
 
     ;; Replay with :NLX outcome.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (replay-unexpected-outcome)
+      (signals (replay-unexpected-outcome)
         (catch 'foo
           (with-journaling (:replay journal-1 :record journal-2)
             (journaled (foo :version 1)
-              (assert (eq (journal-state journal-2) :replaying))
+              (is (eq (journal-state journal-2) :replaying))
               (throw 'foo 7)))))
-      (assert (eq (journal-state journal-2) :failed))
+      (is (eq (journal-state journal-2) :failed))
       (check-file-journal-state journal-2 :failed)
-      (assert (journal-divergent-p journal-2)))))
+      (is (journal-divergent-p journal-2)))))
 
-(defun test-condition-replay ()
+(deftest test-condition-replay ()
   (let ((journal-1 (funcall *make-journal*)))
     ;; Record
     (with-journaling (:record journal-1)
-      (assert-error (some-error)
+      (signals (some-error)
         (journaled (foo :version 1 :condition (constantly 'eh))
           (error 'some-error)
           42))
       ;; Check what was recorded.
-      (assert (equal (list-events journal-1)
+      (is (equal (list-events journal-1)
                      '((:in foo :version 1)
                        (:out foo :version 1 :condition eh)))))
-    (assert (journal-divergent-p journal-1))
+    (is (journal-divergent-p journal-1))
 
     ;; Replay with any :VALUES outcome.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (replay-outcome-mismatch)
+      (signals (replay-outcome-mismatch)
         (with-journaling (:replay journal-1 :record journal-2)
           (journaled (foo :version 1)
-            (assert (eq (journal-state journal-2) :replaying))
+            (is (eq (journal-state journal-2) :replaying))
             42)
-          (assert nil)))
-      (assert (eq (journal-state journal-2) :failed))
+          (is nil)))
+      (is (eq (journal-state journal-2) :failed))
       (check-file-journal-state journal-2 :failed)
-      (assert (journal-divergent-p journal-2)))
+      (is (journal-divergent-p journal-2)))
 
     ;; Replay with the same :CONDITION outcome.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (some-error)
+      (signals (some-error)
         (with-journaling (:replay journal-1 :record journal-2)
           (unwind-protect
                (journaled (foo :version 1 :condition (constantly 'eh))
-                 (assert (eq (journal-state journal-2) :replaying))
+                 (is (eq (journal-state journal-2) :replaying))
                  (error 'some-error)
                  42)
-            (assert (eq (journal-state journal-2) :recording)))))
-      (assert (eq (journal-state journal-2) :completed))
+            (is (eq (journal-state journal-2) :recording)))))
+      (is (eq (journal-state journal-2) :completed))
       (check-file-journal-state journal-2 :completed)
-      (assert (not (journal-divergent-p journal-2))))
+      (is (not (journal-divergent-p journal-2))))
 
     ;; Replay with a different :CONDITION outcome.
     (let ((journal-2 (funcall *make-journal*)))
       (unwind-but-dont-receive some-error
-        (assert-error (replay-outcome-mismatch)
+        (signals (replay-outcome-mismatch)
           (with-journaling (:replay journal-1 :record journal-2)
             (journaled (foo :version 1 :condition (constantly 'bah))
-              (assert (eq (journal-state journal-2) :replaying))
+              (is (eq (journal-state journal-2) :replaying))
               (error 'some-error)
               42))))
-      (assert (eq (journal-state journal-2) :failed))
+      (is (eq (journal-state journal-2) :failed))
       (check-file-journal-state journal-2 :failed)
-      (assert (journal-divergent-p journal-2)))
+      (is (journal-divergent-p journal-2)))
 
     ;; Replay with :ERROR outcome.
     (let ((journal-2 (funcall *make-journal*)))
       (unwind-but-dont-receive some-error
-        (assert-error (replay-unexpected-outcome)
+        (signals (replay-unexpected-outcome)
           (with-journaling (:replay journal-1 :record journal-2)
             (journaled (foo :version 1)
-              (assert (eq (journal-state journal-2) :replaying))
+              (is (eq (journal-state journal-2) :replaying))
               (error 'some-error)))))
-      (assert (eq (journal-state journal-2) :failed))
+      (is (eq (journal-state journal-2) :failed))
       (check-file-journal-state journal-2 :failed)
-      (assert (journal-divergent-p journal-2)))
+      (is (journal-divergent-p journal-2)))
 
     ;; Replay with :NLX outcome.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (replay-unexpected-outcome)
+      (signals (replay-unexpected-outcome)
         (catch 'foo
           (with-journaling (:replay journal-1 :record journal-2)
             (journaled (foo :version 1)
-              (assert (eq (journal-state journal-2) :replaying))
+              (is (eq (journal-state journal-2) :replaying))
               (throw 'foo 7)))))
-      (assert (eq (journal-state journal-2) :failed))
+      (is (eq (journal-state journal-2) :failed))
       (check-file-journal-state journal-2 :failed)
-      (assert (journal-divergent-p journal-2)))))
+      (is (journal-divergent-p journal-2)))))
 
-(defun test-error-replay ()
+(deftest test-error-replay ()
   (let ((journal-1 (funcall *make-journal*)))
     ;; Record
     (with-journaling (:record journal-1)
-      (assert-error (some-error)
+      (signals (some-error)
         (journaled (foo :version 1)
           (error 'some-error)
           42))
       ;; Check what was recorded.
-      (assert (equivalent-events-p
+      (is (equivalent-events-p
                (list-events journal-1)
                '((:in foo :version 1)
                  (:out foo :version nil :error this-is-not-compared)))))
-    (assert (journal-divergent-p journal-1))
+    (is (journal-divergent-p journal-1))
 
     ;; Replay with any :VALUES outcome.
     (let ((journal-2 (funcall *make-journal*)))
       (= 42 (with-journaling (:replay journal-1 :record journal-2)
-              (assert (eq (journal-state journal-2) :replaying))
+              (is (eq (journal-state journal-2) :replaying))
               (unwind-protect
                    (journaled (foo :version 1) 42)
-                (assert (eq (journal-state journal-2) :recording)))))
-      (assert (eq (journal-state journal-2) :completed))
+                (is (eq (journal-state journal-2) :recording)))))
+      (is (eq (journal-state journal-2) :completed))
       (check-file-journal-state journal-2 :completed)
-      (assert (journal-divergent-p journal-2)))
+      (is (journal-divergent-p journal-2)))
 
     ;; Replay with any :CONDITION outcome.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (some-error)
+      (signals (some-error)
         (with-journaling (:replay journal-1 :record journal-2)
           (unwind-protect
                (journaled (foo :version 1 :condition (constantly 'eh))
-                 (assert (eq (journal-state journal-2) :recording))
+                 (is (eq (journal-state journal-2) :recording))
                  (error 'some-error)
                  42)
-            (assert (eq (journal-state journal-2) :recording)))))
-      (assert (eq (journal-state journal-2) :completed))
+            (is (eq (journal-state journal-2) :recording)))))
+      (is (eq (journal-state journal-2) :completed))
       (check-file-journal-state journal-2 :completed)
-      (assert (journal-divergent-p journal-2)))
+      (is (journal-divergent-p journal-2)))
 
     ;; Replay with the same :ERROR outcome.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (some-error)
+      (signals (some-error)
         (with-journaling (:replay journal-1 :record journal-2)
           (unwind-protect
                (journaled (foo :version 1)
-                 (assert (eq (journal-state journal-2) :recording))
+                 (is (eq (journal-state journal-2) :recording))
                  (error 'some-error))
-            (assert (eq (journal-state journal-2) :logging)))))
-      (assert (eq (journal-state journal-2) :completed))
+            (is (eq (journal-state journal-2) :logging)))))
+      (is (eq (journal-state journal-2) :completed))
       (check-file-journal-state journal-2 :completed)
-      (assert (not (journal-divergent-p journal-2))))
+      (is (not (journal-divergent-p journal-2))))
 
     ;; Replay with a different :ERROR outcome.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (another-error)
+      (signals (another-error)
         (with-journaling (:replay journal-1 :record journal-2)
           (unwind-protect
                (journaled (foo :version 1)
-                 (assert (eq (journal-state journal-2) :recording))
+                 (is (eq (journal-state journal-2) :recording))
                  (error 'another-error))
-            (assert (eq (journal-state journal-2) :logging)))))
-      (assert (eq (journal-state journal-2) :completed))
+            (is (eq (journal-state journal-2) :logging)))))
+      (is (eq (journal-state journal-2) :completed))
       (check-file-journal-state journal-2 :completed)
-      (assert (not (journal-divergent-p journal-2))))
+      (is (not (journal-divergent-p journal-2))))
 
     ;; Replay with :NLX outcome.
     (let ((journal-2 (funcall *make-journal*)))
@@ -631,64 +590,64 @@
              (with-journaling (:replay journal-1 :record journal-2)
                (unwind-protect
                     (journaled (foo :version 1)
-                      (assert (eq (journal-state journal-2) :recording))
+                      (is (eq (journal-state journal-2) :recording))
                       (throw 'foo 7))
-                 (assert (eq (journal-state journal-2) :logging))))))
-      (assert (eq (journal-state journal-2) :completed))
+                 (is (eq (journal-state journal-2) :logging))))))
+      (is (eq (journal-state journal-2) :completed))
       (check-file-journal-state journal-2 :completed)
-      (assert (not (journal-divergent-p journal-2))))))
+      (is (not (journal-divergent-p journal-2))))))
 
-(defun test-nlx-replay ()
+(deftest test-nlx-replay ()
   (let ((journal-1 (funcall *make-journal*)))
     ;; Record
     (with-journaling (:record journal-1)
-      (assert (= 42 (catch 'foo
+      (is (= 42 (catch 'foo
                       (journaled (foo :version 1)
                         (throw 'foo 42))))))
     ;; Check what was recorded.
-    (assert (equal (list-events journal-1)
+    (is (equal (list-events journal-1)
                    '((:in foo :version 1)
                      (:out foo :nlx nil))))
-    (assert (journal-divergent-p journal-1))
+    (is (journal-divergent-p journal-1))
 
     ;; Replay with any :VALUES outcome.
     (let ((journal-2 (funcall *make-journal*)))
       (= 42 (with-journaling (:replay journal-1 :record journal-2)
               (unwind-protect
                    (journaled (foo :version 1)
-                     (assert (eq (journal-state journal-2) :recording))
+                     (is (eq (journal-state journal-2) :recording))
                      42)
-                (assert (eq (journal-state journal-2) :recording)))))
-      (assert (eq (journal-state journal-2) :completed))
+                (is (eq (journal-state journal-2) :recording)))))
+      (is (eq (journal-state journal-2) :completed))
       (check-file-journal-state journal-2 :completed)
-      (assert (journal-divergent-p journal-2)))
+      (is (journal-divergent-p journal-2)))
 
     ;; Replay with any :CONDITION outcome.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (some-error)
+      (signals (some-error)
         (with-journaling (:replay journal-1 :record journal-2)
           (unwind-protect
                (journaled (foo :version 1 :condition (constantly 'eh))
-                 (assert (eq (journal-state journal-2) :recording))
+                 (is (eq (journal-state journal-2) :recording))
                  (error 'some-error)
                  42)
-            (assert (eq (journal-state journal-2) :recording)))))
-      (assert (eq (journal-state journal-2) :completed))
+            (is (eq (journal-state journal-2) :recording)))))
+      (is (eq (journal-state journal-2) :completed))
       (check-file-journal-state journal-2 :completed)
-      (assert (journal-divergent-p journal-2)))
+      (is (journal-divergent-p journal-2)))
 
     ;; Replay with any :ERROR outcome.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (some-error)
+      (signals (some-error)
         (with-journaling (:replay journal-1 :record journal-2)
           (unwind-protect
                (journaled (foo :version 1)
-                 (assert (eq (journal-state journal-2) :recording))
+                 (is (eq (journal-state journal-2) :recording))
                  (error 'some-error))
-            (assert (eq (journal-state journal-2) :logging)))))
-      (assert (eq (journal-state journal-2) :completed))
+            (is (eq (journal-state journal-2) :logging)))))
+      (is (eq (journal-state journal-2) :completed))
       (check-file-journal-state journal-2 :completed)
-      (assert (not (journal-divergent-p journal-2))))
+      (is (not (journal-divergent-p journal-2))))
 
     ;; Replay with :NLX outcome.
     (let ((journal-2 (funcall *make-journal*)))
@@ -696,132 +655,132 @@
              (with-journaling (:replay journal-1 :record journal-2)
                (unwind-protect
                     (journaled (foo :version 1)
-                      (assert (eq (journal-state journal-2) :recording))
+                      (is (eq (journal-state journal-2) :recording))
                       (throw 'foo 7))
-                 (assert (eq (journal-state journal-2) :logging))))))
-      (assert (eq (journal-state journal-2) :completed))
+                 (is (eq (journal-state journal-2) :logging))))))
+      (is (eq (journal-state journal-2) :completed))
       (check-file-journal-state journal-2 :completed)
-      (assert (not (journal-divergent-p journal-2))))))
+      (is (not (journal-divergent-p journal-2))))))
 
-(defun test-various-replay-cases ()
+(deftest test-various-replay-cases ()
   (let ((journal-1 (funcall *make-journal*)))
     ;; Record
     (with-journaling (:record journal-1)
       (journaled (foo :version 2)
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in foo :version 2))))
         42))
     ;; Check what was recorded.
-    (assert (equal (list-events journal-1)
+    (is (equal (list-events journal-1)
                    '((:in foo :version 2)
                      (:out foo :version 2 :values (42)))))
-    (assert (journal-divergent-p journal-1))
+    (is (journal-divergent-p journal-1))
 
     (dolist (make-journal (list *make-journal* (constantly nil)))
       ;; Same version with mismatched name
       (let ((journal-2 (funcall make-journal)))
-        (assert-error (replay-name-mismatch)
+        (signals (replay-name-mismatch)
           (with-journaling (:replay journal-1 :record journal-2)
             (unwind-protect
                  (journaled (bar :version 2)
-                   (assert nil)
+                   (is nil)
                    42)
               (when journal-2
-                (assert (eq (journal-state journal-2) :mismatched))))))
+                (is (eq (journal-state journal-2) :mismatched))))))
         (check-file-journal-state journal-2 :failed)
         (when journal-2
-          (assert (journal-divergent-p journal-2))))
+          (is (journal-divergent-p journal-2))))
 
       ;; Same name and version with mismatched args
       (let ((journal-2 (funcall make-journal)))
-        (assert-error (replay-args-mismatch)
+        (signals (replay-args-mismatch)
           (with-journaling (:replay journal-1 :record journal-2)
             (unwind-protect
                  (journaled (foo :version 2 :args '(1 2))
-                   (assert nil))
+                   (is nil))
               (when journal-2
-                (assert (eq (journal-state journal-2) :mismatched))))))
+                (is (eq (journal-state journal-2) :mismatched))))))
         (check-file-journal-state journal-2 :failed)
         (when journal-2
-          (assert (journal-divergent-p journal-2))))
+          (is (journal-divergent-p journal-2))))
 
       ;; Higher version. Name is still checked.
       (let ((journal-2 (funcall make-journal)))
-        (assert-error (replay-name-mismatch)
+        (signals (replay-name-mismatch)
           (with-journaling (:replay journal-1 :record journal-2)
             (unwind-protect
                  (journaled (bar :version 3)
-                   (assert nil))
+                   (is nil))
               (when journal-2
-                (assert (eq (journal-state journal-2) :mismatched))))))
+                (is (eq (journal-state journal-2) :mismatched))))))
         (check-file-journal-state journal-2 :failed)
         (when journal-2
-          (assert (journal-divergent-p journal-2))))
+          (is (journal-divergent-p journal-2))))
 
       ;; Higher version. Args, outcome not checked.
       (let ((journal-2 (funcall make-journal)))
-        (assert
+        (is
          (= 7 (with-journaling (:replay journal-1 :record journal-2)
                 (unwind-protect
                      (journaled (foo :version 3)
                        (when journal-2
-                         (assert (eq (journal-state journal-2) :replaying)))
+                         (is (eq (journal-state journal-2) :replaying)))
                        7)
                   (when journal-2
-                    (assert (eq (journal-state journal-2) :recording)))))))
+                    (is (eq (journal-state journal-2) :recording)))))))
         (when journal-2
-          (assert (eq (journal-state journal-2) :completed)))
+          (is (eq (journal-state journal-2) :completed)))
         (check-file-journal-state journal-2 :completed)
         (when journal-2
-          (assert (journal-divergent-p journal-2))))
+          (is (journal-divergent-p journal-2))))
 
       ;; Upgrade to :INFINITY. Args, outcome not checked.
       (let ((journal-2 (funcall make-journal)))
-        (assert
+        (is
          (= 42 (with-journaling (:replay journal-1 :record journal-2)
                  (unwind-protect
                       (journaled (foo :version :infinity)
                         (when journal-2
-                          (assert (eq (journal-state journal-2) :replaying)))
-                        (assert nil))
+                          (is (eq (journal-state journal-2) :replaying)))
+                        (is nil))
                    (when journal-2
-                     (assert (eq (journal-state journal-2) :recording)))))))
+                     (is (eq (journal-state journal-2) :recording)))))))
         (when journal-2
-          (assert (eq (journal-state journal-2) :completed)))
+          (is (eq (journal-state journal-2) :completed)))
         (check-file-journal-state journal-2 :completed)
         (when journal-2
-          (assert (journal-divergent-p journal-2))))
+          (is (journal-divergent-p journal-2))))
 
       ;; Lower version.
       (let ((journal-2 (funcall make-journal)))
         (with-journaling (:replay journal-1 :record journal-2)
-          (assert-error (replay-version-downgrade)
+          (signals (replay-version-downgrade)
             (journaled (foo :version 1)))
           (when journal-2
-            (assert (eq (journal-state journal-2) :mismatched)))
+            (is (eq (journal-state journal-2) :mismatched)))
           (check-file-journal-state journal-2 :failed))
         (check-file-journal-state journal-2 :failed)
         (when journal-2
-          (assert (eq (journal-state journal-2) :failed))
-          (assert (journal-divergent-p journal-2))))
+          (is (eq (journal-state journal-2) :failed))
+          (is (journal-divergent-p journal-2))))
 
       ;; Log replay event. Name, args, outcome not checked.
       (let ((journal-2 (funcall make-journal)))
-        (assert-error (replay-incomplete)
+        (signals (replay-incomplete)
           (with-journaling (:replay journal-1 :record journal-2)
             (unwind-protect
                  (journaled (bar :version nil :args '(1 2))
                    (when journal-2
-                     (assert (eq (journal-state journal-2) :replaying)))
+                     (is (eq (journal-state journal-2) :replaying)))
                    7)
               ;; We haven't replayed the FOO frame.
               (when journal-2
-                (assert (eq (journal-state journal-2) :replaying))))))
+                (is (eq (journal-state journal-2) :replaying))))))
         (when journal-2
-          (assert (eq (journal-state journal-2) :failed)))
+          (is (eq (journal-state journal-2) :failed)))
         (check-file-journal-state journal-2 :failed)
         (when journal-2
-          (assert (not (journal-divergent-p journal-2)))))
+          (is (not (journal-divergent-p journal-2)))))
 
       ;; Extra log replay event.
       (let ((journal-2 (funcall make-journal)))
@@ -830,15 +789,15 @@
             (journaled (foo :version 2)
               42)))
         (when journal-2
-          (assert (eq (journal-state journal-2) :completed)))
+          (is (eq (journal-state journal-2) :completed)))
         (check-file-journal-state journal-2 :completed)
         (when journal-2
-          (assert (not (journal-divergent-p journal-2))))))))
+          (is (not (journal-divergent-p journal-2))))))))
 
 
 ;;;; Test recording and replay of external events
 
-(defun test-external-in-log ()
+(deftest test-external-in-log ()
   (let ((n-foo-evals 0))
     (labels ((foo (x y)
                (journaled (foo :version :infinity :args `(,x ,y))
@@ -847,27 +806,27 @@
              (bar (x y z)
                (journaled (bar :args `(,x ,y ,z))
                  (values (* z (foo x y)) :second))))
-      (assert (equal '(9 :second) (multiple-value-list (bar 1 2 3))))
-      (assert (= 1 n-foo-evals))
+      (is (equal '(9 :second) (multiple-value-list (bar 1 2 3))))
+      (is (= 1 n-foo-evals))
       (let ((journal-1 (funcall *make-journal*)))
         (with-journaling (:record journal-1)
-          (assert (equal (multiple-value-list (bar 1 2 3))
+          (is (equal (multiple-value-list (bar 1 2 3))
                          '(9 :second)))
-          (assert (equal (list-events)
+          (is (equal (list-events)
                          '((:in bar :args (1 2 3))
                            (:in foo :version :infinity :args (1 2))
                            (:out foo :version :infinity :values (3))
                            (:out bar :values (9 :second))))))
-        (assert (= 2 n-foo-evals))
+        (is (= 2 n-foo-evals))
         (let ((journal-2 (funcall *make-journal*)))
           (with-journaling (:replay journal-1 :record journal-2)
-            (assert (equal (multiple-value-list (bar 1 2 3))
+            (is (equal (multiple-value-list (bar 1 2 3))
                            '(9 :second)))
-            (assert (equal (list-events journal-1)
+            (is (equal (list-events journal-1)
                            (list-events journal-2))))
-          (assert (= 2 n-foo-evals)))))))
+          (is (= 2 n-foo-evals)))))))
 
-(defun test-log-in-external ()
+(deftest test-log-in-external ()
   (labels ((foo (x y)
              (journaled (l1 :args `(,x ,y))
                (journaled (v :version 1)
@@ -876,12 +835,12 @@
            (bar (x y z)
              (journaled (bar :version :infinity :args `(,x ,y ,z))
                (values (* z (foo x y)) :second))))
-    (assert (equal '(9 :second) (multiple-value-list (bar 1 2 3))))
+    (is (equal '(9 :second) (multiple-value-list (bar 1 2 3))))
     (let ((journal-1 (funcall *make-journal*)))
       (with-journaling (:record journal-1 :replay-eoj-error-p t)
-        (assert (equal (multiple-value-list (bar 1 2 3))
+        (is (equal (multiple-value-list (bar 1 2 3))
                        '(9 :second)))
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in bar :version :infinity :args (1 2 3))
                          (:in l1 :args (1 2))
                          (:in v :version 1)
@@ -891,9 +850,9 @@
                          (:out l1 :values (3))
                          (:out bar :version :infinity :values (9 :second))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
-        (assert (equal (multiple-value-list (bar 1 2 3))
+        (is (equal (multiple-value-list (bar 1 2 3))
                        '(9 :second)))
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in bar :version :infinity :args (1 2 3))
                          (:in l1 :args (1 2))
                          (:in v :version 1)
@@ -904,27 +863,27 @@
                          (:out bar :version :infinity
                           :values (9 :second)))))))))
 
-(defun test-non-log-in-external ()
+(deftest test-non-log-in-external ()
   (labels ((foo (x y)
              (journaled (foo :version 1 :args `(,x ,y))
                (+ x y)))
            (bar (x y z)
              (journaled (bar :version :infinity :args `(,x ,y ,z))
                (values (* z (foo x y)) :second))))
-    (assert (equal '(9 :second) (multiple-value-list (bar 1 2 3))))
+    (is (equal '(9 :second) (multiple-value-list (bar 1 2 3))))
     (let ((journal-1 (funcall *make-journal*)))
       (with-journaling (:record journal-1 :replay-eoj-error-p t)
-        (assert (equal (multiple-value-list (bar 1 2 3))
+        (is (equal (multiple-value-list (bar 1 2 3))
                        '(9 :second)))
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in bar :version :infinity :args (1 2 3))
                          (:in foo :version 1 :args (1 2))
                          (:out foo :version 1 :values (3))
                          (:out bar :version :infinity :values (9 :second))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
-        (assert (equal (multiple-value-list (bar 1 2 3))
+        (is (equal (multiple-value-list (bar 1 2 3))
                        '(9 :second)))
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in bar :version :infinity :args (1 2 3))
                          (:in foo :version 1 :args (1 2))
                          (:out foo :version 1 :values (3))
@@ -957,11 +916,11 @@
                      :replay-values (values<- #'find-user))
     (values *user7* "hello")))
 
-(defun test-replay-values ()
+(deftest test-replay-values ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
       (get-message))
-    (assert (eq *user7*
+    (is (eq *user7*
                 (with-journaling (:replay journal
                                           :record (funcall *make-journal*))
                   (get-message))))))
@@ -969,41 +928,42 @@
 
 ;;;; Recording and replay of external events
 
-(defun test-replay-condition ()
+(deftest test-replay-condition ()
   (let ((journal-1 (funcall *make-journal*))
         (journal-2 (funcall *make-journal*)))
-    (assert-error (simple-error "some text")
+    (signals (simple-error :pred "some text")
       (with-journaling (:record journal-1)
         (journaled (e :version :infinity
                       :condition (lambda (c)
                                    (when (typep c 'simple-error)
                                      `(error ,(princ-to-string c)))))
           (error "some text"))))
-    (assert-error (simple-error "some text")
+    (signals (simple-error :pred "some text")
       (with-journaling (:replay journal-1 :record journal-2)
         (journaled (e :version :infinity :replay-condition #'eval))))
-    (assert (not (journal-divergent-p journal-2)))
-    (assert (eq (journal-state journal-2) :completed))
-    (identical-events-p (list-events journal-2)
-                        '((:in e :version :infinity)
-                          (:out e :version :infinity
-                           :condition (error "some text"))))))
+    (is (not (journal-divergent-p journal-2)))
+    (is (eq (journal-state journal-2) :completed))
+    (is (identical-events-p (list-events journal-2)
+                            '((:in e :version :infinity)
+                              (:out e :version :infinity
+                               :condition (error "some text")))))))
 
-(defun test-external-event-unexpected-outcome ()
+(deftest test-external-event-unexpected-outcome ()
   (let* ((journal-1 (funcall *make-journal*))
          (sync (journal-sync journal-1)))
-    (assert-error (some-error)
+    (signals (some-error)
       (with-journaling (:record journal-1)
         (unwind-protect
-             (assert-signalled (record-unexpected-outcome "SOME-ERROR")
+             (signals (record-unexpected-outcome :pred "SOME-ERROR"
+                                                 :handler nil)
                (journaled (b :version :infinity)
                  (error 'some-error)))
-          (assert (eq (journal-state journal-1) :logging))
+          (is (eq (journal-state journal-1) :logging))
           (journaled (l) 1)
           (journaled (v :version 1) 2)
-          (assert-error (data-event-lossage)
+          (signals (data-event-lossage)
             (journaled (f :version :infinity))))))
-    (assert (equal (list-events journal-1)
+    (is (equal (list-events journal-1)
                    (if sync
                        ()
                        '((:in b :version :infinity)
@@ -1017,56 +977,57 @@
                          (:out v :values (2))))))
     ;; Replay is pretty much the same.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (some-error)
+      (signals (some-error)
         (with-journaling (:record journal-2 :replay journal-1)
           (unwind-protect
-               (assert-signalled (record-unexpected-outcome "SOME-ERROR")
+               (signals (record-unexpected-outcome :pred "SOME-ERROR"
+                                                   :handler nil)
                  (journaled (b :version :infinity)
                    (error 'some-error)))
-            (assert (eq (journal-state journal-2) :logging))
+            (is (eq (journal-state journal-2) :logging))
             (journaled (l) 1)
             (journaled (v :version 1) 2)
-            (assert-error (data-event-lossage)
+            (signals (data-event-lossage)
               (journaled (f :version :infinity)))))))))
 
-(defun test-external-event-in-mismatched-triggered-on-in-event ()
+(deftest test-external-event-in-mismatched-triggered-on-in-event ()
   (let ((bundle (make-in-memory-bundle)))
     (with-bundle (bundle)
       (checked (c :args '(1))))
     (with-bundle (bundle)
-      (assert-error (replay-args-mismatch)
+      (signals (replay-args-mismatch)
         (checked (c :args '(2))))
-      (assert (eq (journal-state (record-journal)) :mismatched))
-      (assert-error (data-event-lossage)
+      (is (eq (journal-state (record-journal)) :mismatched))
+      (signals (data-event-lossage)
         (replayed (r)
-          (assert nil))))))
+          (is nil))))))
 
-(defun test-external-event-in-logging-triggered-on-in-event ()
+(deftest test-external-event-in-logging-triggered-on-in-event ()
   (let ((bundle (make-in-memory-bundle)))
     (with-bundle (bundle)
       (catch 'not-finished
         (checked (c)
           (throw 'not-finished nil)))
-      (assert (eq (journal-state (record-journal)) :logging))
-      (assert-error (data-event-lossage)
+      (is (eq (journal-state (record-journal)) :logging))
+      (signals (data-event-lossage)
         (replayed (r)
-          (assert nil))))))
+          (is nil))))))
 
-(defun test-unwinding-from-record-unexpected-outcome ()
+(deftest test-unwinding-from-record-unexpected-outcome ()
   (let* ((journal-1 (funcall *make-journal*))
          (sync (journal-sync journal-1)))
-    (assert-error (record-unexpected-outcome "SOME-ERROR")
+    (signals (record-unexpected-outcome :pred "SOME-ERROR")
       (with-journaling (:record journal-1)
         (unwind-protect
              (unwind-but-dont-receive some-error
                (journaled (b :version :infinity)
                  (error 'some-error)))
-          (assert (eq (journal-state journal-1) :logging))
+          (is (eq (journal-state journal-1) :logging))
           (journaled (l) 1)
           (journaled (v :version 1) 2)
-          (assert-error (data-event-lossage)
+          (signals (data-event-lossage)
             (journaled (f :version :infinity))))))
-    (assert (equal (list-events journal-1)
+    (is (equal (list-events journal-1)
                    (if sync
                        ()
                        '((:in b :version :infinity)
@@ -1079,16 +1040,16 @@
                          (:in v)
                          (:out v :values (2))))))))
 
-(defun test-nested-external-events-with-unexpected-outcome ()
+(deftest test-nested-external-events-with-unexpected-outcome ()
   (let ((journal-1 (funcall *make-journal*)))
-    (assert-error (some-error)
+    (signals (some-error)
       (with-journaling (:record journal-1)
         (journaled (a :version :infinity)
           (unwind-protect
                (journaled (b :version :infinity)
                  (error 'some-error))
-            (assert (eq (journal-state journal-1) :logging))))))
-    (assert (equal (list-events journal-1)
+            (is (eq (journal-state journal-1) :logging))))))
+    (is (equal (list-events journal-1)
                    '((:in a :version :infinity)
                      (:in b :version :infinity)
                      ;; Downgraded to log
@@ -1097,8 +1058,8 @@
                      (:out a
                       :error ("SOME-ERROR" "SOME-ERROR was signalled.")))))))
 
-(defun test-expected-type ()
-  (assert (string= (funcall (expected-type '(member :a :b)) :a)
+(deftest test-expected-type ()
+  (is (string= (funcall (expected-type '(member :a :b)) :a)
                    (jrn::with-standard-io-syntax*
                      (prin1-to-string
                       #+allegro 'cl:symbol
@@ -1107,7 +1068,7 @@
 
 ;;;; Test replay mismatch
 
-(defun test-replay-mismatch ()
+(deftest test-replay-mismatch ()
   (let ((journal-1 (funcall *make-journal*)))
 
     ;; Record
@@ -1115,13 +1076,13 @@
       (journaled (b1))
       (journaled (b2 :version 1)
         42))
-    (assert (journal-divergent-p journal-1))
+    (is (journal-divergent-p journal-1))
     (destructuring-bind (record-position replay-position)
         (journal-replay-mismatch journal-1)
       (with-open-journal (streamlet journal-1)
         (setf (read-position streamlet) record-position)
-        (assert (equal (read-event streamlet) '(:in b2 :version 1))))
-      (assert (null replay-position)))
+        (is (equal (read-event streamlet) '(:in b2 :version 1))))
+      (is (null replay-position)))
 
     ;; Replay diverging with a version upgrade.
     (let ((journal-2 (funcall *make-journal*)))
@@ -1132,10 +1093,10 @@
           (journal-replay-mismatch journal-2)
         (with-open-journal (streamlet journal-2)
           (setf (read-position streamlet) record-position)
-          (assert (equal (read-event streamlet) '(:in b2 :version 2))))
+          (is (equal (read-event streamlet) '(:in b2 :version 2))))
         (with-open-journal (streamlet journal-1)
           (setf (read-position streamlet) replay-position)
-          (assert (equal (read-event streamlet) '(:in b2 :version 1))))))))
+          (is (equal (read-event streamlet) '(:in b2 :version 1))))))))
 
 
 ;;;; Test inserting
@@ -1145,7 +1106,7 @@
 ;;; is based on the parent frame, while for IN-EVENTs it is based on
 ;;; the child frame. This test inserts a new frame with the same name
 ;;; as the parent to trigger the above failure.
-(defun test-insertable-next-vs-prev-event ()
+(deftest test-insertable-next-vs-prev-event ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
       (journaled (a :version 1)
@@ -1155,7 +1116,7 @@
       (journaled (a :version 1)
         (journaled (a :version 1 :insertable t)
           (journaled (b :version 1))))
-      (assert (equal (list-events)
+      (is (equal (list-events)
                      '((:in a :version 1)
                        (:in a :version 1)
                        (:in b :version 1)
@@ -1163,7 +1124,7 @@
                        (:out a :version 1 :values (nil))
                        (:out a :version 1 :values (nil))))))))
 
-(defun test-force-insertable ()
+(deftest test-force-insertable ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
       (journaled (a :version 1)
@@ -1175,7 +1136,7 @@
           (journaled (a :version 1)
             (let ((*force-insertable* nil))
               (journaled (b :version 1))))))
-      (assert (equal (list-events)
+      (is (equal (list-events)
                      '((:in a :version 1)
                        (:in a :version 1)
                        (:in b :version 1)
@@ -1183,24 +1144,24 @@
                        (:out a :version 1 :values (nil))
                        (:out a :version 1 :values (nil))))))))
 
-(defun test-insert-before-unexpected ()
+(deftest test-insert-before-unexpected ()
   (let ((journal (funcall *make-journal*)))
-    (assert-error (some-error)
+    (signals (some-error)
       (with-journaling (:record journal)
         (journaled (a :version 1)
           (error 'some-error))))
     (with-journaling (:replay journal :record (funcall *make-journal*))
       (journaled (a :version 1)
         (journaled (b :version 1))
-        (assert (eq (journal-state (record-journal)) :recording))))))
+        (is (eq (journal-state (record-journal)) :recording))))))
 
-(defun test-force-insertable-vs-external ()
+(deftest test-force-insertable-vs-external ()
   (let ((journal (funcall *make-journal*))
         (*force-insertable* t))
     (with-journaling (:record journal)
       (journaled (a :version :infinity)))))
 
-(defun test-with-replay-streamlet ()
+(deftest test-with-replay-streamlet ()
   (labels ((replaying-old-version-p ()
              (with-replay-streamlet (replay-streamlet)
                (let ((replay-event (peek-event replay-streamlet)))
@@ -1230,7 +1191,7 @@
           (journaled (pay :version :infinity))))
       (replay-any-version journal))))
 
-(defun test-peek-replay-event ()
+(deftest test-peek-replay-event ()
   (flet ((run-v2 ()
            (let ((replay-process-event (peek-replay-event)))
              (journaled (process :version 2))
@@ -1273,7 +1234,7 @@
 
 ;;;; Test upgrades
 
-(defun test-with-replay-filter-with-no-children-left ()
+(deftest test-with-replay-filter-with-no-children-left ()
   (labels ((outer (x y)
              (journaled (outer :version 1)
                (inner x y)))
@@ -1287,7 +1248,7 @@
     (let ((journal-1 (funcall *make-journal*)))
       (with-journaling (:record journal-1)
         (outer 1 2)
-        (assert
+        (is
          (equal (list-events)
                 '((:in outer :version 1)
                   (:in inner :version 1)
@@ -1295,8 +1256,8 @@
                   (:out outer :version 1 :values (3))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (outer-2 1 2)
-        (assert (eq (journal-state (record-journal)) :recording))
-        (assert
+        (is (eq (journal-state (record-journal)) :recording))
+        (is
          (equal (list-events)
                 '((:in outer :version 1)
                   (:out outer :version 1 :values (3)))))))))
@@ -1306,28 +1267,28 @@
 ;;; child blocks, this particular case is handled by the
 ;;; SKIP-EVENTS-AND-MAYBE-SET-STATE->RECORDING call in
 ;;; WITH-REPLAY-FILTER itself.
-(defun test-with-replay-filter-with-no-children-left-at-end-of-replay ()
+(deftest test-with-replay-filter-with-no-children-left-at-end-of-replay ()
   (let ((journal-1 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
       (checked (inner)
         3)
-      (assert (equal (list-events)
+      (is (equal (list-events)
                      '((:in inner :version 1)
                        (:out inner :version 1 :values (3))))))
     (with-journaling (:replay journal-1 :record (funcall *make-journal*))
       (with-replay-filter (:skip '((:name inner)))
-        (assert (eq (journal-state (record-journal)) :replaying))
+        (is (eq (journal-state (record-journal)) :replaying))
         (+ 1 2))
-      (assert (eq (journal-state (record-journal)) :recording))
-      (assert (equal (list-events) '())))))
+      (is (eq (journal-state (record-journal)) :recording))
+      (is (equal (list-events) '())))))
 
-(defun test-with-replay-filter-eat-full-frames ()
+(deftest test-with-replay-filter-eat-full-frames ()
   (let ((journal-1 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
       (checked (skipped) 2)
       (framed (log)
         (checked (skipped) 3))
-      (assert (equal (list-events)
+      (is (equal (list-events)
                      '((:in skipped :version 1)
                        (:out skipped :version 1 :values (2))
                        (:in log)
@@ -1336,67 +1297,67 @@
                        (:out log :values (3))))))
     (with-journaling (:replay journal-1 :record (funcall *make-journal*))
       (with-replay-filter (:skip '((:name skipped)))
-        (assert (eq (journal-state (record-journal)) :replaying))
-        (assert (eq (first (peek-replay-event)) :indeterminate)))
-      (assert (eq (journal-state (record-journal)) :recording))
-      (assert (equal (list-events) '()))
-      (assert (equal (journal-replay-mismatch (record-journal))
+        (is (eq (journal-state (record-journal)) :replaying))
+        (is (eq (first (peek-replay-event)) :indeterminate)))
+      (is (eq (journal-state (record-journal)) :recording))
+      (is (equal (list-events) '()))
+      (is (equal (journal-replay-mismatch (record-journal))
                      (if (typep journal-1 'in-memory-journal)
                          '(0 0)
                          '(1 0)))))))
 
-(defun test-with-replay-filter-eat-full-frames/non-full ()
+(deftest test-with-replay-filter-eat-full-frames/non-full ()
   (let ((journal-1 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
       (checked (skipped)
         (checked (c)))
-      (assert (equal (list-events)
+      (is (equal (list-events)
                      '((:in skipped :version 1)
                        (:in c :version 1)
                        (:out c :version 1 :values (nil))
                        (:out skipped :version 1 :values (nil))))))
     (with-journaling (:replay journal-1 :record (funcall *make-journal*))
       (with-replay-filter (:skip '((:name skipped)))
-        (assert (eq (journal-state (record-journal)) :replaying))
-        (assert (eq (first (peek-replay-event)) :indeterminate)))
-      (assert (eq (journal-state (record-journal)) :replaying))
-      (assert (equal (peek-replay-event) '(:in skipped :version 1)))
+        (is (eq (journal-state (record-journal)) :replaying))
+        (is (eq (first (peek-replay-event)) :indeterminate)))
+      (is (eq (journal-state (record-journal)) :replaying))
+      (is (equal (peek-replay-event) '(:in skipped :version 1)))
       (checked (skipped)
         (checked (c)))
-      (assert (equal (list-events) '((:in skipped :version 1)
+      (is (equal (list-events) '((:in skipped :version 1)
                                      (:in c :version 1)
                                      (:out c :version 1 :values (nil))
                                      (:out skipped :version 1 :values (nil)))))
-      (assert (eq (journal-state (record-journal)) :recording))
-      (assert (null (journal-replay-mismatch (record-journal)))))))
+      (is (eq (journal-state (record-journal)) :recording))
+      (is (null (journal-replay-mismatch (record-journal)))))))
 
-(defun test-with-replay-filter-eat-full-frames/2 ()
+(deftest test-with-replay-filter-eat-full-frames/2 ()
   (let ((journal-1 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
       (checked (other) 2)
       (checked (skipped) 3)
-      (assert (equal (list-events)
+      (is (equal (list-events)
                      '((:in other :version 1)
                        (:out other :version 1 :values (2))
                        (:in skipped :version 1)
                        (:out skipped :version 1 :values (3))))))
     (with-journaling (:replay journal-1 :record (funcall *make-journal*))
       (with-replay-filter (:skip '((:name skipped)))
-        (assert (eq (journal-state (record-journal)) :replaying))
+        (is (eq (journal-state (record-journal)) :replaying))
         (checked (other) 2))
-      (assert (eq (journal-state (record-journal)) :recording))
-      (assert (equal (list-events) '((:in other :version 1)
+      (is (eq (journal-state (record-journal)) :recording))
+      (is (equal (list-events) '((:in other :version 1)
                                      (:out other :version 1 :values (2)))))
       (destructuring-bind (record-position replay-position)
           (journal-replay-mismatch (record-journal))
         (with-open-journal (streamlet (record-journal))
           (setf (read-position streamlet) record-position)
-          (assert (null (read-event streamlet))))
+          (is (null (read-event streamlet))))
         (with-open-journal (streamlet (replay-journal))
           (setf (read-position streamlet) replay-position)
-          (assert (equal (read-event streamlet) '(:in skipped :version 1))))))))
+          (is (equal (read-event streamlet) '(:in skipped :version 1))))))))
 
-(defun test-with-replay-filter-with-insert ()
+(deftest test-with-replay-filter-with-insert ()
   (labels ((outer (x y)
              (journaled (outer :version 1)
                (inner x y)))
@@ -1415,7 +1376,7 @@
     (let ((journal-1 (funcall *make-journal*)))
       (with-journaling (:record journal-1)
         (outer 1 2)
-        (assert
+        (is
          (equal (list-events)
                 '((:in outer :version 1)
                   (:in inner :version 1)
@@ -1423,8 +1384,8 @@
                   (:out outer :version 1 :values (3))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (outer-2 1 2)
-        (assert (eq (journal-state (record-journal)) :recording))
-        (assert
+        (is (eq (journal-state (record-journal)) :recording))
+        (is
          (equal (list-events)
                 '((:in outer :version 1)
                   (:in inserting :version 1)
@@ -1434,7 +1395,7 @@
 ;;; This case is also handled by the
 ;;; SKIP-EVENTS-AND-MAYBE->TO-RECORDING in WITH-REPLAY-FILTER, we just
 ;;; test the :INSERTABLE does not screw things up.
-(defun test-with-replay-filter-with-insert-at-end-of-replay ()
+(deftest test-with-replay-filter-with-insert-at-end-of-replay ()
   (labels ((inner (x y)
              (journaled (inner :version 1)
                (+ x y)))
@@ -1444,27 +1405,27 @@
     (let ((journal-1 (funcall *make-journal*)))
       (with-journaling (:record journal-1)
         (inner 1 2)
-        (assert
+        (is
          (equal (list-events)
                 '((:in inner :version 1)
                   (:out inner :version 1 :values (3))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (with-replay-filter (:skip `((:name inner)))
           (inserting 1 2))
-        (assert (eq (journal-state (record-journal)) :recording))
-        (assert
+        (is (eq (journal-state (record-journal)) :recording))
+        (is
          (equal (list-events)
                 '((:in inserting :version 1)
                   (:out inserting :version 1 :values (3)))))))))
 
 ;;; Handled by the :UPGRADE case in HANDLE-OUT-EVENT.
-(defun test-with-replay-filter-with-upgrade-at-end-of-replay ()
+(deftest test-with-replay-filter-with-upgrade-at-end-of-replay ()
   (let ((journal-1 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
       (journaled (outer :version 1)
         (journaled (inner :version 1)
           42))
-      (assert
+      (is
        (equal (list-events)
               '((:in outer :version 1)
                 (:in inner :version 1)
@@ -1474,13 +1435,13 @@
       (with-replay-filter (:skip '((:name outer)))
         (journaled (inner :version 2)
           7))
-      (assert (eq (journal-state (record-journal)) :recording))
-      (assert
+      (is (eq (journal-state (record-journal)) :recording))
+      (is
        (equal (list-events)
               '((:in inner :version 2)
                 (:out inner :version 2 :values (7))))))))
 
-(defun test-with-replay-filter-simple-unwrap ()
+(deftest test-with-replay-filter-simple-unwrap ()
   (labels ((outer (x y)
              (journaled (outer :version 1)
                (foo-1 x y)))
@@ -1498,7 +1459,7 @@
     (let ((journal-1 (funcall *make-journal*)))
       (with-journaling (:record journal-1)
         (outer 1 2)
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in outer :version 1)
                          (:in foo :version 1)
                          (:in foo :version 2)
@@ -1507,15 +1468,15 @@
                          (:out outer :version 1 :values (3))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (filtered-outer 1 2)
-        (assert (eq (journal-state (record-journal)) :recording))
-        (assert (equal (list-events)
+        (is (eq (journal-state (record-journal)) :recording))
+        (is (equal (list-events)
                        '((:in outer :version 1)
                          (:in foo :version 2)
                          (:out foo :version 2 :values (3))
                          (:out outer :version 1 :values (3)))))))))
 
 ;;; Handled by the :MATCH case in HANDLE-OUT-EVENT.
-(defun test-with-replay-filter-simple-unwrap-at-end-of-replay ()
+(deftest test-with-replay-filter-simple-unwrap-at-end-of-replay ()
   (labels ((foo-1 (x y)
              (journaled (foo :version 1)
                (foo-2 x y)))
@@ -1525,7 +1486,7 @@
     (let ((journal-1 (funcall *make-journal*)))
       (with-journaling (:record journal-1)
         (foo-1 1 2)
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in foo :version 1)
                          (:in foo :version 2)
                          (:out foo :version 2 :values (3))
@@ -1533,12 +1494,12 @@
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (with-replay-filter (:skip '((:name foo :version< 2)))
           (foo-2 1 2))
-        (assert (eq (journal-state (record-journal)) :recording))
-        (assert (equal (list-events)
+        (is (eq (journal-state (record-journal)) :recording))
+        (is (equal (list-events)
                        '((:in foo :version 2)
                          (:out foo :version 2 :values (3)))))))))
 
-(defun test-with-replay-filter-external-unwrap ()
+(deftest test-with-replay-filter-external-unwrap ()
   (labels ((outer (x y)
              (journaled (outer :version 1)
                (foo-1 x y)))
@@ -1556,7 +1517,7 @@
     (let ((journal-1 (funcall *make-journal*)))
       (with-journaling (:record journal-1)
         (outer 1 2)
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in outer :version 1)
                          (:in foo :version 1)
                          (:in foo :version :infinity)
@@ -1565,17 +1526,17 @@
                          (:out outer :version 1 :values (3))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (filtered-outer 1 2)
-        (assert (eq (journal-state (record-journal)) :recording))
-        (assert (equal (list-events)
+        (is (eq (journal-state (record-journal)) :recording))
+        (is (equal (list-events)
                        '((:in outer :version 1)
                          (:in foo :version :infinity)
                          (:out foo :version :infinity :values (3))
                          (:out outer :version 1 :values (3)))))))))
 
 ;;; Handled by the :MATCH or :UPGRADE case in HANDLE-IN-EVENT.
-(defun test-with-replay-filter-after-in-event ()
+(deftest test-with-replay-filter-after-in-event ()
   (let ((journal-1 (funcall *make-journal*)))
-    (assert-error (some-error)
+    (signals (some-error)
       (with-journaling (:record journal-1)
         (checked (foo)
           (checked (bar)
@@ -1583,11 +1544,11 @@
     (with-journaling (:replay journal-1 :record (funcall *make-journal*))
       (with-replay-filter (:skip '((:name bar)))
         (checked (foo)
-          (assert (eq (journal-state (record-journal)) :recording))))
-      (assert (eq (journal-state (record-journal)) :recording)))))
+          (is (eq (journal-state (record-journal)) :recording))))
+      (is (eq (journal-state (record-journal)) :recording)))))
 
 ;;; Handled by the VALUES-EVENT-P branch in MAYBE-REPLAY-OUTCOME.
-(defun test-with-replay-filter-external-unwrap-at-end-of-replay ()
+(deftest test-with-replay-filter-external-unwrap-at-end-of-replay ()
   (labels ((foo-1 (x y)
              (journaled (foo :version 1)
                (foo-2 x y)))
@@ -1597,7 +1558,7 @@
     (let ((journal-1 (funcall *make-journal*)))
       (with-journaling (:record journal-1)
         (foo-1 1 2)
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in foo :version 1)
                          (:in foo :version :infinity)
                          (:out foo :version :infinity :values (3))
@@ -1605,15 +1566,15 @@
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (with-replay-filter (:skip '((:name foo :version< 2)))
           (foo-2 1 2))
-        (assert (eq (journal-state (record-journal)) :recording))
-        (assert (equal (list-events)
+        (is (eq (journal-state (record-journal)) :recording))
+        (is (equal (list-events)
                        '((:in foo :version :infinity)
                          (:out foo :version :infinity :values (3)))))))))
 
 ;;; Handled by the CONDITION-EVENT-P branch in MAYBE-REPLAY-OUTCOME.
-(defun test-with-replay-filter-external-condition-unwrap-at-end-of-replay ()
+(deftest test-with-replay-filter-external-condition-unwrap-at-end-of-replay ()
   (flet ((bar ()
-           (assert-error (some-error)
+           (signals (some-error)
              (replayed (bar :condition (expected-type 'some-error)
                             :replay-condition (lambda (string)
                                                 (declare (ignore string))
@@ -1624,7 +1585,7 @@
       (with-journaling (:record journal-1)
         (checked (foo)
           (bar))
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in foo :version 1)
                          (:in bar :version :infinity)
                          (:out bar :version :infinity
@@ -1633,13 +1594,13 @@
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (with-replay-filter (:skip '((:name foo)))
           (bar))
-        (assert (eq (journal-state (record-journal)) :recording))
-        (assert (equal (list-events)
+        (is (eq (journal-state (record-journal)) :recording))
+        (is (equal (list-events)
                        '((:in bar :version :infinity)
                          (:out bar :version :infinity
                           :condition "JOURNAL-TEST::SOME-ERROR"))))))))
 
-(defun test-with-replay-filter-unwrap ()
+(deftest test-with-replay-filter-unwrap ()
   (labels ((outer (x y)
              (journaled (outer :version 1)
                (foo-1 x y)
@@ -1673,7 +1634,7 @@
     (let ((journal-1 (funcall *make-journal*)))
       (with-journaling (:record journal-1)
         (outer 1 2)
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in outer :version 1)
                          (:in foo :version 1)
                          (:in foo :version 2)
@@ -1698,8 +1659,8 @@
                          (:out outer :version 1 :values (3))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (filtered-outer 1 2)
-        (assert (eq (journal-state (record-journal)) :recording))
-        (assert (equal (list-events)
+        (is (eq (journal-state (record-journal)) :recording))
+        (is (equal (list-events)
                        '((:in outer :version 1)
                          (:in foo :version 3)
                          (:in bar :version 1)
@@ -1718,12 +1679,12 @@
                          (:out outer :version 1 :values (3)))))))))
 
 ;;; Check that we don't filter replay events of the parent and above.
-(defun test-with-replay-filter-parent-intact ()
+(deftest test-with-replay-filter-parent-intact ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
       (journaled (outer :version 1)
         3)
-      (assert (equal (list-events)
+      (is (equal (list-events)
                      '((:in outer :version 1)
                        (:out outer :version 1 :values (3))))))
     (with-journaling (:replay journal :record (funcall *make-journal*)
@@ -1736,15 +1697,15 @@
       (journaled (outer :version 1)
         (with-replay-filter (:skip `((:name outer)))
           3))
-      (assert (eq (journal-state (record-journal)) :recording))
-      (assert (equal (list-events)
+      (is (eq (journal-state (record-journal)) :recording))
+      (is (equal (list-events)
                      '((:in outer :version 1)
                        (:out outer :version 1 :values (3))))))))
 
 ;;; When it's undecidable whether the events that could be filtered
 ;;; actually fall within the dynamic extent of replay, choose to
 ;;; filter them.
-(defun test-with-replay-filter-greed ()
+(deftest test-with-replay-filter-greed ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
       (journaled (j2 :version 2))
@@ -1752,7 +1713,7 @@
     (with-journaling (:replay journal :replay-eoj-error-p t)
       (with-replay-filter (:skip '((:name j2)))))))
 
-(defun test-with-replay-filter-nesting ()
+(deftest test-with-replay-filter-nesting ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
       (journaled (j1 :version 1)
@@ -1767,17 +1728,17 @@
         (with-replay-filter (:skip '((:name j2)))
           (journaled (j3 :version 1)))))))
 
-(defun test-with-replay-filter-around-with-journaling ()
+(deftest test-with-replay-filter-around-with-journaling ()
   (with-replay-filter (:skip '((:name foo)))
-    (assert (null jrn::*skip-events*))
+    (is (null jrn::*skip-events*))
     (with-journaling (:replay (make-in-memory-journal :events ()))
-      (assert (null jrn::*skip-events*))
+      (is (null jrn::*skip-events*))
       (with-replay-filter (:skip '((:name foo)))
-        (assert jrn::*skip-events*)
+        (is jrn::*skip-events*)
         (with-journaling (:replay (make-in-memory-journal :events ()))
-          (assert (null jrn::*skip-events*)))))))
+          (is (null jrn::*skip-events*)))))))
 
-(defun test-with-replay-filter-recursive ()
+(deftest test-with-replay-filter-recursive ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
       (journaled (j1 :version 1)
@@ -1789,11 +1750,11 @@
       (with-replay-filter (:skip '((:name j1)))
         (journaled (j2 :version 1))))))
 
-(defun test-with-replay-filter-with-imbalanced-log-events ()
+(deftest test-with-replay-filter-with-imbalanced-log-events ()
   (let ((journal-1 (funcall *make-journal*))
         (journal-2 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
-      (assert-error (some-error)
+      (signals (some-error)
         ;; J1's in-event is a VERSIONED-EVENT, but the out-event is a
         ;; LOG-EVENT because we switch to :INSERT replay strategy on
         ;; :ERROR.
@@ -1805,7 +1766,7 @@
         (checked (j1)
           (checked (j2)))))))
 
-(defun test-no-replay-outcome ()
+(deftest test-no-replay-outcome ()
   (let ((journal-1 (funcall *make-journal*))
         (journal-2 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
@@ -1821,10 +1782,10 @@
             (+ 1 (replayed (r2)
                    (setq r2-run t)
                    2)))))
-      (assert r1-run)
-      (assert (not r2-run)))))
+      (is r1-run)
+      (is (not r2-run)))))
 
-(defun test-with-replay-filter-map ()
+(deftest test-with-replay-filter-map ()
   (let ((journal-1 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
       (checked (c)))
@@ -1834,7 +1795,7 @@
         (with-replay-filter (:map (lambda (e)
                                     (copy-seq e)))
           (checked (c))))
-      (assert (not (journal-divergent-p journal-2))))
+      (is (not (journal-divergent-p journal-2))))
     ;; Renamed
     (let ((journal-2 (funcall *make-journal*)))
       (with-journaling (:replay journal-1 :record journal-2)
@@ -1843,12 +1804,12 @@
                                       (setf (second e) 'd)
                                       e)))
           (checked (d))))
-      (assert (journal-divergent-p journal-2)))))
+      (is (journal-divergent-p journal-2)))))
 
 
 ;;;; Test replay restarts
 
-(defun test-replay-restarts ()
+(deftest test-replay-restarts ()
   (let ((journal-1 (funcall *make-journal*)))
     (with-journaling (:record journal-1)
       (checked (c1 :args '(1) :version 2)
@@ -1861,7 +1822,7 @@
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (checked (other-name)
           42)
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in other-name :version 1)
                          (:out other-name :version 1 :values (42)))))))
     ;; :INSERT on REPLAY-NAME-MISMATCH
@@ -1873,7 +1834,7 @@
         (checked (other-name)
           (checked (c1 :args '(1) :version 2)
             42))
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in other-name :version 1)
                          (:in c1 :version 2 :args (1))
                          (:out c1 :version 2 :values (42))
@@ -1886,7 +1847,7 @@
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (checked (c1 :args '(1) :version 1)
           42)
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in c1 :version 1 :args (1))
                          (:out c1 :version 1 :values (42)))))))
     ;; :UPGRADE on REPLAY-ARGS-MISMATCH
@@ -1897,7 +1858,7 @@
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (checked (c1 :args '(7) :version 2)
           42)
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in c1 :version 2 :args (7))
                          (:out c1 :version 2 :values (42)))))))
     ;; :UPGRADE on REPLAY-OUTCOME-MISMATCH
@@ -1908,12 +1869,12 @@
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (checked (c1 :args '(1) :version 2)
           7)
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in c1 :version 2 :args (1))
                          (:out c1 :version 2 :values (7)))))))))
 
 
-(defun test-events ()
+(deftest test-events ()
   ;; Recording of log events
   (test-log-values-record)
   (test-log-condition-record)
@@ -1942,7 +1903,7 @@
   (test-recording-to-mismatched-journal)
   (test-log-recording-to-failed-journal)
   (test-skip-log-with-no-record)
-  (test-recording-to-mismatched-journal)
+  (test-recording-after-replay-failure)
   ;; Recording and replay of versioned events
   (test-values-replay)
   (test-condition-replay)
@@ -1965,8 +1926,9 @@
   (test-replay-mismatch)
   ;; Inserting
   (test-insertable-next-vs-prev-event)
-  (test-force-insertable-vs-external)
+  (test-force-insertable)
   (test-insert-before-unexpected)
+  (test-force-insertable-vs-external)
   (test-force-insertable-vs-external)
   (test-with-replay-streamlet)
   (test-peek-replay-event)
@@ -1997,23 +1959,23 @@
   ;; Replay restarts
   (test-replay-restarts))
 
-(defun test-in-memory-journal ()
+(deftest test-in-memory-journal ()
   (test-events))
 
 (defun test-depth ()
   (let ((journal (funcall *make-journal*)))
     (with-open-journal (streamlet journal :direction :io)
       (write-event (make-in-event) streamlet)
-      (assert (= (journal::%in-depth streamlet) 0))
-      (assert (= (journal::%out-depth streamlet) 1))
-      (assert (equal (read-event streamlet t) '(:in nil)))
-      (assert (= (journal::%in-depth streamlet) 1))
-      (assert (= (journal::%out-depth streamlet) 1))
+      (is (= (journal::%in-depth streamlet) 0))
+      (is (= (journal::%out-depth streamlet) 1))
+      (is (equal (read-event streamlet t) '(:in nil)))
+      (is (= (journal::%in-depth streamlet) 1))
+      (is (= (journal::%out-depth streamlet) 1))
       (write-event (make-in-event) streamlet)
-      (assert (= (journal::%in-depth streamlet) 1))
-      (assert (= (journal::%out-depth streamlet) 2)))))
+      (is (= (journal::%in-depth streamlet) 1))
+      (is (= (journal::%out-depth streamlet) 2)))))
 
-(defun test-file-journal ()
+(deftest test-file-journal ()
   (call-with-file-journal-settings #'test-events)
   (call-with-file-journal-settings #'test-depth :sync nil))
 
@@ -2033,26 +1995,26 @@
               (ignore-errors (delete-file file)))))))))
 
 
-(defun test-io-direction ()
+(deftest test-io-direction ()
   (let ((journal (make-in-memory-journal :state :completed)))
     (with-open-journal (streamlet journal :direction :input)))
-  (assert-error (file-error)
+  (signals (file-error)
     ;; This file does not exist.
     (let ((journal (make-file-journal "sd8f76876dsaf,cv")))
       (with-open-journal (streamlet journal :direction :input))))
-  (assert-error (streamlet-error "is not an output streamlet")
+  (signals (streamlet-error :pred "is not an output streamlet")
     (let ((journal (make-in-memory-journal)))
       (with-open-journal (streamlet journal :direction :input)
         (write-event (make-in-event) streamlet))))
-  (assert-error (streamlet-error "is not an input streamlet")
+  (signals (streamlet-error :pred "is not an input streamlet")
     (let ((journal (make-in-memory-journal)))
       (with-open-journal (streamlet journal :direction :output)
         (read-event streamlet)))))
 
 
-(defun test-in-memory-bundle ()
+(deftest test-in-memory-bundle ()
   (let ((bundle (make-in-memory-bundle :max-n-failed 1)))
-    (assert (= 0 (length (jrn::journals bundle))))
+    (is (= 0 (length (jrn::journals bundle))))
 
     ;; Do a quick successful run.
     (with-bundle (bundle)
@@ -2063,18 +2025,18 @@
     (check-in-memory-bundle bundle '(:completed))
 
     ;; Now fail.
-    (assert-error (replay-name-mismatch)
+    (signals (replay-name-mismatch)
       (with-bundle (bundle)
         (check-in-memory-bundle bundle '(:replaying :completed))
         (unwind-protect
              (journaled (bar :version 1 :args '(1 2))
-               (assert nil))
+               (is nil))
           (check-in-memory-bundle bundle '(:mismatched :completed)))))
     (check-in-memory-bundle bundle '(:failed :completed))
 
     ;; Fail again, differently, and hit MAX-N-FAILED.
     (let ((journals-before (coerce (copy-seq (jrn::journals bundle)) 'list)))
-      (assert-error (replay-outcome-mismatch)
+      (signals (replay-outcome-mismatch)
         (with-bundle (bundle)
           (check-in-memory-bundle bundle '(:replaying :failed :completed))
           (unwind-protect
@@ -2084,7 +2046,7 @@
              bundle '(:mismatched :failed :completed)))))
       (check-in-memory-bundle bundle '(:failed :completed))
       ;; Check that the least recent one was removed.
-      (assert (not (equal journals-before
+      (is (not (equal journals-before
                           (coerce (jrn::journals bundle) 'list)))))
 
     ;; Try again and succeed.
@@ -2098,10 +2060,10 @@
     (check-in-memory-bundle bundle '(:failed :completed))))
 
 (defun check-in-memory-bundle (bundle states)
-  (assert (equal (mapcar #'journal-state (jrn::journals bundle))
+  (is (equal (mapcar #'journal-state (jrn::journals bundle))
                  states)))
 
-(defun test-file-bundle ()
+(deftest test-file-bundle ()
   (call-with-file-bundle #'test-file-bundle*))
 
 (defun call-with-file-bundle (fn)
@@ -2116,8 +2078,8 @@
          (funcall fn bundle)
       (delete-file-bundle directory))))
 
-(defun test-file-bundle* (bundle)
-  (assert (= 0 (length (jrn::journals bundle))))
+(deftest test-file-bundle* (bundle)
+  (is (= 0 (length (jrn::journals bundle))))
 
   ;; Do a quick successful run.
   (with-bundle (bundle)
@@ -2128,13 +2090,13 @@
   (check-file-bundle bundle '((0 :completed)) '((0 :completed)))
 
   ;; Now fail.
-  (assert-error (replay-name-mismatch)
+  (signals (replay-name-mismatch)
     (with-bundle (bundle)
       (check-file-bundle bundle '((1 :replaying) (0 :completed))
                          '((1 :failed) (0 :completed)))
       (unwind-protect
            (journaled (bar :version 1 :args '(1 2))
-             (assert nil))
+             (is nil))
         (check-file-bundle bundle '((1 :mismatched) (0 :completed))
                            '((1 :failed) (0 :completed))))))
   (check-file-bundle bundle '((1 :failed) (0 :completed))
@@ -2142,7 +2104,7 @@
 
   ;; Fail again (but differently to avoid the identical branch in
   ;; JRN::REAP-IDENTICAL-OR-NON-DIVERGENT-JOURNALS) and hit MAX-N-FAILED.
-  (assert-error (replay-outcome-mismatch)
+  (signals (replay-outcome-mismatch)
     (with-bundle (bundle)
       (check-file-bundle bundle '((2 :replaying) (1 :failed) (0 :completed))
                          '((2 :failed) (1 :failed) (0 :completed)))
@@ -2174,7 +2136,7 @@
                      (list (jrn::bundle-file-version (pathname-of journal))
                            (journal-state journal)))
                    (jrn::journals bundle))))
-    (assert (equal (ids-and-states bundle) ids-and-states))
+    (is (equal (ids-and-states bundle) ids-and-states))
     (let ((reloaded-bundle
             ;; KLUDGE: We want a new instance pointing to the same
             ;; directory, and to populate it with new FILE-JOURNALS.
@@ -2183,13 +2145,13 @@
                   (jrn::*truename-to-file-journal* (make-hash-table
                                                     :test #'equal)))
               (make-file-bundle (directory-of bundle)))))
-      (assert (equal (ids-and-states reloaded-bundle)
+      (is (equal (ids-and-states reloaded-bundle)
                      reloaded-ids-and-states)))))
 
 
 ;;;; Synchronization
 
-(defun test-file-sync ()
+(deftest test-file-sync ()
   (let* ((random-string (format nil "~:@(~36,8,'0R~)"
                                 (random (expt 36 8) (make-random-state t))))
          (filename (merge-pathnames
@@ -2207,12 +2169,12 @@
         ;; Unfinished transaction
         (write-char #\Rubout stream)
         (prin1 '(:in d :version 1) stream)))
-    (assert (equal (list-events (make-file-journal filename :sync t))
+    (is (equal (list-events (make-file-journal filename :sync t))
                    '((:in a :version 1)
                      (:in b :version 1)
                      (:in c :version 1))))))
 
-(defun test-file-sync-garbage ()
+(deftest test-file-sync-garbage ()
   (let* ((random-string (format nil "~:@(~36,8,'0R~)"
                                 (random (expt 36 8) (make-random-state t))))
          (filename (merge-pathnames
@@ -2230,12 +2192,12 @@
         ;; Unfinished transaction
         (write-char #\Rubout stream)
         (format stream "(:in d :ve")))
-    (assert (equal (list-events (make-file-journal filename :sync t))
+    (is (equal (list-events (make-file-journal filename :sync t))
                    '((:in a :version 1)
                      (:in b :version 1)
                      (:in c :version 1))))))
 
-(defun test-sync-t ()
+(deftest test-sync-t ()
   (let ((db ())
         (db-since-prev-sync ())
         (sync-pos nil)
@@ -2263,38 +2225,38 @@
         (with-journaling (:record (make-db-backed-record-journal)
                                   :replay (make-db-backed-replay-journal))
           (framed (log))
-          (assert (= n-syncs 0))
+          (is (= n-syncs 0))
           (checked (versioned))
-          (assert (= n-syncs 0))
+          (is (= n-syncs 0))
           (invoked 1)
-          (assert (= sync-pos-in-invoked 0))
-          (assert (= n-syncs-in-invoked 1))
-          (assert (equal db-since-prev-sync
+          (is (= sync-pos-in-invoked 0))
+          (is (= n-syncs-in-invoked 1))
+          (is (equal db-since-prev-sync
                          '((:in log)
                            (:out log :values (nil))
                            (:in versioned :version 1)
                            (:out versioned :version 1 :values (nil))
                            (:in "inv" :version 1 :args (1)))))
-          (assert (= sync-pos 0))
-          (assert (= n-syncs 1))
+          (is (= sync-pos 0))
+          (is (= n-syncs 1))
           (replayed (a)
-            (assert (= n-syncs 1))
+            (is (= n-syncs 1))
             2)
-          (assert (equal db-since-prev-sync
+          (is (equal db-since-prev-sync
                          '((:out "inv" :version 1 :values (2))
                            (:in a :version :infinity)
                            (:out a :version :infinity :values (2)))))
-          (assert (= sync-pos 5))
-          (assert (= n-syncs 2))
-          (assert-error (some-error)
+          (is (= sync-pos 5))
+          (is (= n-syncs 2))
+          (signals (some-error)
             (replayed (b)
-              (assert (= n-syncs 2))
+              (is (= n-syncs 2))
               (error 'some-error)))
-          (assert (= n-syncs 2)))
+          (is (= n-syncs 2)))
         ;; SYNC-STREAMLET is called in CLOSE-STREAMLET, but it does
         ;; nothing because no events were written since the previous
         ;; sync.
-        (assert (= n-syncs 3))
+        (is (= n-syncs 3))
 
         ;; Replay
         (setq db-since-prev-sync ()
@@ -2307,16 +2269,16 @@
           ;; We don't repeat the log block, it doesn't matter.
           (checked (versioned))
           ;; INVOKED gets invoked before this.
-          (assert (= n-syncs 0))
+          (is (= n-syncs 0))
           (replayed (a) 2)
-          (assert (= n-syncs 0))
+          (is (= n-syncs 0))
           ;; This fixes up the error in the previous run and must
           ;; trigger a sync.
           (replayed (b)
             3)
-          (assert (= n-syncs 1))
-          (assert (= sync-pos 0))
-          (assert (equal db-since-prev-sync
+          (is (= n-syncs 1))
+          (is (= sync-pos 0))
+          (is (equal db-since-prev-sync
                          '((:in versioned :version 1)
                            (:out versioned :version 1 :values (nil))
                            (:in "inv" :version 1 :args (1))
@@ -2327,9 +2289,9 @@
                            (:out b :version :infinity :values (3)))))
           ;; Extend the replay with events that don't trigger syncing ...
           (journaled (c :version 1))
-          (assert (= n-syncs 1)))
+          (is (= n-syncs 1)))
         ;; ... and check that CLOSE-STREAMLET syncs.
-        (assert (= n-syncs 2))
+        (is (= n-syncs 2))
 
         ;; Second replay
         (setq db-since-prev-sync ()
@@ -2340,21 +2302,21 @@
         (with-journaling (:record (make-db-backed-record-journal)
                                   :replay (make-db-backed-replay-journal))
           (checked (versioned))
-          (assert (= n-syncs 0))
+          (is (= n-syncs 0))
           (replayed (a) 2)
-          (assert (= n-syncs 0))
+          (is (= n-syncs 0))
           (replayed (b) 3)
-          (assert (= n-syncs 0))
+          (is (= n-syncs 0))
           (checked (c))
-          (assert (not (journal-divergent-p (record-journal))))
+          (is (not (journal-divergent-p (record-journal))))
           ;; No sync upon :REPLAYING -> :RECORDING.
-          (assert (= n-syncs 0)))
+          (is (= n-syncs 0)))
         ;; No sync in CLOSE-STREAMLET.
-        (assert (= n-syncs 0))))))
+        (is (= n-syncs 0))))))
 
 
-(defun test-fsync ()
-  (assert-error (error)
+(deftest test-fsync ()
+  (signals (error)
     (jrn::fsync 32433)))
 
 
@@ -2365,83 +2327,80 @@
   (foo (+ x 2))
   (error "xxx"))
 
-(defun test-jtrace-basic ()
+(deftest test-jtrace-basic ()
   (let ((*package* (find-package :journal-test)))
     (juntrace)
     (jtrace foo bar)
-    (assert (equal (sort (jtrace) #'string< :key #'symbol-name) '(bar foo)))
-    (assert (equal
-             (with-output-to-string (*trace-output*)
-               (foo 1))
-             (format nil "~%(FOO 1)~%=> 2")))
-    (assert (equal
-             (let ((*trace-pretty* nil))
-               (with-output-to-string (*trace-output*)
-                 (foo 1)))
-             (format nil "~%(:IN FOO :ARGS (1))~%~
+    (is (equal (sort (jtrace) #'string< :key #'symbol-name) '(bar foo)))
+    (is (equal (with-output-to-string (*trace-output*)
+                 (foo 1))
+               (format nil "~%(FOO 1)~%=> 2")))
+    (is (equal (let ((*trace-pretty* nil))
+                 (with-output-to-string (*trace-output*)
+                   (foo 1)))
+               (format nil "~%(:IN FOO :ARGS (1))~%~
                          (:OUT FOO :VALUES (2))")))
-    (assert (equal
-             (with-output-to-string (*trace-output*)
-               (assert-error (simple-error "xxx")
-                 (bar 1)))
-             #-cmucl
-             (format nil "~%(BAR 1)~%  (FOO 3)~%  => 4~%~
-                         =E \"SIMPLE-ERROR\" \"xxx\"")
-             #+cmucl
-             (format nil "~%(BAR 1)~%  (FOO 3)~%  => 4~%~
+    (is (equal (with-output-to-string (*trace-output*)
+                 (signals (simple-error :pred "xxx")
+                   (bar 1)))
+               #-cmucl
+               (format nil "~%(BAR 1)~%  (FOO 3)~%  => 4~%~
+                            =E \"SIMPLE-ERROR\" \"xxx\"")
+               #+cmucl
+               (format nil "~%(BAR 1)~%  (FOO 3)~%  => 4~%~
                          =E \"SIMPLE-ERROR\" ~
                          \"Error in function JOURNAL-TEST::BAR:  xxx\"")))
     (juntrace bar)
-    (assert (equal (sort (jtrace) #'string< :key #'symbol-name) '(foo)))
+    (is (equal (sort (jtrace) #'string< :key #'symbol-name) '(foo)))
     (juntrace)
-    (assert (endp (jtrace)))))
+    (is (endp (jtrace)))))
 
 (defun muck-with-user (user)
   user)
 
-(defun test-jtrace-with-print-readably ()
+(deftest test-jtrace-with-print-readably ()
   (let ((*print-readably* t))
     (jtrace muck-with-user)
     ;; This used to fail with *PRINT-READABLY*.
     (with-output-to-string (*trace-output*)
       (muck-with-user *user7*))))
 
-(defun test-jtrace ()
+(deftest test-jtrace ()
   (test-jtrace-basic)
   (test-jtrace-with-print-readably))
 
 
 ;;;; Single-writer
 
-(defun test-nested-with-journaling ()
+(deftest test-nested-with-journaling ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
-      (assert (eq (journal-state journal) :recording))
-      (assert-error (journal-error "is not in state :NEW.")
+      (is (eq (journal-state journal) :recording))
+      (signals (journal-error :pred "is not in state :NEW.")
         (with-journaling (:record journal)
           (journaled (foo)))))))
 
-(defun test-concurrent-writers ()
+(deftest test-concurrent-writers ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
       (with-open-journal (streamlet journal :direction :input))
-      (assert-error (journal-error "Concurrent write access")
+      (signals (journal-error :pred "Concurrent write access")
         (with-open-journal (streamlet journal :direction :io)))
-      (assert-error (journal-error "Concurrent write access")
+      (signals (journal-error :pred "Concurrent write access")
         (with-open-journal (streamlet journal :direction :output))))))
 
-(defun test-nested-log-record ()
+(deftest test-nested-log-record ()
   (let ((journal (funcall *make-journal*)))
     (with-journaling (:record journal)
       (journaled (foo :log-record journal)))))
 
-(defun test-log-record-before-journaled ()
+(deftest test-log-record-before-journaled ()
   (let ((journal (funcall *make-journal*)))
     (journaled (foo :log-record journal))
-    (assert-error (journal-error "Concurrent write access")
+    (signals (journal-error :pred "Concurrent write access")
       (with-journaling (:record journal)))))
 
-(defun test-concurrent-log-record ()
+(deftest test-concurrent-log-record ()
   (when bt:*supports-threads-p*
     (let ((journal (funcall *make-journal*))
           (in-sem (bt:make-semaphore))
@@ -2449,21 +2408,21 @@
       (bt:make-thread (lambda ()
                         (bt:wait-on-semaphore in-sem)
                         (unwind-protect
-                             (assert-error (journal-error
-                                            "Concurrent write access")
+                             (signals (journal-error
+                                       :pred "Concurrent write access")
                                (journaled (foo :log-record journal)))
                           (bt:signal-semaphore out-sem))))
       (with-journaling (:record journal)
         (bt:signal-semaphore in-sem)
         (bt:wait-on-semaphore out-sem)))))
 
-(defun test-nested-with-bundle ()
+(deftest test-nested-with-bundle ()
   (let ((bundle (make-in-memory-bundle)))
     (with-bundle (bundle)
-      (assert-error (journal-error "Concurrent write access")
+      (signals (journal-error :pred "Concurrent write access")
         (with-bundle (bundle))))))
 
-(defun test-concurrent-with-bundle ()
+(deftest test-concurrent-with-bundle ()
   (when bt:*supports-threads-p*
     (let ((bundle (make-in-memory-bundle))
           (in-sem (bt:make-semaphore))
@@ -2471,15 +2430,15 @@
       (bt:make-thread (lambda ()
                         (bt:wait-on-semaphore in-sem)
                         (unwind-protect
-                             (assert-error (journal-error
-                                            "Concurrent write access")
+                             (signals (journal-error
+                                       :pred "Concurrent write access")
                                (with-bundle (bundle)))
                           (bt:signal-semaphore out-sem))))
       (with-bundle (bundle)
         (bt:signal-semaphore in-sem)
         (bt:wait-on-semaphore out-sem)))))
 
-(defun test-single-writer ()
+(deftest test-single-writer ()
   (test-nested-with-journaling)
   (test-concurrent-writers)
   (test-nested-log-record)
@@ -2497,37 +2456,37 @@
 
 ;;; Check that WITH-JOURNALING doesn't care about errors and such if
 ;;; the events are right.
-(defun test-nlx-from-with-journaling ()
+(deftest test-nlx-from-with-journaling ()
   (let ((journal-1 (funcall *make-journal*)))
     (catch 'foo
       (with-journaling (:record journal-1)
         (journaled (b1 :version 1)
           1)
         (throw 'foo nil)))
-    (assert (equal (list-events journal-1)
+    (is (equal (list-events journal-1)
                    '((:in b1 :version 1)
                      (:out b1 :version 1 :values (1)))))
     ;; Replay
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (some-error)
+      (signals (some-error)
         (with-journaling (:replay journal-1 :record journal-2)
           (journaled (b1 :version 1)
             1)
           (error 'some-error)))
-      (assert (eq (journal-state journal-2) :completed))
-      (assert (equal (list-events journal-2)
+      (is (eq (journal-state journal-2) :completed))
+      (is (equal (list-events journal-2)
                      '((:in b1 :version 1)
                        (:out b1 :version 1 :values (1))))))))
 
-(defun test-error-two-deep ()
+(deftest test-error-two-deep ()
   (let ((journal-1 (funcall *make-journal*)))
-    (assert-error (some-error)
+    (signals (some-error)
       (with-journaling (:record journal-1)
         (journaled (b1 :version 1)
           (journaled (b2 :version 1)
             (error 'some-error))
           1)))
-    (assert (equal (list-events journal-1)
+    (is (equal (list-events journal-1)
                    '((:in b1 :version 1)
                      (:in b2 :version 1)
                      (:out b2
@@ -2535,7 +2494,7 @@
                      (:out b1
                       :error ("SOME-ERROR" "SOME-ERROR was signalled.")))))))
 
-(defun test-replay-failure-two-deep ()
+(deftest test-replay-failure-two-deep ()
   (let ((journal-1 (funcall *make-journal*)))
     ;; Record
     (with-journaling (:record journal-1)
@@ -2545,18 +2504,18 @@
         1))
     ;; Fail the replay in B2.
     (dolist (journal-2 (list (funcall *make-journal*) nil))
-      (assert-error (replay-outcome-mismatch)
+      (signals (replay-outcome-mismatch)
         (with-journaling (:replay journal-1 :record journal-2)
           (checked (b1)
             (checked (b2)
               7)
             1)))
       (when journal-2
-        (assert (eq (journal-state journal-2) :failed)))
+        (is (eq (journal-state journal-2) :failed)))
       ;; The last event recorded is what caused the replay error. B1's
       ;; out-event is not recorded.
       (when (typep journal-2 'in-memory-journal)
-        (assert (equal (list-events journal-2)
+        (is (equal (list-events journal-2)
                        '((:in b1 :version 1)
                          (:in b2 :version 1)
                          (:out b2 :version 1 :values (7))
@@ -2564,7 +2523,7 @@
                           ("REPLAY-OUTCOME-MISMATCH"
                            "The EXITs and OUTCOMEs of the new event (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (7)) and the REPLAY-EVENT (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) are not equal.")))))))))
 
-(defun test-replay-failure-two-deep-with-error ()
+(deftest test-replay-failure-two-deep-with-error ()
   (let ((journal-1 (funcall *make-journal*)))
     ;; Record
     (with-journaling (:record journal-1)
@@ -2574,7 +2533,7 @@
         1))
     ;; Fail the replay in B2, but this time by signalling an ERROR.
     (dolist (journal-2 (list (funcall *make-journal*) nil))
-      (assert-error (replay-unexpected-outcome)
+      (signals (replay-unexpected-outcome)
         (unwind-but-dont-receive some-error
           (with-journaling (:replay journal-1 :record journal-2)
             (journaled (b1 :version 1)
@@ -2582,11 +2541,11 @@
                 (error 'some-error))
               1))))
       (when journal-2
-        (assert (eq (journal-state journal-2) :failed)))
+        (is (eq (journal-state journal-2) :failed)))
       ;; The last event recorded is what caused the replay error. B1's
       ;; out-event is not recorded.
       (when (typep journal-2 'in-memory-journal)
-        (assert (equal (list-events journal-2)
+        (is (equal (list-events journal-2)
                        '((:in b1 :version 1)
                          (:in b2 :version 1)
                          (:out b2 :version 1
@@ -2595,43 +2554,43 @@
                           ("REPLAY-UNEXPECTED-OUTCOME"
                            "The new event (:OUT JOURNAL-TEST::B2 :VERSION 1 :ERROR (\"SOME-ERROR\" \"SOME-ERROR was signalled.\")) has an unexpected outcome while the REPLAY-EVENT (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) has not.")))))))))
 
-(defun test-values-fn-failure-recording ()
+(deftest test-values-fn-failure-recording ()
   (let* ((journal-1 (funcall *make-journal*))
          (sync (journal-sync journal-1)))
-    (assert-error (journaling-failure "SOME-ERROR")
+    (signals (journaling-failure :pred "SOME-ERROR")
       (with-journaling (:record journal-1)
         (unwind-but-dont-receive some-error
           (journaled (b1 :version 1 :values (lambda (list)
                                               (declare (ignore list))
                                               (error 'some-error)))))))
-    (assert (equal (list-events journal-1)
+    (is (equal (list-events journal-1)
                    (if sync () '((:in b1 :version 1)))))
-    (assert (eq (journal-state journal-1) :completed))
+    (is (eq (journal-state journal-1) :completed))
     ;; Replay is the same.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (journaling-failure "SOME-ERROR")
+      (signals (journaling-failure :pred "SOME-ERROR")
         (with-journaling (:replay journal-1 :record journal-2)
           (unwind-but-dont-receive some-error
             (journaled (b1 :version 1 :values (lambda (list)
                                                 (declare (ignore list))
                                                 (error 'some-error)))))))
-      (assert (eq (journal-state journal-2) :completed))
-      (assert (equal (list-events journal-2)
+      (is (eq (journal-state journal-2) :completed))
+      (is (equal (list-events journal-2)
                      (if sync () '((:in b1 :version 1))))))))
 
-(defun test-values-fn-failure-replaying ()
+(deftest test-values-fn-failure-replaying ()
   (let* ((journal-1 (funcall *make-journal*))
          (sync (journal-sync journal-1)))
     (with-journaling (:record journal-1)
       (journaled (b1 :version 1)
         1))
-    (assert (equal (list-events journal-1)
+    (is (equal (list-events journal-1)
                    '((:in b1 :version 1)
                      (:out b1 :version 1 :values (1)))))
-    (assert (eq (journal-state journal-1) :completed))
+    (is (eq (journal-state journal-1) :completed))
     ;; Replay
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (journaling-failure "SOME-ERROR")
+      (signals (journaling-failure :pred "SOME-ERROR")
         (with-journaling (:replay journal-1 :record journal-2)
           (unwind-protect
                (unwind-but-dont-receive some-error
@@ -2639,35 +2598,34 @@
                                                      (declare (ignore list))
                                                      (error 'some-error)))
                    1))
-            (assert (eq (journal-state journal-2) :failed))
+            (is (eq (journal-state journal-2) :failed))
             ;; It is an error to use JOURNALED in state :FAILED.
-            (assert-error (journaling-failure "Resignalling previous")
+            (signals (journaling-failure :pred "Resignalling previous")
               (journaled (b2))))))
-      (assert (eq (journal-state journal-2) :failed))
-      (assert (equal (list-events journal-2)
+      (is (eq (journal-state journal-2) :failed))
+      (is (equal (list-events journal-2)
                      (if sync () '((:in b1 :version 1))))))))
 
-(defun test-journaling-failure ()
+(deftest test-journaling-failure ()
   (let* ((journal-1 (funcall *make-journal*))
          (sync (journal-sync journal-1)))
-    (assert-error (journaling-failure "SOME-ERROR")
+    (signals (journaling-failure :pred "SOME-ERROR")
       (with-journaling (:record journal-1)
         (unwind-but-dont-receive some-error
           (journaled (b1 :version 1 :values (lambda (list)
                                               (declare (ignore list))
                                               (error 'some-error)))))
         (journaled (b2 :version 1))))
-    (assert (equal (list-events journal-1)
+    (is (equal (list-events journal-1)
                    (if sync
                        ()
                        '((:in b1 :version 1)))))
-    (assert (eq (journal-state journal-1) :completed))
+    (is (eq (journal-state journal-1) :completed))
 
     (dolist (make-journal (list *make-journal* (constantly nil)))
-
       ;; Error in WRITE-EVENT when :REPLAYING in replay
       (let ((journal-2 (funcall make-journal)))
-        (assert-error (journaling-failure "SOME-ERROR")
+        (signals (journaling-failure :pred "SOME-ERROR")
           (with-journaling (:record journal-2 :replay journal-1)
             (unwind-protect
                  (unwind-but-dont-receive some-error
@@ -2679,20 +2637,20 @@
               ;; record journal as failed, and that it's not
               ;; writeable.
               (when journal-2
-                (assert (eq (journal-state journal-2)
+                (is (eq (journal-state journal-2)
                             (if sync :completed :failed))))
-              (assert-error (journaling-failure "Resignal")
+              (signals (journaling-failure :pred "Resignal")
                 (journaled (b2 :version 1))))))
         (when journal-2
-          (assert (equal (list-events journal-2) ()))
-          (assert (eq (journal-state journal-2)
+          (is (equal (list-events journal-2) ()))
+          (is (eq (journal-state journal-2)
                       (if sync :completed :failed)))))
 
       ;; THROW in WRITE-EVENT when :REPLAYING in replay
       (let ((journal-2 (funcall make-journal)))
         (catch 'foo
-          (assert-error (journaling-failure
-                         "JOURNALED failed with an unidentified")
+          (signals (journaling-failure
+                    :pred "JOURNALED failed with an unidentified")
             (with-journaling (:record journal-2 :replay journal-1)
               (setq jrn::*next-write-event-fn* (lambda (event)
                                                  (declare (ignore event))
@@ -2704,13 +2662,13 @@
                 ;; the record journal as failed, and that it's not
                 ;; writeable.
                 (when journal-2
-                  (assert (eq (journal-state journal-2)
+                  (is (eq (journal-state journal-2)
                               (if sync :completed :failed))))
-                (assert-error (journaling-failure "Resignal")
+                (signals (journaling-failure :pred "Resignal")
                   (journaled (b2 :version 1)))))))
         (when journal-2
-          (assert (equal (list-events journal-2) ()))
-          (assert (eq (journal-state journal-2)
+          (is (equal (list-events journal-2) ()))
+          (is (eq (journal-state journal-2)
                       (if sync :completed :failed))))))
 
     (dolist (commit (if sync '(nil t) '(nil)))
@@ -2720,7 +2678,7 @@
 
         ;; Error in WRITE-EVENT when :RECORDING in replay
         (let ((journal-2 (funcall make-journal)))
-          (assert-error (journaling-failure "SOME-ERROR")
+          (signals (journaling-failure :pred "SOME-ERROR")
             (with-journaling (:record journal-2 :replay journal-1)
               (unwind-protect
                    (progn
@@ -2733,22 +2691,22 @@
                      (unwind-but-dont-receive some-error
                        (journaled (b1 :version 1))))
                 (when journal-2
-                  (assert (eq (journal-state journal-2) :completed)))
-                (assert-error (journaling-failure "Resignal")
+                  (is (eq (journal-state journal-2) :completed)))
+                (signals (journaling-failure :pred "Resignal")
                   (journaled (b2 :version 1))))))
           (when journal-2
-            (assert (equal (list-events journal-2)
+            (is (equal (list-events journal-2)
                            (if (and sync (not commit))
                                ()
                                '((:in b1 :version 1)
                                  (:out b1 :version 1 :values (nil))))))
-            (assert (eq (journal-state journal-2) :completed))))
+            (is (eq (journal-state journal-2) :completed))))
 
         ;; THROW in WRITE-EVENT when :RECORDING in replay
         (let ((journal-2 (funcall make-journal)))
           (catch 'foo
-            (assert-error (journaling-failure
-                           "JOURNALED failed with an unidentified")
+            (signals (journaling-failure
+                      :pred "JOURNALED failed with an unidentified")
               (with-journaling (:record journal-2 :replay journal-1)
                 (unwind-protect
                      (progn
@@ -2762,18 +2720,18 @@
                        (unwind-but-dont-receive some-error
                          (journaled (b1 :version 1))))
                   (when journal-2
-                    (assert (eq (journal-state journal-2) :completed)))
-                  (assert-error (journaling-failure "Resignal")
+                    (is (eq (journal-state journal-2) :completed)))
+                  (signals (journaling-failure :pred "Resignal")
                     (journaled (b2 :version 1)))))))
           (when journal-2
-            (assert (equal (list-events journal-2)
+            (is (equal (list-events journal-2)
                            (if (and sync (not commit))
                                ()
                                '((:in b1 :version 1)
                                  (:out b1 :version 1 :values (nil))))))
-            (assert (eq (journal-state journal-2) :completed))))))))
+            (is (eq (journal-state journal-2) :completed))))))))
 
-(defun test-error-handling ()
+(deftest test-error-handling ()
   (test-nlx-from-with-journaling)
   (test-error-two-deep)
   (test-replay-failure-two-deep)
@@ -2782,10 +2740,10 @@
   (test-values-fn-failure-replaying)
   (test-journaling-failure))
 
-(defun test-in-memory-journal-error-handling ()
+(deftest test-in-memory-journal-error-handling ()
   (test-error-handling))
 
-(defun test-file-journal-error-handling ()
+(deftest test-file-journal-error-handling ()
   (call-with-file-journal-settings #'test-error-handling))
 
 
@@ -2826,64 +2784,64 @@
          (username (ask-username)))
     (loop repeat *n-registrations* do
       (register-user username)
-      (assert (get-key username)))))
+      (is (get-key username)))))
 
-(defun test-define-file-bundle-test ()
+(deftest test-define-file-bundle-test ()
   (test-user-registration)
-  (assert-error (simple-error "not equivalent")
+  (signals (simple-error :pred "not equivalent")
     (let ((*n-registrations* 3))
       (test-user-registration))))
 
 
-(defun test-make-file-journal ()
+(deftest test-make-file-journal ()
   (call-with-file-journal-settings
    (lambda ()
      ;; :NEW
      (let ((journal (funcall *make-journal*)))
-       (assert (eq (journal-state journal) :new))
+       (is (eq (journal-state journal) :new))
        (dolist (sync '(nil t))
          (if (eq sync (journal-sync journal))
-             (assert (eq (make-file-journal (pathname-of journal) :sync sync)
+             (is (eq (make-file-journal (pathname-of journal) :sync sync)
                          journal))
-             (assert-error (journal-error "Incompatible options")
+             (signals (journal-error :pred "Incompatible options")
                (make-file-journal (pathname-of journal) :sync sync)))))
      ;; :COMPLETED
      (let ((journal (funcall *make-journal*)))
        (with-journaling (:record journal))
-       (assert (eq (journal-state journal) :completed))
+       (is (eq (journal-state journal) :completed))
        (dolist (sync '(nil t))
          (if (eq sync (journal-sync journal))
-             (assert (eq (make-file-journal (pathname-of journal) :sync sync)
+             (is (eq (make-file-journal (pathname-of journal) :sync sync)
                          journal))
-             (assert-error (journal-error "Incompatible options")
+             (signals (journal-error :pred "Incompatible options")
                (make-file-journal (pathname-of journal) :sync sync)))))
      ;; :COMPLETED, deleted
      (let ((journal (funcall *make-journal*)))
        (with-journaling (:record journal))
-       (assert (eq (journal-state journal) :completed))
+       (is (eq (journal-state journal) :completed))
        (delete-file (pathname-of journal))
-       (assert (not (eq (make-file-journal (pathname-of journal))
+       (is (not (eq (make-file-journal (pathname-of journal))
                         journal)))
-       (assert (eq (slot-value journal 'jrn::n-writers) :invalidated))
-       (assert-error (journal-error "unlinked")
+       (is (eq (slot-value journal 'jrn::n-writers) :invalidated))
+       (signals (journal-error :pred "unlinked")
          (with-open-journal (streamlet journal :direction :output)))))))
 
-(defun test-make-file-bundle ()
+(deftest test-make-file-bundle ()
   (call-with-file-bundle
    (lambda (bundle)
-     (assert (eq (make-file-bundle (directory-of bundle)
+     (is (eq (make-file-bundle (directory-of bundle)
                                    :max-n-failed (max-n-failed bundle)
                                    :max-n-completed (max-n-completed bundle)
                                    :sync (slot-value bundle 'jrn::sync))
                  bundle))
-     (assert-error (journal-error "Incompatible options")
+     (signals (journal-error :pred "Incompatible options")
        (make-file-bundle (directory-of bundle)
                          :max-n-failed (max-n-failed bundle)
                          :max-n-completed (max-n-completed bundle)
                          :sync (not (slot-value bundle 'jrn::sync)))))))
 
 
-(defun test-invoked ()
+(deftest test-invoked ()
   (test-invoked-without-external)
   (test-error-in-invoked-without-external)
   (test-throw-in-invoked-without-external)
@@ -2904,11 +2862,11 @@
 (define-invoked invoked-1 (x) ("name-invoked-1")
   (setq *var-for-invoked* (+ x 1)))
 
-(defun test-invoked-without-external ()
+(deftest test-invoked-without-external ()
   (let ((bundle (make-in-memory-bundle)))
     (let ((*var-for-invoked* nil))
       (with-bundle (bundle)
-        (assert (endp
+        (is (endp
                  (multiple-value-list
                   (if (zerop (framed (input :log-record :record) (random 2)))
                       (invoked-0 3)
@@ -2930,22 +2888,22 @@
       (throw 'catch-invoked nil)
       (setq *var-for-invoked* x)))
 
-(defun test-error-in-invoked-without-external ()
+(deftest test-error-in-invoked-without-external ()
   (let ((journal-1 (funcall *make-journal*)))
     ;; Fail in INVOKED.
     (with-journaling (:record journal-1)
-      (assert-error (some-error)
+      (signals (some-error)
         (erroring-invoked 42)))
-    (assert (equal (list-events journal-1)
+    (is (equal (list-events journal-1)
                    '((:in "erroring-invoked" :version 1 :args (42))
                      (:out "erroring-invoked"
                       :error ("SOME-ERROR" "SOME-ERROR was signalled.")))))
     ;; Not yet fixed. Replay triggers the same error.
     (let ((journal-2 (funcall *make-journal*)))
-      (assert-error (some-error)
+      (signals (some-error)
         (with-journaling (:record journal-2 :replay journal-1)))
-      (assert (eq (journal-state journal-2) :completed))
-      (assert (equal (list-events journal-2)
+      (is (eq (journal-state journal-2) :completed))
+      (is (equal (list-events journal-2)
                      '((:in "erroring-invoked" :version 1 :args (42))
                        (:out "erroring-invoked"
                         :error ("SOME-ERROR" "SOME-ERROR was signalled."))))))
@@ -2954,39 +2912,39 @@
       (let ((*var-for-invoked* nil)
             (*fail-in-invoked* nil))
         (with-journaling (:record journal-3 :replay journal-1)
-          (assert (eql *var-for-invoked* 42)))
-        (assert (eq (journal-state journal-3) :completed))
-        (assert (equal (list-events journal-3)
+          (is (eql *var-for-invoked* 42)))
+        (is (eq (journal-state journal-3) :completed))
+        (is (equal (list-events journal-3)
                        '((:in "erroring-invoked" :version 1 :args (42))
                          (:out "erroring-invoked" :version 1 :values (42))))))
       ;; Fail again.
       (let ((*var-for-invoked* nil)
             (journal-4 (funcall *make-journal*)))
-        (assert-error (replay-unexpected-outcome)
+        (signals (replay-unexpected-outcome)
           (unwind-but-dont-receive some-error
             (with-journaling (:record journal-4 :replay journal-3))))
-        (assert (eq (journal-state journal-4) :failed))
-        (assert (equal (list-events journal-4)
+        (is (eq (journal-state journal-4) :failed))
+        (is (equal (list-events journal-4)
                        '((:in "erroring-invoked" :version 1 :args (42))
                          (:out "erroring-invoked" :version 1
                           :error ("SOME-ERROR"
                                   "SOME-ERROR was signalled.")))))))))
 
-(defun test-throw-in-invoked-without-external ()
+(deftest test-throw-in-invoked-without-external ()
   (let ((journal-1 (funcall *make-journal*)))
     ;; Fail in INVOKED.
     (with-journaling (:record journal-1)
       (catch 'catch-invoked
         (throwing-invoked 42)))
-    (assert (equal (list-events journal-1)
+    (is (equal (list-events journal-1)
                    '((:in "throwing-invoked" :version 1 :args (42))
                      (:out "throwing-invoked" :nlx nil))))
     ;; Not yet fixed. Replay triggers the same error.
     (let ((journal-2 (funcall *make-journal*)))
       (catch 'catch-invoked
         (with-journaling (:record journal-2 :replay journal-1)))
-      (assert (eq (journal-state journal-2) :completed))
-      (assert (equal (list-events journal-2)
+      (is (eq (journal-state journal-2) :completed))
+      (is (equal (list-events journal-2)
                      '((:in "throwing-invoked" :version 1 :args (42))
                        (:out "throwing-invoked" :nlx nil)))))
     ;; Fixed.
@@ -2994,23 +2952,23 @@
       (let ((*var-for-invoked* nil)
             (*fail-in-invoked* nil))
         (with-journaling (:record journal-3 :replay journal-1)
-          (assert (eql *var-for-invoked* 42)))
-        (assert (eq (journal-state journal-3) :completed))
-        (assert (equal (list-events journal-3)
+          (is (eql *var-for-invoked* 42)))
+        (is (eq (journal-state journal-3) :completed))
+        (is (equal (list-events journal-3)
                        '((:in "throwing-invoked" :version 1 :args (42))
                          (:out "throwing-invoked" :version 1 :values (42))))))
       ;; Fail again.
       (let ((*var-for-invoked* nil)
             (journal-4 (funcall *make-journal*)))
-        (assert-error (replay-unexpected-outcome)
+        (signals (replay-unexpected-outcome)
           (catch 'catch-invoked
             (with-journaling (:record journal-4 :replay journal-3))))
-        (assert (eq (journal-state journal-4) :failed))
-        (assert (equal (list-events journal-4)
+        (is (eq (journal-state journal-4) :failed))
+        (is (equal (list-events journal-4)
                        '((:in "throwing-invoked" :version 1 :args (42))
                          (:out "throwing-invoked" :version 1 :nlx nil))))))))
 
-(defun test-invoked-without-external/two ()
+(deftest test-invoked-without-external/two ()
   (let ((bundle (make-in-memory-bundle)))
     (let ((*var-for-invoked* nil))
       (with-bundle (bundle)
@@ -3020,7 +2978,7 @@
     (let ((*var-for-invoked* nil))
       (with-bundle (bundle)
         (checked (c :args `(,*var-for-invoked*)))
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in "name-invoked-0" :version 1 :args (3))
                          (:out "name-invoked-0" :version 1 :values (3))
                          (:in "name-invoked-1" :version 1 :args (3))
@@ -3028,7 +2986,7 @@
                          (:in c :version 1 :args (4))
                          (:out c :version 1 :values (nil)))))))))
 
-(defun test-invoked-without-external/two-separated ()
+(deftest test-invoked-without-external/two-separated ()
   (let ((bundle (make-in-memory-bundle)))
     (let ((*var-for-invoked* nil))
       (with-bundle (bundle)
@@ -3040,7 +2998,7 @@
       (with-bundle (bundle)
         (checked (c :args `(,*var-for-invoked*)))
         (checked (c :args `(,*var-for-invoked*)))
-        (assert (equal (list-events)
+        (is (equal (list-events)
                        '((:in "name-invoked-0" :version 1 :args (3))
                          (:out "name-invoked-0" :version 1 :values (3))
                          (:in c :version 1 :args (3))
@@ -3050,7 +3008,7 @@
                          (:in c :version 1 :args (4))
                          (:out c :version 1 :values (nil)))))))))
 
-(defun test-invoked-successful-external ()
+(deftest test-invoked-successful-external ()
   (let ((bundle (make-in-memory-bundle)))
     (with-bundle (bundle)
       (let ((*var-for-invoked* nil))
@@ -3063,13 +3021,13 @@
     (with-bundle (bundle)
       (let ((*var-for-invoked* nil))
         (replayed ("accept-input")
-          (assert nil))
+          (is nil))
         (checked (c :args `(,*var-for-invoked*)))))))
 
 ;;; Check that INVOKED events are replayed when the enclosing
 ;;; REPLAYED is not replayed by outcome, and the INVOKED is the first
 ;;; child.
-(defun test-invoked-in-failed-external/first-child ()
+(deftest test-invoked-in-failed-external/first-child ()
   (let ((bundle (make-in-memory-bundle)))
     (with-bundle (bundle)
       (let ((*var-for-invoked* nil))
@@ -3081,10 +3039,10 @@
     (with-bundle (bundle)
       (let ((*var-for-invoked* nil))
         (replayed ("accept-input")
-          (assert (eql *var-for-invoked* 3)))
+          (is (eql *var-for-invoked* 3)))
         (checked (c :args `(,*var-for-invoked*)))))))
 
-(defun test-invoked-in-failed-external/second-child ()
+(deftest test-invoked-in-failed-external/second-child ()
   (let ((bundle (make-in-memory-bundle)))
     (with-bundle (bundle)
       (let ((*var-for-invoked* nil))
@@ -3097,13 +3055,14 @@
     (with-bundle (bundle)
       (let ((*var-for-invoked* nil))
         (replayed ("accept-input")
-          (assert (null *var-for-invoked*))
+          (is (null *var-for-invoked*))
           (checked (c1)
-            (assert (null *var-for-invoked*)))
-          (assert (eql *var-for-invoked* 3)))
+            (is (null *var-for-invoked*))
+            nil)
+          (is (eql *var-for-invoked* 3)))
         (checked (c :args `(,*var-for-invoked*)))))))
 
-(defun test-invoked-in-failed-external/nested-in-child ()
+(deftest test-invoked-in-failed-external/nested-in-child ()
   (let ((bundle (make-in-memory-bundle)))
     (with-bundle (bundle)
       (let ((*var-for-invoked* nil))
@@ -3117,37 +3076,38 @@
     (with-bundle (bundle)
       (let ((*var-for-invoked* nil))
         (replayed ("accept-input")
-          (assert (null *var-for-invoked*))
+          (is (null *var-for-invoked*))
           (checked (c1)
-            (assert (= *var-for-invoked* 3))))
+            (is (= *var-for-invoked* 3))
+            nil))
         (checked (c :args `(,*var-for-invoked*)))))))
 
-(defun test-invoked-in-mismatched-triggered-on-in-event ()
+(deftest test-invoked-in-mismatched-triggered-on-in-event ()
   (flet-invoked ((invoked () ("inv")))
     (let ((bundle (make-in-memory-bundle)))
       (with-bundle (bundle)
         (checked (c :args '(1))))
       (with-bundle (bundle)
-        (assert-error (replay-args-mismatch)
+        (signals (replay-args-mismatch)
           (checked (c :args '(2))))
-        (assert (eq (journal-state (record-journal)) :mismatched))
-        (assert (equal (peek-replay-event) '(:in c :version 1 :args (1))))
-        (assert-error (data-event-lossage)
+        (is (eq (journal-state (record-journal)) :mismatched))
+        (is (equal (peek-replay-event) '(:in c :version 1 :args (1))))
+        (signals (data-event-lossage)
           (invoked))))))
 
-(defun test-invoked-in-logging-triggered-on-in-event ()
+(deftest test-invoked-in-logging-triggered-on-in-event ()
   (flet-invoked ((invoked () ("inv")))
     (let ((bundle (make-in-memory-bundle)))
       (with-bundle (bundle)
         (catch 'not-finished
           (checked (c)
             (throw 'not-finished nil)))
-        (assert (eq (journal-state (record-journal)) :logging))
-        (assert-error (data-event-lossage)
+        (is (eq (journal-state (record-journal)) :logging))
+        (signals (data-event-lossage)
           (invoked))))))
 
 
-(defun test ()
+(deftest test-all ()
   (test-events-to-frames)
   (test-in-memory-journal)
   (test-file-journal)
@@ -3166,6 +3126,16 @@
   (test-make-file-journal)
   (test-make-file-bundle)
   (test-invoked))
+
+(defun test (&key (debug nil) (print 'unexpected) (describe 'unexpected))
+  ;; Bind *PACKAGE* so that names of tests printed have package names,
+  ;; and M-. works on them in Slime.
+  (let ((*package* (find-package :common-lisp))
+        (*print-duration* nil)
+        (*print-compactly* nil)
+        (*defer-describe* nil))
+    (warn-on-tests-not-run ((find-package :journal-test))
+      (print (try 'test-all :debug debug :print print :describe describe)))))
 
 #+nil
 (test)
