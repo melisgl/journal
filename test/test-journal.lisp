@@ -931,14 +931,14 @@
 (deftest test-replay-condition ()
   (let ((journal-1 (funcall *make-journal*))
         (journal-2 (funcall *make-journal*)))
-    (signals (simple-error :pred "some text")
+    (signals (some-error)
       (with-journaling (:record journal-1)
         (journaled (e :version :infinity
                       :condition (lambda (c)
-                                   (when (typep c 'simple-error)
-                                     `(error ,(princ-to-string c)))))
-          (error "some text"))))
-    (signals (simple-error :pred "some text")
+                                   (when (typep c 'some-error)
+                                     `(error ',(type-of c)))))
+          (error 'some-error))))
+    (signals (some-error)
       (with-journaling (:replay journal-1 :record journal-2)
         (journaled (e :version :infinity :replay-condition #'eval))))
     (is (not (journal-divergent-p journal-2)))
@@ -946,7 +946,7 @@
     (is (identical-events-p (list-events journal-2)
                             '((:in e :version :infinity)
                               (:out e :version :infinity
-                               :condition (error "some text")))))))
+                               :condition (error 'some-error)))))))
 
 (deftest test-external-event-unexpected-outcome ()
   (let* ((journal-1 (funcall *make-journal*))
@@ -2445,11 +2445,11 @@
   (test-log-record-before-journaled)
   ;; KLUDGE: We get "Function with declared result type NIL returned:
   ;; BORDEAUX-THREADS:CONDITION-WAIT".
-  #-cmucl
-  (test-concurrent-log-record)
+  (with-skip ((alexandria:featurep :cmucl))
+    (test-concurrent-log-record))
   (test-nested-with-bundle)
-  #-cmucl
-  (test-concurrent-with-bundle))
+  (with-skip ((alexandria:featurep :cmucl))
+    (test-concurrent-with-bundle)))
 
 
 ;;;; Error handling

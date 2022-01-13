@@ -57,7 +57,7 @@
     - [16.1 Opening and closing][ade5]
     - [16.2 Reading from streamlets][e099]
     - [16.3 Writing to streamlets][afa1]
-- [17 Glossary][1a13]
+- [17 Glossary][1311]
 
 ###### \[in package JOURNAL with nicknames JRN\]
 <a id='x-28-23A-28-287-29-20BASE-CHAR-20-2E-20-22journal-22-29-20ASDF-2FSYSTEM-3ASYSTEM-29'></a>
@@ -85,11 +85,12 @@ for the latest version.
 
 ## 3 Portability
 
-Tested on AllegroCL, CCL, CMUCL, ECL, and SBCL. On Lisps, that seem
-to lack support for disabling and enabling of interrupts, such as
-ABCL and CLISP, durability is compromised, and any attempt to
-[`SYNC-JOURNAL`][6bc6] (see [Synchronization strategies][355b] and [Safety][7224]) will be a
-runtime error.
+Tested on CCL, CMUCL, ECL, and SBCL. AllegroCL Express edition runs
+out of heap while running the tests. Lispworks is not tested. On
+Lisps, that seem to lack support for disabling and enabling of
+interrupts, such as ABCL and CLISP, durability is compromised, and
+any attempt to [`SYNC-JOURNAL`][6bc6] (see [Synchronization strategies][355b] and
+[Safety][7224]) will be a runtime error.
 
 <a id='x-28JOURNAL-3A-40JOURNAL-BACKGROUND-20MGL-PAX-3ASECTION-29'></a>
 
@@ -3596,7 +3597,7 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
     [`WRITE-EVENT`][0448] calls made via `STREAMLET` to its journal and any deferred
     [`REQUEST-COMPLETED-ON-ABORT`][a8b4] in this order.
 
-<a id='x-28JOURNAL-3A-40GLOSSARY-20MGL-PAX-3ASECTION-29'></a>
+<a id='x-28JOURNAL-3A-40JOURNAL-2FGLOSSARY-20MGL-PAX-3ASECTION-29'></a>
 
 ## 17 Glossary
 
@@ -3669,13 +3670,13 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
   [0ddc]: #x-28JOURNAL-3AWITH-BUNDLE-20MGL-PAX-3AMACRO-29 "(JOURNAL:WITH-BUNDLE MGL-PAX:MACRO)"
   [0f76]: #x-28JOURNAL-3AEVENT-20TYPE-29 "(JOURNAL:EVENT TYPE)"
   [103b]: #x-28JOURNAL-3AREPLAY-JOURNAL-20FUNCTION-29 "(JOURNAL:REPLAY-JOURNAL FUNCTION)"
+  [1311]: #x-28JOURNAL-3A-40JOURNAL-2FGLOSSARY-20MGL-PAX-3ASECTION-29 "Glossary"
   [1452]: #x-28JOURNAL-3A-40FRAME-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL:@FRAME MGL-PAX:GLOSSARY-TERM)"
   [1548]: #x-28JOURNAL-3AREAD-POSITION-20GENERIC-FUNCTION-29 "(JOURNAL:READ-POSITION GENERIC-FUNCTION)"
   [1668]: #x-28JOURNAL-3ADATA-EVENT-LOSSAGE-20CONDITION-29 "(JOURNAL:DATA-EVENT-LOSSAGE CONDITION)"
   [1726]: #x-28JOURNAL-3A-40JOURNAL-LINKS-20MGL-PAX-3ASECTION-29 "Links"
   [17a8]: #x-28JOURNAL-3AIN-MEMORY-JOURNAL-20CLASS-29 "(JOURNAL:IN-MEMORY-JOURNAL CLASS)"
   [182e]: #x-28JOURNAL-3AMAKE-FILE-JOURNAL-20FUNCTION-29 "(JOURNAL:MAKE-FILE-JOURNAL FUNCTION)"
-  [1a13]: #x-28JOURNAL-3A-40GLOSSARY-20MGL-PAX-3ASECTION-29 "Glossary"
   [1acb]: #x-28JOURNAL-3A-40UPGRADES-AND-REPLAY-20MGL-PAX-3ASECTION-29 "Upgrades and replay"
   [1d28]: #x-28JOURNAL-3A-40IN-EVENTS-20MGL-PAX-3ASECTION-29 "In-events"
   [2123]: #x-28JOURNAL-3APPRINT-JOURNAL-20CLASS-29 "(JOURNAL:PPRINT-JOURNAL CLASS)"

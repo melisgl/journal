@@ -55,12 +55,12 @@ function run_tests {
 }
 
 run_tests lisp_tests sbcl --noinform
-# Runs out of heap on the Express version.
+# Runs out of heap in the Express version.
 # run_tests lisp_tests allegro --batch --backtrace-on-error
 run_tests lisp_tests ccl-bin
 run_tests lisp_tests cmu-bin -batch
 run_tests lisp_tests ecl
-# No WITHOUT-INTERRUPTS on CLISP
+# No WITHOUT-INTERRUPTS on CLISP.
 # run_tests lisp_tests clisp -on-error exit
 # ABCL cannot load Osicat, nor does it have an fsync function.
 #run_tests lisp_tests abcl-bin

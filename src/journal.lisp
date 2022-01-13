@@ -19,7 +19,7 @@
   (@journals-reference section)
   (@bundles-reference section)
   (@streamlets-reference section)
-  (@glossary section))
+  (@journal/glossary section))
 
 
 (defsection @journal-links (:title "Links")
@@ -29,11 +29,12 @@
   for the latest version.")
 
 (defsection @journal-portability (:title "Portability")
-  "Tested on AllegroCL, CCL, CMUCL, ECL, and SBCL. On Lisps, that seem
-  to lack support for disabling and enabling of interrupts, such as
-  ABCL and CLISP, durability is compromised, and any attempt to
-  SYNC-JOURNAL (see @SYNCHRONIZATION-STRATEGIES and @SAFETY) will be a
-  runtime error.")
+  "Tested on CCL, CMUCL, ECL, and SBCL. AllegroCL Express edition runs
+  out of heap while running the tests. Lispworks is not tested. On
+  Lisps, that seem to lack support for disabling and enabling of
+  interrupts, such as ABCL and CLISP, durability is compromised, and
+  any attempt to SYNC-JOURNAL (see @SYNCHRONIZATION-STRATEGIES and
+  @SAFETY) will be a runtime error.")
 
 (defsection @journal-background (:title "Background")
   "Logging, tracing, testing, and persistence are about what happened
@@ -2462,21 +2463,6 @@
   "Controls whether to decorate the trace with the internal run-time.
   See MAKE-LOG-DECORATOR.")
 
-(defvar *trace-journal*
-  (make-pprint-journal :pretty '*trace-pretty*
-                       :stream (make-synonym-stream '*trace-output*)
-                       :log-decorator (make-log-decorator
-                                       :thread '*trace-thread*
-                                       :time '*trace-time*
-                                       :real-time '*trace-real-time*
-                                       :run-time '*trace-run-time*))
-  "The JOURNAL where JTRACE writes LOG-EVENTs. By default it is a
-  PPRINT-JOURNAL that sets up a SYNONYM-STREAM to *TRACE-OUTPUT* and
-  sends its output there. It pays attention to *TRACE-PRETTY*, and its
-  log decorator is affected by *TRACE-TIME* and *TRACE-THREAD*.
-  However, by changing JOURNAL-LOG-DECORATOR and
-  PPRINT-JOURNAL-PRETTIFIER content and output can be customized.")
-
 (defvar *traced-functions*
   #+sbcl (make-hash-table :synchronized t)
   #-sbcl (make-hash-table))
@@ -2701,6 +2687,22 @@
   write to journals in :COMPLETED. Note that once in :RECORDING, the
   only possible terminal state is :COMPLETED."
   `(member :new :replaying :mismatched :recording :logging :failed :completed))
+
+;;; KLUDGE: CMUCL needs this to be defined after the JOURNAL-STATE type.
+(defvar *trace-journal*
+  (make-pprint-journal :pretty '*trace-pretty*
+                       :stream (make-synonym-stream '*trace-output*)
+                       :log-decorator (make-log-decorator
+                                       :thread '*trace-thread*
+                                       :time '*trace-time*
+                                       :real-time '*trace-real-time*
+                                       :run-time '*trace-run-time*))
+  "The JOURNAL where JTRACE writes LOG-EVENTs. By default it is a
+  PPRINT-JOURNAL that sets up a SYNONYM-STREAM to *TRACE-OUTPUT* and
+  sends its output there. It pays attention to *TRACE-PRETTY*, and its
+  log decorator is affected by *TRACE-TIME* and *TRACE-THREAD*.
+  However, by changing JOURNAL-LOG-DECORATOR and
+  PPRINT-JOURNAL-PRETTIFIER content and output can be customized.")
 
 (defsection @journaled-for-replay (:title "Journaled for replay")
   "The following arguments of JOURNALED control behaviour under replay.
@@ -5678,7 +5680,7 @@
   (delete-file-journal journal))
 
 
-(defsection @glossary (:title "Glossary" :export nil)
+(defsection @journal/glossary (:title "Glossary" :export nil)
   (@async-unwind glossary-term)
   (@boolean-valued-symbol glossary-term)
   (@non-local-exit glossary-term)
