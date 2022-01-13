@@ -20,8 +20,11 @@ for the latest version.
 
 ## Portability
 
-Tested on AllegroCL, CCL, CMUCL, ECL, and SBCL. ABCL and CLISP seem
-to lack support for disabling and enabling handling of interrupts.
+Tested on AllegroCL, CCL, CMUCL, ECL, and SBCL. On Lisps, that seem
+to lack support for disabling and enabling of interrupts, such as
+ABCL and CLISP, durability is compromised, and any attempt to
+SYNC-JOURNAL (see @SYNCHRONIZATION-STRATEGIES and @SAFETY) will be a
+runtime error.
 
 ## Background
 
@@ -1110,7 +1113,7 @@ PPRINT-JOURNAL-STREAM and JOURNAL-LOG-DECORATOR.
     Controls whether to decorate the trace with the internal run-time.
     See MAKE-LOG-DECORATOR.
 
-- [variable] *TRACE-JOURNAL* #<PPRINT-JOURNAL :NEW>
+- [variable] *TRACE-JOURNAL* #\<PPRINT-JOURNAL :NEW\>
 
     The JOURNAL where JTRACE writes LOG-EVENTs. By default it is a
     PPRINT-JOURNAL that sets up a SYNONYM-STREAM to *TRACE-OUTPUT* and
@@ -2894,7 +2897,7 @@ The rest of section is about concrete subclasses of [JOURNAL][class].
 
     Creates a PPRINT-JOURNAL.
 
-- [accessor] PPRINT-JOURNAL-STREAM PPRINT-JOURNAL (:STREAM = *STANDARD-OUTPUT*)
+- [accessor] PPRINT-JOURNAL-STREAM PPRINT-JOURNAL (:STREAM = \*STANDARD-OUTPUT\*)
 
     The stream where events are dumped. May be set any
     time to another STREAM.
