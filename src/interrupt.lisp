@@ -53,7 +53,7 @@
   (defmacro with-interrupts (&body body)
     `(sb-sys:with-interrupts ,@body)))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
+(eval-when (:load-toplevel :execute)
   ;; We define a stub WITHOUT-INTERRUPTS below. Reloading must not set
   ;; *WITHOUT-INTERRUPTS-AVAILABLE* to T, hence we use DEFVAR and not
   ;; DEFPARAMETER.
