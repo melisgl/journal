@@ -31,7 +31,7 @@
 (defsection @journal-portability (:title "Portability")
   "Tested on CCL, CMUCL, ECL, and SBCL. AllegroCL Express edition runs
   out of heap while running the tests. Lispworks is not tested. On
-  Lisps, that seem to lack support for disabling and enabling of
+  Lisps that seem to lack support for disabling and enabling of
   interrupts, such as ABCL and CLISP, durability is compromised, and
   any attempt to SYNC-JOURNAL (see @SYNCHRONIZATION-STRATEGIES and
   @SAFETY) will be a runtime error.")
