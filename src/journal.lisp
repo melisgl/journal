@@ -29,12 +29,12 @@
   for the latest version.")
 
 (defsection @journal-portability (:title "Portability")
-  "Tested on CCL, CLISP, CMUCL, ECL, and SBCL. AllegroCL Express
-  edition runs out of heap while running the tests. Lispworks is not
-  tested. On Lisps that seem to lack support for disabling and
-  enabling of interrupts, such as ABCL and CLISP, durability is
-  compromised, and any attempt to SYNC-JOURNAL (see
-  @SYNCHRONIZATION-STRATEGIES and @SAFETY) will be a runtime error.")
+  "Tested on ABCL, CCL, CLISP, CMUCL, ECL, and SBCL. AllegroCL Express
+  edition runs out of heap while running the tests. On Lisps that seem
+  to lack support for disabling and enabling of interrupts, such as
+  ABCL and CLISP, durability is compromised, and any attempt to
+  SYNC-JOURNAL (see @SYNCHRONIZATION-STRATEGIES and @SAFETY) will be a
+  runtime error.")
 
 (defsection @journal-background (:title "Background")
   "Logging, tracing, testing, and persistence are about what happened
@@ -5275,7 +5275,7 @@
     (write-char #\Newline stream)
     (finish-output stream)
     (when sync
-      (fsync (stream-fd stream)))))
+      (fsync stream))))
 
 ;;; Currently, we do at call fsync() at least 4 times during
 ;;; recording: to flush the events, to write txn committed marker, to
@@ -5298,18 +5298,20 @@
     (when txn-start
       ;; Persist the events.
       (finish-output stream)
-      (fsync (stream-fd stream))
+      (fsync stream)
       ;; Mark the transaction as successful.
       (file-position stream txn-start)
       (write-char #\Ack stream)
       (finish-output stream)
-      (fsync (stream-fd stream))
+      (fsync stream)
       (setf (slot-value streamlet 'txn-start-file-position) nil)
       t)))
 
 (defun %fsync (fd)
   #-darwin
   (progn
+    #+abcl
+    0
     #+allegro
     (excl.osi::syscall-fsync fd)
     #+cmucl
@@ -5318,25 +5320,29 @@
                          fd)
     #+sbcl
     (sb-posix:fsync fd)
-    #-(or allegro cmucl sbcl)
+    #-(or abcl allegro cmucl sbcl)
     (osicat-posix:fsync fd))
   #+darwin
   (let ((f-fullfsync 51))
+    #+abcl
+    0
     #+allegro
     (foreign-functions::fcntl fd f-fullfsync 0)
     #+cmucl
     (unix:unix-fcntl fd f-fullfsync 0)
     #+sbcl
     (sb-posix:fcntl f-fullfsync)
-    #-(or allegro cmucl sbcl)
+    #-(or abcl allegro cmucl sbcl)
     (osicat-posix:fcntl fd f-fullfsync)))
 
-(defun fsync (fd)
-  (let ((retval (%fsync fd)))
+(defun fsync (stream)
+  (let ((retval (%fsync (stream-fd stream))))
     (unless (zerop retval)
       (error "fsync() failed with ~S" retval))))
 
 (defun stream-fd (stream)
+  #+abcl
+  nil
   #+allegro
   (excl.osi::stream-to-fd stream)
   #+ccl
@@ -5349,14 +5355,14 @@
   (ext:file-stream-fd stream)
   #+sbcl
   (sb-sys:fd-stream-fd stream)
-  #-(or allegro ccl clisp cmucl ecl sbcl)
+  #-(or abcl allegro ccl clisp cmucl ecl sbcl)
   (error "Don't know how to get the unix fd from a STREAM."))
 
 (defun fsync-directory (pathname)
   #+(or allegro cmucl sbcl)
   (with-open-file (s pathname)
-    (fsync (stream-fd s)))
-  #-(or allegro cmucl sbcl)
+    (fsync s))
+  #-(or abcl allegro cmucl sbcl)
   (let ((cdir (osicat-posix:opendir pathname)))
     (unwind-protect*
         (osicat-posix:dirfd cdir)

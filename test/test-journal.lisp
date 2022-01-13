@@ -87,8 +87,8 @@
           42))
       (is (eq (journal-state journal) :recording))
       (is (equal (list-events journal)
-                     '((:in "foo")
-                       (:out "foo" :condition eh)))))
+                 '((:in "foo")
+                   (:out "foo" :condition eh)))))
     (is (eq (journal-state journal) :completed))
     (check-file-journal-state journal :completed)))
 
@@ -2316,8 +2316,9 @@
 
 
 (deftest test-fsync ()
-  (signals (error)
-    (jrn::fsync 32433)))
+  (with-failure-expected ((alexandria:featurep :abcl))
+    (signals (error)
+      (jrn::fsync 32433))))
 
 
 (defun foo (x)

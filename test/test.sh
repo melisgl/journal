@@ -61,5 +61,4 @@ run_tests lisp_tests ccl-bin
 run_tests lisp_tests cmu-bin -batch
 run_tests lisp_tests ecl
 run_tests lisp_tests clisp -on-error exit
-# ABCL cannot load Osicat, nor does it have an fsync function.
-#run_tests lisp_tests abcl-bin
+run_tests lisp_tests abcl-bin
