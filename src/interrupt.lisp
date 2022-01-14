@@ -75,7 +75,7 @@
           Proceeding, but any attempt to SYNC-JOURNAL will be a ~
           runtime error. See JOURNAL:@SAFETY for more.~:@>")
   ;; KLUDGE: Quicklisp calls MUFFLE-WARNING on WARNINGs, but it fails
-  ;; with no restart available on some Lisps.
+  ;; "with no restart available" on some Lisps.
   #-(or abcl clisp)
   (signal 'style-warning)
   (defmacro without-interrupts (&body body)

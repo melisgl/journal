@@ -29,9 +29,7 @@ function lisp_tests {
   shift
 
   run_test_case "lisp test suite on ${lisp_name}" $@ <<EOF
-(require :asdf)
 (quicklisp:quickload :journal/test)
-(asdf:load-system :journal/test)
 (when (try:passedp (journal-test::test :debug ${debug} :print ${print}
                                        :describe ${describe}))
   (uiop/image:quit 22))
@@ -48,7 +46,7 @@ function run_tests {
   num_passes=0
   ${test_suite} ${lisp} ros --lisp ${lisp} run -- $@
   if ((num_failures > 0)); then
-    if [ $stop_on_failure ]; then
+    if [ ${stop_on_failure} = "t" ]; then
       exit 1
     fi
   fi
