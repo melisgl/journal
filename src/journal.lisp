@@ -2513,6 +2513,10 @@
                  collect `(jtrace-1 ,name)))
       `(list-traced-functions)))
 
+;;; To prevent infinite recursion if Journal functions involved in
+;;; printed traces are traced.
+(defvar *suppress-trace* nil)
+
 (defmacro jtrace-1 (name)
   #+sbcl
   (alexandria:with-gensyms (fn args)
@@ -2520,16 +2524,25 @@
        (sb-int:encapsulate
         ',name 'jtrace
         (sb-int:named-lambda jtrace-encapsulation (,fn &rest ,args)
-          (journaled (,name :args ,args :log-record *trace-journal*)
-            (apply ,fn ,args))))
+          (if *suppress-trace*
+              (apply ,fn ,args)
+              (let ((*suppress-trace* t))
+                (journaled (,name :args ,args :log-record *trace-journal*)
+                  (let ((*suppress-trace* nil))
+                    (apply ,fn ,args)))))))
        (setf (gethash ',name *traced-functions*) t)))
   #-sbcl
   (alexandria:with-gensyms (fn args encapsulation)
     `(unless (jtracedp ',name)
        (let ((,fn (symbol-function ',name)))
          (flet ((jtrace-encapsulation (&rest ,args)
-                  (journaled (,name :args ,args :log-record *trace-journal*)
-                    (apply ,fn ,args))))
+                  (if *suppress-trace*
+                      (apply ,fn ,args)
+                      (let ((*suppress-trace* t))
+                        (journaled (,name :args ,args
+                                          :log-record *trace-journal*)
+                          (let ((*suppress-trace* nil))
+                            (apply ,fn ,args)))))))
            (let ((,encapsulation nil))
              ;; KLUDGE: On CMUCL, two evaluations
              ;; #'JTRACE-ENCAPSULATION are not always EQ, and we need
