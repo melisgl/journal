@@ -1203,12 +1203,12 @@
   WITH-JOURNALING and LOG-RECORD is NIL, then event recording is
   turned off and JOURNALED imposes minimal overhead.
 
-  - NAME can be of any type except NULL, not evaluated. For names, and
-    for anything that gets written to a journal, a non-keyword symbol
-    is a reasonable choice as it can be easily made unique. However,
-    it also exposes the package structure, which might make reading
-    stuff back more difficult. Keywords and strings do not have this
-    problem.
+  - NAME can be of any type except [NULL][type], not evaluated. For
+    names, and for anything that gets written to a journal, a
+    non-keyword symbol is a reasonable choice as it can be easily made
+    unique. However, it also exposes the package structure, which
+    might make reading stuff back more difficult. Keywords and strings
+    do not have this problem.
 
   - ARGS can be of any type, but is typically a list.
 
@@ -1388,13 +1388,13 @@
   required with FILE-JOURNALs, often with IN-MEMORY-JOURNALs, but
   never with PPRINT-JOURNALs. By choosing an appropriate identifier or
   string representation of the unreadable object to journal, this is
-  not a problem in practice. JOURNALED provides the VALUES hook for
-  this purpose.
+  not a problem in practice. JOURNALED provides the [VALUES][argument]
+  hook for this purpose.
 
   With EXTERNAL-EVENTs, whose outcome is replayed (see
   @REPLAYING-THE-OUTCOME), we also need to be able to reverse the
-  transformation of VALUES, and this is what the REPLAY-VALUES
-  argument of JOURNALED is for.
+  transformation of [VALUES][argument], and this is what the
+  REPLAY-VALUES argument of JOURNALED is for.
 
   Let's see a complete example.
 
@@ -1464,13 +1464,14 @@
   (values<- function))
 
 (defun values-> (&rest fns)
-  """A utility to create a function suitable as the VALUES argument of
-  JOURNALED. The VALUES function is called with the list of values
-  returned by the @BLOCK and returns a transformed set of values that
-  may be recorded in a journal. While arbitrary transformations are
-  allowed, `VALUES->` handles the common case of transforming
-  individual elements of the list independently by calling the
-  functions in FN with the values of the list of the same position.
+  """A utility to create a function suitable as the [VALUES][argument]
+  argument of JOURNALED. The VALUES function is called with the list
+  of values returned by the @BLOCK and returns a transformed set of
+  values that may be recorded in a journal. While arbitrary
+  transformations are allowed, `VALUES->` handles the common case of
+  transforming individual elements of the list independently by
+  calling the functions in FN with the values of the list of the same
+  position.
 
   ```
   (funcall (values-> #'1+) '(7 :something))
@@ -1605,10 +1606,10 @@
   encountered reading or writing journals by WITH-JOURNALING,
   JOURNALED, LOGGED, WITH-REPLAY-FILTER, SYNC-JOURNAL, but also
   STORAGE-CONDITIONs, assertion failures, and errors calling
-  JOURNALED's VALUES and CONDITION function arguments. Crucially, this
-  does not apply to non-local exits from other code, such as JOURNALED
-  @BLOCKs, whose error handling is largely unaltered (see @OUT-EVENTS
-  and @REPLAY-FAILURES).
+  JOURNALED's [VALUES][argument] and [CONDITION][argument] function
+  arguments. Crucially, this does not apply to non-local exits from
+  other code, such as JOURNALED @BLOCKs, whose error handling is
+  largely unaltered (see @OUT-EVENTS and @REPLAY-FAILURES).
 
   In general, any @NON-LOCAL-EXIT from critical parts of the code is
   turned into a JOURNALING-FAILURE to protect the integrity of the
@@ -1641,7 +1642,8 @@
   Note that in contrast with JOURNALING-FAILURE and REPLAY-FAILURE,
   which necessitate leaving WITH-JOURNALING to recover from, the other
   conditions - JOURNAL-ERROR, and STREAMLET-ERROR - are subclasses of
-  ERROR as the their handling need not be so heavy-handed.")
+  [ERROR][condition] as the their handling need not be so
+  heavy-handed.")
   (:report (lambda (condition stream)
              (maybe-print-resignalling-message condition stream)
              (let ((embedded (journaling-failure-embedded-condition condition)))
@@ -1783,16 +1785,16 @@
   ((new-event
     :initarg :new-event :reader new-event
     :documentation "The event that triggered this condition."))
-  (:documentation "Signalled (with SIGNAL: this is not an ERROR) by
-  JOURNALED when a VERSIONED-EVENT or an EXTERNAL-EVENT had an
-  UNEXPECTED-OUTCOME while in JOURNAL-STATE :RECORDING. Upon
-  signalling this condition, JOURNAL-STATE is set to :LOGGING, thus no
-  more events can be recorded that will affect replay of the journal
-  being recorded. The event that triggered this condition is recorded
-  in state :LOGGING, with its version downgraded. Since
-  @REPLAY (except INVOKED) is built on the assumption that control
-  flow is deterministic, an unexpected outcome is significant because
-  it makes this assumption to hold unlikely.
+  (:documentation "Signalled (with SIGNAL: this is not an
+  [ERROR][condition]) by JOURNALED when a VERSIONED-EVENT or an
+  EXTERNAL-EVENT had an UNEXPECTED-OUTCOME while in JOURNAL-STATE
+  :RECORDING. Upon signalling this condition, JOURNAL-STATE is set to
+  :LOGGING, thus no more events can be recorded that will affect
+  replay of the journal being recorded. The event that triggered this
+  condition is recorded in state :LOGGING, with its version
+  downgraded. Since @REPLAY (except INVOKED) is built on the
+  assumption that control flow is deterministic, an unexpected outcome
+  is significant because it makes this assumption to hold unlikely.
 
   Also see REPLAY-UNEXPECTED-OUTCOME.")
   (:report (lambda (condition stream)
@@ -2736,9 +2738,9 @@
 
   - REPLAY-CONDITION, a function or NIL, may be called with
     EVENT-OUTCOME (the return value of the function provided as
-    CONDITION) when replaying and :VERSION is :INFINITY. NIL is
-    equivalent to ERROR. Replaying conditions is cumbersome and best
-    avoided."
+    :CONDITION) when replaying and :VERSION is :INFINITY. NIL is
+    equivalent to the ERROR function. Replaying conditions is
+    cumbersome and best avoided."
   (*force-insertable* variable)
   (event-version type)
   (log-event type)

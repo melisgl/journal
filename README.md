@@ -151,7 +151,7 @@ The Journal library is this idea taken to its logical conclusion.
 
 See [Logging][77df] for a complete example.
 
-##### Compared to `CL:TRACE`
+##### Compared to [`CL:TRACE`][0529]
 
 - Ability to handle [non-local exit][e17e]s
 
@@ -235,7 +235,7 @@ cycles focussing on persistence.
     
     - returns a new [`IN-MEMORY-JOURNAL`][17a8] if `DESIGNATOR` is `T`,
     
-    - returns a new [`FILE-JOURNAL`][f6b2] if `DESIGNATOR` is a `PATHNAME`.
+    - returns a new [`FILE-JOURNAL`][f6b2] if `DESIGNATOR` is a `PATHNAME`([`0`][774e] [`1`][8b8c]).
 
 
 <a id='x-28JOURNAL-3AWITH-JOURNALING-20MGL-PAX-3AMACRO-29'></a>
@@ -316,12 +316,12 @@ cycles focussing on persistence.
     `WITH-JOURNALING` and `LOG-RECORD` is `NIL`, then event recording is
     turned off and `JOURNALED` imposes minimal overhead.
     
-    - `NAME` can be of any type except `NULL`, not evaluated. For names, and
-      for anything that gets written to a journal, a non-keyword symbol
-      is a reasonable choice as it can be easily made unique. However,
-      it also exposes the package structure, which might make reading
-      stuff back more difficult. Keywords and strings do not have this
-      problem.
+    - `NAME` can be of any type except [`NULL`][5230], not evaluated. For
+      names, and for anything that gets written to a journal, a
+      non-keyword symbol is a reasonable choice as it can be easily made
+      unique. However, it also exposes the package structure, which
+      might make reading stuff back more difficult. Keywords and strings
+      do not have this problem.
     
     - `ARGS` can be of any type, but is typically a list.
     
@@ -423,7 +423,7 @@ how the block finished its execution.
     part of normal execution. Just like return values, these expected
     conditions may be required to match what's in the replay journal.
     Furthermore, given a suitable `REPLAY-CONDITION` in `JOURNALED`, they
-    may be replayed without running the `@BLOCK`.
+    may be replayed without running the [block][6572].
 
 <a id='x-28JOURNAL-3AERROR-OUTCOME-20MGL-PAX-3AGLOSSARY-TERM-29'></a>
 
@@ -442,10 +442,10 @@ how the block finished its execution.
     (:out foo :error ("simple-error" "xxx"))
     ```
     
-    The conversion to string is performed with `PRINC` in
-    `WITH-STANDARD-IO-SYNTAX`. This scheme is intended to avoid leaking
+    The conversion to string is performed with [`PRINC`][de03] in
+    [`WITH-STANDARD-IO-SYNTAX`][a332]. This scheme is intended to avoid leaking
     random implementation details into the journal, which would make
-    `READ`ing it back difficult.
+    [`READ`][8f14]ing it back difficult.
     
     In contrast with [condition outcome][f4eb]s, error outcomes are what the
     code is not prepared to handle or replay in a meaningful way.
@@ -467,7 +467,7 @@ how the block finished its execution.
     ```
     
     Note that [condition outcome][f4eb]s and [error outcome][248f]s are also due to
-    `@NON-LOCAL-EXIT`s, but are distinct from nlx outcomes.
+    [non-local exit][e17e]s, but are distinct from nlx outcomes.
     
     Currently, nlx outcomes are detected rather heuristically as there
     is no portable way to detect what really caused the unwinding of the
@@ -499,13 +499,13 @@ The events recorded often need to be [readable][531d]. This is always
 required with [`FILE-JOURNAL`][f6b2]s, often with [`IN-MEMORY-JOURNAL`][17a8]s, but
 never with [`PPRINT-JOURNAL`][2123]s. By choosing an appropriate identifier or
 string representation of the unreadable object to journal, this is
-not a problem in practice. [`JOURNALED`][4f52] provides the `VALUES` hook for
-this purpose.
+not a problem in practice. [`JOURNALED`][4f52] provides the `VALUES`
+hook for this purpose.
 
 With [`EXTERNAL-EVENT`][eed7]s, whose outcome is replayed (see
 [Replaying the outcome][b6d1]), we also need to be able to reverse the
-transformation of `VALUES`, and this is what the `REPLAY-VALUES`
-argument of `JOURNALED` is for.
+transformation of `VALUES`, and this is what the
+`REPLAY-VALUES` argument of `JOURNALED` is for.
 
 Let's see a complete example.
 
@@ -557,7 +557,7 @@ Let's see a complete example.
 
 The point of this example that for to be able to journal the return
 values of `GET-MESSAGE`, the `USER` object must be transformed to
-something `@READABLE`. On the `Recording` run, `(VALUES-> #'USER-ID)`
+something [readable][531d]. On the `Recording` run, `(VALUES-> #'USER-ID)`
 replaces the user object with its id in the [`EVENT-OUTCOME`][95b8] recorded,
 but the original user object is returned.
 
@@ -575,13 +575,14 @@ returned along with `"hello"`.
 
 - [function] **VALUES-\>** *&REST FNS*
 
-    A utility to create a function suitable as the `VALUES` argument of
-    [`JOURNALED`][4f52]. The `VALUES` function is called with the list of values
-    returned by the [block][6572] and returns a transformed set of values that
-    may be recorded in a journal. While arbitrary transformations are
-    allowed, `VALUES->` handles the common case of transforming
-    individual elements of the list independently by calling the
-    functions in FN with the values of the list of the same position.
+    A utility to create a function suitable as the `VALUES`
+    argument of [`JOURNALED`][4f52]. The [`VALUES`][5f0a] function is called with the list
+    of values returned by the [block][6572] and returns a transformed set of
+    values that may be recorded in a journal. While arbitrary
+    transformations are allowed, `VALUES->` handles the common case of
+    transforming individual elements of the list independently by
+    calling the functions in FN with the values of the list of the same
+    position.
     
     ```
     (funcall (values-> #'1+) '(7 :something))
@@ -591,7 +592,7 @@ returned along with `"hello"`.
     Note how `#'1+` is applied only to the first element of the values
     list. The list of functions is shorter than the values list, so
     `:SOMETHING` is not transformed. A value can be left explicitly
-    untransformed by specifying #'`IDENTITY` or `NIL` as the function:
+    untransformed by specifying #'[`IDENTITY`][a162] or `NIL` as the function:
     
     ```
     (funcall (values-> #'1+ nil #'symbol-name)
@@ -785,17 +786,17 @@ most often used for [Logging][77df] and [Tracing][7849].
     mechanism in an inconsistent state. These include I/O errors
     encountered reading or writing journals by `WITH-JOURNALING`,
     [`JOURNALED`][4f52], [`LOGGED`][0765], [`WITH-REPLAY-FILTER`][fa00], [`SYNC-JOURNAL`][6bc6], but also
-    `STORAGE-CONDITION`s, assertion failures, and errors calling
-    `JOURNALED`'s `VALUES` and `CONDITION` function arguments. Crucially, this
-    does not apply to non-local exits from other code, such as `JOURNALED`
-    [block][6572]s, whose error handling is largely unaltered (see [Out-events][5721]
-    and [Replay failures][588a]).
+    [`STORAGE-CONDITION`][c3cd]s, assertion failures, and errors calling
+    `JOURNALED`'s `VALUES` and `CONDITION` function
+    arguments. Crucially, this does not apply to non-local exits from
+    other code, such as `JOURNALED` [block][6572]s, whose error handling is
+    largely unaltered (see [Out-events][5721] and [Replay failures][588a]).
     
     In general, any [non-local exit][e17e] from critical parts of the code is
     turned into a `JOURNALING-FAILURE` to protect the integrity of the
     [`RECORD-JOURNAL`][35c4]. The condition that caused the unwinding is in
     [`JOURNALING-FAILURE-EMBEDDED-CONDITION`][b9bc], or `NIL` if it was a pure
-    `@NON-LOCAL-EXIT` like `THROW`. This is a `SERIOUS-CONDITION`, not to be
+    [non-local exit][e17e] like [`THROW`][bbf1]. This is a [`SERIOUS-CONDITION`][f003], not to be
     handled within `WITH-JOURNALING`.
     
     After a `JOURNALING-FAILURE`, the journaling mechanism cannot be
@@ -822,7 +823,8 @@ most often used for [Logging][77df] and [Tracing][7849].
     Note that in contrast with `JOURNALING-FAILURE` and [`REPLAY-FAILURE`][955f],
     which necessitate leaving `WITH-JOURNALING` to recover from, the other
     conditions - [`JOURNAL-ERROR`][571f], and [`STREAMLET-ERROR`][4dc9] - are subclasses of
-    `ERROR` as the their handling need not be so heavy-handed.
+    [`ERROR`][896c] as the their handling need not be so
+    heavy-handed.
 
 <a id='x-28JOURNAL-3AJOURNALING-FAILURE-EMBEDDED-CONDITION-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNALING-FAILURE-29-29'></a>
 
@@ -832,16 +834,16 @@ most often used for [Logging][77df] and [Tracing][7849].
 
 - [condition] **RECORD-UNEXPECTED-OUTCOME**
 
-    Signalled (with `SIGNAL`: this is not an `ERROR`) by
-    [`JOURNALED`][4f52] when a [`VERSIONED-EVENT`][ffc4] or an [`EXTERNAL-EVENT`][eed7] had an
-    [unexpected outcome][f57e] while in [`JOURNAL-STATE`][3631] `:RECORDING`. Upon
-    signalling this condition, `JOURNAL-STATE` is set to `:LOGGING`, thus no
-    more events can be recorded that will affect replay of the journal
-    being recorded. The event that triggered this condition is recorded
-    in state `:LOGGING`, with its version downgraded. Since
-    [Replay][0dc7] (except [Invoked][4492]) is built on the assumption that control
-    flow is deterministic, an unexpected outcome is significant because
-    it makes this assumption to hold unlikely.
+    Signalled (with [`SIGNAL`][0af1]: this is not an
+    [`ERROR`][896c]) by [`JOURNALED`][4f52] when a [`VERSIONED-EVENT`][ffc4] or an
+    [`EXTERNAL-EVENT`][eed7] had an [unexpected outcome][f57e] while in [`JOURNAL-STATE`][3631]
+    `:RECORDING`. Upon signalling this condition, `JOURNAL-STATE` is set to
+    `:LOGGING`, thus no more events can be recorded that will affect
+    replay of the journal being recorded. The event that triggered this
+    condition is recorded in state `:LOGGING`, with its version
+    downgraded. Since [Replay][0dc7] (except [Invoked][4492]) is built on the
+    assumption that control flow is deterministic, an unexpected outcome
+    is significant because it makes this assumption to hold unlikely.
     
     Also see [`REPLAY-UNEXPECTED-OUTCOME`][8d93].
 
@@ -1076,13 +1078,13 @@ algorithm to determine the target journal is this:
 
 3. If `LOG-RECORD` is a [`JOURNAL`][86bc], then it is returned.
 
-4. If `LOG-RECORD` is symbol (other than `NIL`), then the `SYMBOL-VALUE`
+4. If `LOG-RECORD` is symbol (other than `NIL`), then the [`SYMBOL-VALUE`][a7df]
    of that symbol is assigned to `LOG-RECORD` and we go to step 1.
 
 If the return value is `NIL`, then the event will not be written
 anywhere, else it is written to the journal returned.
 
-This is reminiscent of `SYNONYM-STREAM`s, also in that it is possible
+This is reminiscent of [`SYNONYM-STREAM`][bd39]s, also in that it is possible
 end up in cycles in the resolution. For this reason, the algorithm
 stop with a [`JOURNAL-ERROR`][571f] after 100 iterations.
 
@@ -1109,7 +1111,7 @@ Also see notes on thread [Safety][7224].
 - [macro] **LOGGED** *(&OPTIONAL (LOG-RECORD :RECORD)) FORMAT-CONTROL &REST FORMAT-ARGS*
 
     `LOGGED` creates a single [`LEAF-EVENT`][fef8] whose name is the string
-    constructed by `FORMAT`. For example:
+    constructed by [`FORMAT`][0178]. For example:
     
     ```
     (with-journaling (:record t)
@@ -1129,7 +1131,7 @@ Also see notes on thread [Safety][7224].
 
 ## 8 Tracing
 
-[`JTRACE`][254d] behaves similarly to `CL:TRACE`, but deals [non-local exit][e17e]s
+[`JTRACE`][254d] behaves similarly to [`CL:TRACE`][0529], but deals [non-local exit][e17e]s
 gracefully.
 
 ##### Basic tracing
@@ -1206,16 +1208,16 @@ trace can be customized:
 
 In the above, [`*TRACE-JOURNAL*`][5428] was bound locally to keep the example
 from wrecking the global default, but the same effect could be
-achieved by `SETF`ing [`PPRINT-JOURNAL-PRETTIFIER`][a4ee],
+achieved by [`SETF`][c962]ing [`PPRINT-JOURNAL-PRETTIFIER`][a4ee],
 [`PPRINT-JOURNAL-STREAM`][bce9] and [`JOURNAL-LOG-DECORATOR`][d3f7].
 
 <a id='x-28JOURNAL-3AJTRACE-20MGL-PAX-3AMACRO-29'></a>
 
 - [macro] **JTRACE** *&REST NAMES*
 
-    Like `CL:TRACE`, `JTRACE` takes a list of symbols. When functions
+    Like [`CL:TRACE`][0529], `JTRACE` takes a list of symbols. When functions
     denoted by those `NAMES` are invoked, their names, arguments and
-    outcomes are printed in human readable form to `*TRACE-OUTPUT*`. These
+    outcomes are printed in human readable form to [`*TRACE-OUTPUT*`][69c7]. These
     values may not be [readable][531d], `JTRACE` does not care.
     
     The format of the output is the same as that of [`PPRINT-EVENTS`][74d2].
@@ -1234,19 +1236,19 @@ achieved by `SETF`ing [`PPRINT-JOURNAL-PRETTIFIER`][a4ee],
     
     On Lisps other than SBCL, where a function encapsulation facility is
     not available or it is not used by Journal, `JTRACE` simply sets
-    `SYMBOL-FUNCTION`. This solution loses the tracing encapsulation when
+    [`SYMBOL-FUNCTION`][6c49]. This solution loses the tracing encapsulation when
     the function is recompiled. On these platforms, `(JTRACE)` also
     retraces all functions that should be traced, but aren't.
     
     The main advantage of `JTRACE` over `CL:TRACE` is the ability to trace
     errors, not just normal return values. As it is built on [`JOURNALED`][4f52],
-    it can also detect - somewhat heuristically - `THROW`s and similar.
+    it can also detect - somewhat heuristically - [`THROW`][bbf1]s and similar.
 
 <a id='x-28JOURNAL-3AJUNTRACE-20MGL-PAX-3AMACRO-29'></a>
 
 - [macro] **JUNTRACE** *&REST NAMES*
 
-    Like `CL:UNTRACE`, `JUNTRACE` makes it so that the global functions
+    Like [`CL:UNTRACE`][0f3a], `JUNTRACE` makes it so that the global functions
     denoted by the symbols `NAMES` are no longer traced by [`JTRACE`][254d]. When
     invoked with no arguments, it untraces all traced functions.
 
@@ -1290,7 +1292,7 @@ achieved by `SETF`ing [`PPRINT-JOURNAL-PRETTIFIER`][a4ee],
 - [variable] **\*TRACE-JOURNAL\*** *#\<PPRINT-JOURNAL :NEW\>*
 
     The [`JOURNAL`][86bc] where [`JTRACE`][254d] writes [`LOG-EVENT`][3a51]s. By default it is a
-    [`PPRINT-JOURNAL`][2123] that sets up a `SYNONYM-STREAM` to `*TRACE-OUTPUT*` and
+    [`PPRINT-JOURNAL`][2123] that sets up a [`SYNONYM-STREAM`][bd39] to [`*TRACE-OUTPUT*`][69c7] and
     sends its output there. It pays attention to [`*TRACE-PRETTY*`][c7bd], and its
     log decorator is affected by [`*TRACE-TIME*`][958b] and [`*TRACE-THREAD*`][fc8e].
     However, by changing [`JOURNAL-LOG-DECORATOR`][d3f7] and
@@ -1301,7 +1303,7 @@ achieved by `SETF`ing [`PPRINT-JOURNAL-PRETTIFIER`][a4ee],
 ### 8.1 Slime integration
 
 [Slime](https://common-lisp.net/project/slime/) by default binds
-`C-c C-t` to toggling `CL:TRACE`. To integrate [`JTRACE`][254d] into Slime, add
+`C-c C-t` to toggling [`CL:TRACE`][0529]. To integrate [`JTRACE`][254d] into Slime, add
 the following ELisp snippet to your Emacs initialization file or
 load `src/journal.el`:
 
@@ -1327,7 +1329,7 @@ load `src/journal.el`:
   'slime-toggle-jtrace-fdefinition)
 ```
 
-Since [`JTRACE`][254d] lacks some features of `CL:TRACE`, most notably that of
+Since [`JTRACE`][254d] lacks some features of [`CL:TRACE`][0529], most notably that of
 tracing non-global functions, it is assigned a separate binding,
 `C-c C-j`.
 
@@ -1386,7 +1388,7 @@ implemented, revolves around [`JOURNAL-STATE`][3631] and
     
     - **`:LOGGING`**: There was a [`RECORD-UNEXPECTED-OUTCOME`][cf72]. In this
       state, `VERSIONED-EVENT`s generated are downgraded to `LOG-EVENT`s,
-      `EXTERNAL-EVENT`s and `INVOKED` trigger a `DATA-EVENT-LOSSAGE`.
+      `EXTERNAL-EVENT`s and [Invoked][4492] trigger a `DATA-EVENT-LOSSAGE`.
     
     - **`:FAILED`**: The journal is to be discarded. It encountered a
       [`JOURNALING-FAILURE`][6db0] or a `REPLAY-FAILURE` without completing the
@@ -1430,13 +1432,13 @@ The following arguments of [`JOURNALED`][4f52] control behaviour under replay.
 
 - `REPLAY-VALUES`, a function or `NIL`, may be called with [`EVENT-OUTCOME`][95b8]
   when replaying and `:VERSION` `:INFINITY`. `NIL` is equivalent to
-  `VALUES-LIST`. See [`VALUES<-`][e29b] for an example.
+  [`VALUES-LIST`][dc1d]. See [`VALUES<-`][e29b] for an example.
 
 - `REPLAY-CONDITION`, a function or `NIL`, may be called with
   `EVENT-OUTCOME` (the return value of the function provided as
-  `CONDITION`) when replaying and `:VERSION` is `:INFINITY`. `NIL` is
-  equivalent to `ERROR`. Replaying conditions is cumbersome and best
-  avoided.
+  `:CONDITION`) when replaying and `:VERSION` is `:INFINITY`. `NIL` is
+  equivalent to the [`ERROR`][5622] function. Replaying conditions is
+  cumbersome and best avoided.
 
 
 <a id='x-28JOURNAL-3A-2AFORCE-INSERTABLE-2A-20VARIABLE-29'></a>
@@ -1598,11 +1600,11 @@ there is nowhere to return values from replay-triggered functions.
     At replay, it is invoked whenever the recorded [`IN-EVENT`][e10e] becomes the
     [replay event][ca07].
     
-    `DEFUN` and [`CHECKED`][cc3d] rolled into one, `DEFINE-INVOKED` defines a
+    [`DEFUN`][5d6e] and [`CHECKED`][cc3d] rolled into one, `DEFINE-INVOKED` defines a
     top-level function with `FUNCTION-NAME` and `ARGS` (only simple
     positional arguments are allowed) and wraps `CHECKED` with `NAME`, the
     same `ARGS` and `INSERTABLE` around `BODY`. Whenever an `IN-EVENT` becomes
-    the `REPLAY-EVENT` and it has a `DEFINE-INVOKED` defined with the name
+    the [replay event][ca07] and it has a `DEFINE-INVOKED` defined with the name
     of the event, then `FUNCTION-NAME` is invoked with [`EVENT-ARGS`][5da8].
     
     While `BODY`'s return values are recorded as usual, the defined
@@ -1641,7 +1643,7 @@ there is nowhere to return values from replay-triggered functions.
 
 - [macro] **FLET-INVOKED** *DEFINITIONS &BODY BODY*
 
-    Like [`DEFINE-INVOKED`][635d], but with `FLET` instead of `DEFUN`. The event
+    Like [`DEFINE-INVOKED`][635d], but with [`FLET`][8bc1] instead of [`DEFUN`][5d6e]. The event
     name and the function are associated in the dynamic extent of `BODY`.
     [`WITH-JOURNALING`][234e] does not change the bindings. The example in
     `DEFINE-INVOKED` can be rewritten as:
@@ -1771,7 +1773,7 @@ whenever an event is generated by a journaled [block][6572]:
           is signalled.
 
     - **mismatched name**: Else, if the next unread replay event's
-      name is not `EQUAL` to the name of the new event, then:
+      name is not [`EQUAL`][c9d9] to the name of the new event, then:
 
         - For `VERSIONED-EVENT`s, **`REPLAY-NAME-MISMATCH`** is
           signalled if `INSERTABLE` is `NIL`, else **insert** is
@@ -1838,7 +1840,7 @@ higher version:
 If the replay strategy is *match*, then, for in-events, the
 matching process continues like this:
 
-- If the [`EVENT-ARGS`][5da8] are not `EQUAL`, then **[`REPLAY-ARGS-MISMATCH`][28a4]**
+- If the [`EVENT-ARGS`][5da8] are not [`EQUAL`][c9d9], then **[`REPLAY-ARGS-MISMATCH`][28a4]**
   signalled.
 
 - At this point, two things might happen:
@@ -1852,7 +1854,7 @@ matching process continues like this:
       with an [expected outcome][32e0], then its outcome will be
       replayed (see [Replaying the outcome][b6d1]). If the `OUT-EVENT` is
       missing, then `EXTERNAL-EVENT`s behave like `VERSIONED-EVENT`s,
-      and the `@BLOCK` is executed.
+      and the [block][6572] is executed.
 
 
 <a id='x-28JOURNAL-3A-40REPLAYING-THE-OUTCOME-20MGL-PAX-3ASECTION-29'></a>
@@ -1883,14 +1885,14 @@ assistance may be required from `REPLAY-VALUES` and `REPLAY-CONDITION`:
 - If the [replay event][ca07] has normal return (i.e. `EVENT-EXIT`([`0`][a6d1] [`1`][306a]) `:VALUES`),
   then the recorded return values (in [`EVENT-OUTCOME`][95b8]) are returned
   immediately as in `(VALUES-LIST (EVENT-OUTCOME REPLAY-EVENT))`. If
-  `REPLAY-VALUES` is specified, it is called instead of `VALUES-LIST`.
+  `REPLAY-VALUES` is specified, it is called instead of [`VALUES-LIST`][dc1d].
   See [Working with unreadable values][51dd] for an example.
 
 - Similarly, if the replay event has unwound with an expected
   condition (has `EVENT-EXIT` `:CONDITION`), then the recorded
   condition (in `EVENT-OUTCOME`) is signalled as
   IN `(ERROR (EVENT-OUTCOME REPLAY-EVENT))`. If `REPLAY-CONDITION` is
-  specified, it is called instead of `ERROR`. `REPLAY-CONDITION` must
+  specified, it is called instead of `ERROR`([`0`][896c] [`1`][5622]). `REPLAY-CONDITION` must
   not return normally.
 
 [`WITH-REPLAY-FILTER`][fa00]'s `NO-REPLAY-OUTCOME` can selectively turn off
@@ -1919,9 +1921,9 @@ name from the [`REPLAY-JOURNAL`][103b] in the latter case. If the strategy is
   event always has an [expected outcome][32e0] due to the handling of
   [`RECORD-UNEXPECTED-OUTCOME`][cf72].
 
-- If the new event has an `EXPECTED-OUTCOME`, then unless the new and
-  [replay event][ca07]'s `EVENT-EXIT`([`0`][a6d1] [`1`][306a])s are `EQ` and their [`EVENT-OUTCOME`][95b8]s are
-  `EQUAL`, **[`REPLAY-OUTCOME-MISMATCH`][55b7]** is signalled.
+- If the new event has an [expected outcome][32e0], then unless the new and
+  [replay event][ca07]'s `EVENT-EXIT`([`0`][a6d1] [`1`][306a])s are [`EQ`][d921] and their [`EVENT-OUTCOME`][95b8]s are
+  [`EQUAL`][c9d9], **[`REPLAY-OUTCOME-MISMATCH`][55b7]** is signalled.
 
 - Else, the replay event is consumed and the new event is written
   the `RECORD-JOURNAL`.
@@ -1930,7 +1932,7 @@ Note that [The replay strategy][3c00] for the in-event and the out-event of
 the same [frame][1452] may differ if the corresponding out-event is not
 present in `REPLAY-JOURNAL`, which may be the case when the recording
 process failed hard without unwinding properly, or when an
-`UNEXPECTED-OUTCOME` triggered the transition to [`JOURNAL-STATE`][3631]
+[unexpected outcome][f57e] triggered the transition to [`JOURNAL-STATE`][3631]
 `:LOGGING`.
 
 <a id='x-28JOURNAL-3A-40REPLAY-FAILURES-20MGL-PAX-3ASECTION-29'></a>
@@ -1969,7 +1971,7 @@ process failed hard without unwinding properly, or when an
 - [condition] **REPLAY-NAME-MISMATCH** *REPLAY-FAILURE*
 
     Signaled when the new event's and [replay event][ca07]'s
-    [`EVENT-NAME`][2b45] are not `EQUAL`. The [`REPLAY-FORCE-INSERT`][524c],
+    [`EVENT-NAME`][2b45] are not [`EQUAL`][c9d9]. The [`REPLAY-FORCE-INSERT`][524c],
     [`REPLAY-FORCE-UPGRADE`][5ef1] restarts are provided.
 
 <a id='x-28JOURNAL-3AREPLAY-VERSION-DOWNGRADE-20CONDITION-29'></a>
@@ -1985,7 +1987,7 @@ process failed hard without unwinding properly, or when an
 - [condition] **REPLAY-ARGS-MISMATCH** *REPLAY-FAILURE*
 
     Signaled when the new event's and [replay event][ca07]'s
-    [`EVENT-ARGS`][5da8] are not `EQUAL`. The [`REPLAY-FORCE-UPGRADE`][5ef1] restart is
+    [`EVENT-ARGS`][5da8] are not [`EQUAL`][c9d9]. The [`REPLAY-FORCE-UPGRADE`][5ef1] restart is
     provided.
 
 <a id='x-28JOURNAL-3AREPLAY-OUTCOME-MISMATCH-20CONDITION-29'></a>
@@ -1993,7 +1995,7 @@ process failed hard without unwinding properly, or when an
 - [condition] **REPLAY-OUTCOME-MISMATCH** *REPLAY-FAILURE*
 
     Signaled when the new event's and [replay event][ca07]'s
-    `EVENT-EXIT`([`0`][a6d1] [`1`][306a]) and/or [`EVENT-OUTCOME`][95b8] are not `EQUAL`. The
+    `EVENT-EXIT`([`0`][a6d1] [`1`][306a]) and/or [`EVENT-OUTCOME`][95b8] are not [`EQUAL`][c9d9]. The
     [`REPLAY-FORCE-UPGRADE`][5ef1] restart is provided.
 
 <a id='x-28JOURNAL-3AREPLAY-UNEXPECTED-OUTCOME-20CONDITION-29'></a>
@@ -2184,13 +2186,13 @@ With that, let's see how `WITH-REPLAY-FILTER` works.
         to filter [`EXTERNAL-EVENT`][eed7]s.
     
     - `NO-REPLAY-OUTCOME` is a list of [`EVENT-NAME`][2b45]s. [Replaying the outcome][b6d1]
-      is prevented for frames with `EQUAL` names. See
+      is prevented for frames with [`EQUAL`][c9d9] names. See
       [Testing on multiple levels][d95f] for an example.
     
     `WITH-REPLAY-FILTER` affects only the immediately enclosing
     [`WITH-JOURNALING`][234e]. A `WITH-REPLAY-FILTER` nested within another in the
     same `WITH-JOURNALING` inherits the `SKIP` patterns of its parent, to
-    which it adds its own. The `MAP` function is applied to before the
+    which it adds its own. The [`MAP`][ed30] function is applied to before the
     parent's `MAP`.
     
     Examples of `SKIP` patterns:
@@ -2351,7 +2353,7 @@ required to match the replay. So after the original recording, we
 can check by eyeballing that the record represents a correct
 execution. Then on subsequent replays, even though
 `MAYBE-WIN-THE-GRAND-PRIZE` sits behind `REGISTER-USER` and is hard
-to test with `ASSERT`s, the replay mechanism verifies that it is
+to test with [`ASSERT`][a2d6]s, the replay mechanism verifies that it is
 called only for new users.
 
 This record-and-replay style of testing is not the only possibility:
@@ -2388,15 +2390,15 @@ outer, the inner will be replayed.
 
 This is useful for testing layered communication. For example, we
 might have written code that takes input from an external
-system (`READ-LINE`) and does some complicated
-processing (`READ-FROM-STRING`) before returning the input in a form
+system ([`READ-LINE`][aa93]) and does some complicated
+processing ([`READ-FROM-STRING`][85a3]) before returning the input in a form
 suitable for further processing. Suppose we wrap `REPLAYED` around
 `READ-FROM-STRING` for [Persistence][98d3] because putting it around
 `READ-LINE` would expose low-level protocol details in the journal,
 making protocol changes difficult.
 
 However, upon realizing that `READ-FROM-STRING` was not the best tool
-for the job and switching to `PARSE-INTEGER`, we want to test by
+for the job and switching to [`PARSE-INTEGER`][c56b], we want to test by
 replaying all previously recorded journals. For this, we prevent the
 outer `REPLAYED` from being replayed by outcome with
 [`WITH-REPLAY-FILTER`][fa00]:
@@ -2454,7 +2456,7 @@ Let's write a simple game.
 ##### Original recording
 
 Unfortunately, the implementation is lacking in the input validation
-department. In the transcript below, `PARSE-INTEGER` fails with `junk
+department. In the transcript below, [`PARSE-INTEGER`][c56b] fails with `junk
 in string` when the user enters `not a number`:
 
 ```
@@ -2718,7 +2720,7 @@ Note that on the rerun, block `A` is not executed because external
 events are replayed simply by reproducing their outcome, in this
 case returning 2. See [Replaying the outcome][b6d1]. Block `B`, on the
 other hand, was rerun because it had an [unexpected outcome][f57e] the first
-time around. This time it ran without error, a `DATA-EVENT` was
+time around. This time it ran without error, a [data event][ecce] was
 triggered and `SYNC-FN` invoked.
 
 If we were to invoke the now completed `RUN-WITH-DB` again, it would
@@ -2851,7 +2853,7 @@ how events look in the simplest case.
     (:LEAF "Oops"))
 ```
 
-So a `JOURNALED` `@BLOCK` generates an [`IN-EVENT`][e10e] and an [`OUT-EVENT`][cba8], which
+So a `JOURNALED` [block][6572] generates an [`IN-EVENT`][e10e] and an [`OUT-EVENT`][cba8], which
 are simple property lists. The following reference lists these
 properties, there semantics and the functions to read them.
 
@@ -2877,7 +2879,7 @@ properties, there semantics and the functions to read them.
 - [function] **EVENT-NAME** *EVENT*
 
     The name of an event can be of any type. It is often a symbol or a
-    string. When replaying, names may be compared with `EQUAL`. All `EVENTs`
+    string. When replaying, names may be compared with [`EQUAL`][c9d9]. All `EVENTs`
     have names. The names of the in- and out-events belonging to the
     same [frame][1452] are the same.
 
@@ -3081,7 +3083,7 @@ journals. Here we go into the details.
 - [function] **JOURNAL-DIVERGENT-P** *JOURNAL*
 
     See if [`WITH-JOURNALING`][234e] recorded any event so far in this journal
-    which was not `EQUAL` to its [replay event][ca07] or it had no corresponding
+    which was not [`EQUAL`][c9d9] to its [replay event][ca07] or it had no corresponding
     replay event. This completely ignores [`LOG-EVENT`][3a51]s in both journals
     being compared, and is updated continuously during [Replay][0dc7]. It plays
     a role in [`WITH-BUNDLE`][0ddc] deciding when a journal is important enough to
@@ -3107,7 +3109,7 @@ Also see [`JOURNAL-DIVERGENT-P`][f748].
 
     Compare two journals in a strict sense: whether
     they have the same [`JOURNAL-STATE`][3631] and the lists of their events (as
-    in [`LIST-EVENTS`][3c76]) are `EQUAL`.
+    in [`LIST-EVENTS`][3c76]) are [`EQUAL`][c9d9].
 
 <a id='x-28JOURNAL-3AEQUIVALENT-REPLAY-JOURNALS-P-20GENERIC-FUNCTION-29'></a>
 
@@ -3140,12 +3142,12 @@ The rest of section is about concrete subclasses of [`JOURNAL`][86bc].
     generated. They differ from `FILE-JOURNAL`s in that events written to
     `IN-MEMORY-JOURNAL`s are not serialized (and deserialized on replay)
     with the following consequences for the objects recorded by
-    [`JOURNALED`][4f52] (i.e. its `NAME`, `ARGS` arguments, but also the return `VALUES`
-    of the block, or the value returned by `CONDITION`):
+    [`JOURNALED`][4f52] (i.e. its `NAME`, `ARGS` arguments, but also the return `VALUES`([`0`][5f0a] [`1`][2558])
+    of the block, or the value returned by [`CONDITION`][418f]):
     
     - These objects need not be [readable][531d].
     
-    - Their identity (`EQ`ness) is not lost.
+    - Their identity ([`EQ`][d921]ness) is not lost.
     
     - They must **must not be mutated** in any way.
 
@@ -3197,10 +3199,10 @@ The rest of section is about concrete subclasses of [`JOURNAL`][86bc].
     subclass with out-of-the-box persistence, but see [File bundles][4e3d] for
     a more full-featured solution for repeated [Replay][0dc7]s.
     
-    Since serialization in `FILE-JOURNAL`s is built on top of Lisp `READ`
-    and `WRITE`, everything that [`JOURNALED`][4f52] records in events (i.e. its
-    `NAME`, `ARGS` arguments, but also the return `VALUES` of the block, or
-    the value returned by `CONDITION`) must be [readable][531d].
+    Since serialization in `FILE-JOURNAL`s is built on top of Lisp [`READ`][8f14]
+    and [`WRITE`][1851], everything that [`JOURNALED`][4f52] records in events (i.e. its
+    `NAME`, `ARGS` arguments, but also the return `VALUES`([`0`][5f0a] [`1`][2558]) of the block, or
+    the value returned by [`CONDITION`][418f]) must be [readable][531d].
     
     File journals are human-readable, and editable by hand with some
     care. When editing, the following needs to be remembered:
@@ -3212,7 +3214,7 @@ The rest of section is about concrete subclasses of [`JOURNAL`][86bc].
     
     - If the journal has `SYNC` (see [Synchronization strategies][355b]), then in
       between events, there may be `#\Del` (also called `#\Rubout`) or
-      `#\Ack` characters (`CHAR-CODE` 127 and 6). `#\Del` marks the end of
+      `#\Ack` characters ([`CHAR-CODE`][d1b4] 127 and 6). `#\Del` marks the end of
       the journal contents which may be read back: it's kind of an
       uncommitted-transaction marker for the events that follow it.
       `#\Ack` characters, of which there may be many in the file, mark
@@ -3276,7 +3278,7 @@ The rest of section is about concrete subclasses of [`JOURNAL`][86bc].
 - [accessor] **PPRINT-JOURNAL-STREAM** *PPRINT-JOURNAL* *(:STREAM = \*STANDARD-OUTPUT\*)*
 
     The stream where events are dumped. May be set any
-    time to another `STREAM`.
+    time to another [`STREAM`][cd80].
 
 <a id='x-28JOURNAL-3APPRINT-JOURNAL-PRETTY-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3APPRINT-JOURNAL-29-29'></a>
 
@@ -3389,7 +3391,7 @@ classes.
     `SYNC`, see [Synchronization strategies][355b].
     
     If there is already a `FILE-BUNDLE` with the same directory (according
-    to `TRUENAME`), return that object is returned if it has the same
+    to [`TRUENAME`][ad09]), return that object is returned if it has the same
     `MAX-N-FAILED`, `MAX-N-COMPLETED` and `SYNC` options, else [`JOURNAL-ERROR`][571f]
     is signalled.
 
@@ -3436,7 +3438,7 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
     Return a [`STREAMLET`][4f72] suitable for performing I/O on
     `JOURNAL`. `DIRECTION` (defaults to `:INPUT`) is one of `:INPUT`, `:OUTPUT`,
     `:IO` and it has the same purpose as the similarly named argument of
-    `CL:OPEN`.
+    [`CL:OPEN`][0458].
 
 <a id='x-28JOURNAL-3ACLOSE-STREAMLET-20GENERIC-FUNCTION-29'></a>
 
@@ -3481,7 +3483,7 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
 
 - [macro] **WITH-OPEN-JOURNAL** *(VAR JOURNAL &KEY (DIRECTION :INPUT)) &BODY BODY*
 
-    This is like `WITH-OPEN-FILE`. Open the journal designated by
+    This is like [`WITH-OPEN-FILE`][5152]. Open the journal designated by
     `JOURNAL` (see [`TO-JOURNAL`][ce19]) with [`OPEN-STREAMLET`][2411], passing `DIRECTION`
     along, and bind `VAR` to the resulting [`STREAMLET`][4f72]. Call [`CLOSE-STREAMLET`][bc40]
     after `BODY` finishes. If `JOURNAL` is `NIL`, then `VAR` is bound to `NIL` and
@@ -3491,7 +3493,7 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
 
 - [condition] **STREAMLET-ERROR** *ERROR*
 
-    Like `CL:STREAM-ERROR:` failures regarding trying to
+    Like [`CL:STREAM-ERROR:`][1a83] failures regarding trying to
     perform I/O on a closed [`STREAMLET`][4f72] or of the wrong `DIRECTION`. Actual
     I/O errors are *not* encapsulated in `STREAMLET-ERROR`.
 
@@ -3514,7 +3516,7 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
 - [generic-function] **READ-POSITION** *STREAMLET*
 
     Return an integer that identifies the position of
-    the next event to be read from `STREAMLET`. `SETF`able, see
+    the next event to be read from `STREAMLET`. [`SETF`][c962]able, see
     [`SET-READ-POSITION`][cb6d].
 
 <a id='x-28JOURNAL-3ASET-READ-POSITION-20GENERIC-FUNCTION-29'></a>
@@ -3616,9 +3618,9 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
 
 - [glossary-term] **boolean-valued symbol**
 
-    Imagine writing two `STREAM`s with a spaghetti of functions and
+    Imagine writing two [`STREAM`][cd80]s with a spaghetti of functions and
     wanting to have pretty-printed output on one of them. Unfortunately,
-    binding `*PRINT-PRETTY*` to `T` will affect writes to both streams.
+    binding [`*PRINT-PRETTY*`][67ea] to `T` will affect writes to both streams.
     
     A solution is to have streams look up their own print-pretty flag
     with `(SYMBOL-VALUE (STREAM-PRETTY-PRINT STREAM))` and have the
@@ -3636,7 +3638,7 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
     `STREAM-PRINT-PRETTY` to `NIL` or `T` also works, because they are
     self-evaluating.
     
-    If not by `CL:STREAM`s, boolean-valued symbols are used by
+    If not by [`CL:STREAM`][cd80]s, boolean-valued symbols are used by
     [`MAKE-LOG-DECORATOR`][e04b] and [`PPRINT-JOURNAL`][2123]s.
 
 <a id='x-28JOURNAL-3A-3A-40NON-LOCAL-EXIT-20MGL-PAX-3AGLOSSARY-TERM-29'></a>
@@ -3644,8 +3646,8 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
 - [glossary-term] **non-local exit**
 
     This is a term from the Common Lisp ANSI standard. If a form does
-    not return normally, but control is transferred via `GO`, `RETURN`,
-    `RETURN-FROM` or `THROW`, then it is said to have performed a non-local
+    not return normally, but control is transferred via [`GO`][2c3d], [`RETURN`][0ce7],
+    [`RETURN-FROM`][cdb9] or [`THROW`][bbf1], then it is said to have performed a non-local
     exit. This definition of a non-local exit includes `EVENT-EXIT`([`0`][a6d1] [`1`][306a])
     `:CONDITION`, `:ERROR` and `:NLX`.
 
@@ -3656,18 +3658,24 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
     In Common Lisp, readable objects are those that can be printed readably.
     Anything written to stream-based journals needs to be readable.
 
+  [0178]: http://www.lispworks.com/documentation/HyperSpec/Body/f_format.htm "(FORMAT FUNCTION)"
   [01aa]: #x-28JOURNAL-3ADELETE-FILE-BUNDLE-20FUNCTION-29 "(JOURNAL:DELETE-FILE-BUNDLE FUNCTION)"
   [0200]: #x-28JOURNAL-3ASAVE-EXCURSION-20MGL-PAX-3AMACRO-29 "(JOURNAL:SAVE-EXCURSION MGL-PAX:MACRO)"
   [040a]: #x-28JOURNAL-3A-40IN-EVENTS-REFERENCE-20MGL-PAX-3ASECTION-29 "In-events"
   [0448]: #x-28JOURNAL-3AWRITE-EVENT-20GENERIC-FUNCTION-29 "(JOURNAL:WRITE-EVENT GENERIC-FUNCTION)"
+  [0458]: http://www.lispworks.com/documentation/HyperSpec/Body/f_open.htm "(OPEN FUNCTION)"
+  [0529]: http://www.lispworks.com/documentation/HyperSpec/Body/m_tracec.htm "(TRACE MGL-PAX:MACRO)"
   [05ca]: #x-28JOURNAL-3AIDENTICAL-JOURNALS-P-20GENERIC-FUNCTION-29 "(JOURNAL:IDENTICAL-JOURNALS-P GENERIC-FUNCTION)"
   [0605]: #x-28JOURNAL-3AMAKE-IN-MEMORY-JOURNAL-20FUNCTION-29 "(JOURNAL:MAKE-IN-MEMORY-JOURNAL FUNCTION)"
   [0765]: #x-28JOURNAL-3ALOGGED-20MGL-PAX-3AMACRO-29 "(JOURNAL:LOGGED MGL-PAX:MACRO)"
   [0919]: #x-28JOURNAL-3A-40JOURNAL-UTILITIES-20MGL-PAX-3ASECTION-29 "Utilities"
+  [0af1]: http://www.lispworks.com/documentation/HyperSpec/Body/f_signal.htm "(SIGNAL FUNCTION)"
   [0bc8]: #x-28JOURNAL-3A-40JOURNALED-FOR-REPLAY-20MGL-PAX-3ASECTION-29 "Journaled for replay"
+  [0ce7]: http://www.lispworks.com/documentation/HyperSpec/Body/m_return.htm "(RETURN MGL-PAX:MACRO)"
   [0d06]: #x-28JOURNAL-3AJOURNAL-SYNC-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNAL-29-29 "(JOURNAL:JOURNAL-SYNC (MGL-PAX:READER JOURNAL:JOURNAL))"
   [0dc7]: #x-28JOURNAL-3A-40REPLAY-20MGL-PAX-3ASECTION-29 "Replay"
   [0ddc]: #x-28JOURNAL-3AWITH-BUNDLE-20MGL-PAX-3AMACRO-29 "(JOURNAL:WITH-BUNDLE MGL-PAX:MACRO)"
+  [0f3a]: http://www.lispworks.com/documentation/HyperSpec/Body/m_tracec.htm "(UNTRACE MGL-PAX:MACRO)"
   [0f76]: #x-28JOURNAL-3AEVENT-20TYPE-29 "(JOURNAL:EVENT TYPE)"
   [103b]: #x-28JOURNAL-3AREPLAY-JOURNAL-20FUNCTION-29 "(JOURNAL:REPLAY-JOURNAL FUNCTION)"
   [1311]: #x-28JOURNAL-3A-40JOURNAL-2FGLOSSARY-20MGL-PAX-3ASECTION-29 "Glossary"
@@ -3677,6 +3685,8 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
   [1726]: #x-28JOURNAL-3A-40JOURNAL-LINKS-20MGL-PAX-3ASECTION-29 "Links"
   [17a8]: #x-28JOURNAL-3AIN-MEMORY-JOURNAL-20CLASS-29 "(JOURNAL:IN-MEMORY-JOURNAL CLASS)"
   [182e]: #x-28JOURNAL-3AMAKE-FILE-JOURNAL-20FUNCTION-29 "(JOURNAL:MAKE-FILE-JOURNAL FUNCTION)"
+  [1851]: http://www.lispworks.com/documentation/HyperSpec/Body/f_wr_pr.htm "(WRITE FUNCTION)"
+  [1a83]: http://www.lispworks.com/documentation/HyperSpec/Body/e_stm_er.htm "(STREAM-ERROR CONDITION)"
   [1acb]: #x-28JOURNAL-3A-40UPGRADES-AND-REPLAY-20MGL-PAX-3ASECTION-29 "Upgrades and replay"
   [1d28]: #x-28JOURNAL-3A-40IN-EVENTS-20MGL-PAX-3ASECTION-29 "In-events"
   [2123]: #x-28JOURNAL-3APPRINT-JOURNAL-20CLASS-29 "(JOURNAL:PPRINT-JOURNAL CLASS)"
@@ -3687,9 +3697,11 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
   [2453]: #x-28JOURNAL-3A-40STREAMLETS-REFERENCE-20MGL-PAX-3ASECTION-29 "Streamlets reference"
   [248f]: #x-28JOURNAL-3AERROR-OUTCOME-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL:ERROR-OUTCOME MGL-PAX:GLOSSARY-TERM)"
   [254d]: #x-28JOURNAL-3AJTRACE-20MGL-PAX-3AMACRO-29 "(JOURNAL:JTRACE MGL-PAX:MACRO)"
+  [2558]: http://www.lispworks.com/documentation/HyperSpec/Body/t_values.htm "(VALUES TYPE)"
   [28a4]: #x-28JOURNAL-3AREPLAY-ARGS-MISMATCH-20CONDITION-29 "(JOURNAL:REPLAY-ARGS-MISMATCH CONDITION)"
   [29db]: #x-28JOURNAL-3APRETTIFY-EVENT-20FUNCTION-29 "(JOURNAL:PRETTIFY-EVENT FUNCTION)"
   [2b45]: #x-28JOURNAL-3AEVENT-NAME-20FUNCTION-29 "(JOURNAL:EVENT-NAME FUNCTION)"
+  [2c3d]: http://www.lispworks.com/documentation/HyperSpec/Body/s_go.htm "(GO MGL-PAX:MACRO)"
   [2ee0]: #x-28JOURNAL-3A-40JOURNAL-PORTABILITY-20MGL-PAX-3ASECTION-29 "Portability"
   [2efb]: #x-28JOURNAL-3AREPLAY-VERSION-DOWNGRADE-20CONDITION-29 "(JOURNAL:REPLAY-VERSION-DOWNGRADE CONDITION)"
   [306a]: #x-28JOURNAL-3AEVENT-EXIT-20TYPE-29 "(JOURNAL:EVENT-EXIT TYPE)"
@@ -3711,6 +3723,7 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
   [3cef]: #x-28JOURNAL-3AMAX-N-FAILED-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3ABUNDLE-29-29 "(JOURNAL:MAX-N-FAILED (MGL-PAX:ACCESSOR JOURNAL:BUNDLE))"
   [3f41]: #x-28JOURNAL-3AMAKE-IN-MEMORY-BUNDLE-20FUNCTION-29 "(JOURNAL:MAKE-IN-MEMORY-BUNDLE FUNCTION)"
   [4182]: #x-28JOURNAL-3A-40JOURNAL-FEATURES-20MGL-PAX-3ASECTION-29 "Distinguishing features"
+  [418f]: http://www.lispworks.com/documentation/HyperSpec/Body/e_cnd.htm "(CONDITION CONDITION)"
   [4454]: #x-28JOURNAL-3AJOURNAL-EVENTS-20-28MGL-PAX-3AREADER-20JOURNAL-3AIN-MEMORY-JOURNAL-29-29 "(JOURNAL:JOURNAL-EVENTS (MGL-PAX:READER JOURNAL:IN-MEMORY-JOURNAL))"
   [4492]: #x-28JOURNAL-3AINVOKED-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL:INVOKED MGL-PAX:GLOSSARY-TERM)"
   [48bb]: #x-28JOURNAL-3AFLET-INVOKED-20MGL-PAX-3AMACRO-29 "(JOURNAL:FLET-INVOKED MGL-PAX:MACRO)"
@@ -3720,25 +3733,33 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
   [4f52]: #x-28JOURNAL-3AJOURNALED-20MGL-PAX-3AMACRO-29 "(JOURNAL:JOURNALED MGL-PAX:MACRO)"
   [4f5f]: #x-28JOURNAL-3AEVENT-VERSION-20FUNCTION-29 "(JOURNAL:EVENT-VERSION FUNCTION)"
   [4f72]: #x-28JOURNAL-3ASTREAMLET-20CLASS-29 "(JOURNAL:STREAMLET CLASS)"
+  [5152]: http://www.lispworks.com/documentation/HyperSpec/Body/m_w_open.htm "(WITH-OPEN-FILE MGL-PAX:MACRO)"
   [51dd]: #x-28JOURNAL-3A-40WORKING-WITH-UNREADABLE-VALUES-20MGL-PAX-3ASECTION-29 "Working with unreadable values"
+  [5230]: http://www.lispworks.com/documentation/HyperSpec/Body/t_null.htm "(NULL TYPE)"
   [524c]: #x-28JOURNAL-3AREPLAY-FORCE-INSERT-20RESTART-29 "(JOURNAL:REPLAY-FORCE-INSERT RESTART)"
   [531d]: #x-28JOURNAL-3A-3A-40READABLE-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL::@READABLE MGL-PAX:GLOSSARY-TERM)"
   [5428]: #x-28JOURNAL-3A-2ATRACE-JOURNAL-2A-20VARIABLE-29 "(JOURNAL:*TRACE-JOURNAL* VARIABLE)"
   [55b7]: #x-28JOURNAL-3AREPLAY-OUTCOME-MISMATCH-20CONDITION-29 "(JOURNAL:REPLAY-OUTCOME-MISMATCH CONDITION)"
+  [5622]: http://www.lispworks.com/documentation/HyperSpec/Body/f_error.htm "(ERROR FUNCTION)"
   [571f]: #x-28JOURNAL-3AJOURNAL-ERROR-20CONDITION-29 "(JOURNAL:JOURNAL-ERROR CONDITION)"
   [5721]: #x-28JOURNAL-3A-40OUT-EVENTS-20MGL-PAX-3ASECTION-29 "Out-events"
   [588a]: #x-28JOURNAL-3A-40REPLAY-FAILURES-20MGL-PAX-3ASECTION-29 "Replay failures"
   [5b0f]: #x-28JOURNAL-3A-40BUNDLES-20MGL-PAX-3ASECTION-29 "Bundles"
   [5ca9]: #x-28JOURNAL-3AMAKE-OUT-EVENT-20FUNCTION-29 "(JOURNAL:MAKE-OUT-EVENT FUNCTION)"
+  [5d6e]: http://www.lispworks.com/documentation/HyperSpec/Body/m_defun.htm "(DEFUN MGL-PAX:MACRO)"
   [5da8]: #x-28JOURNAL-3AEVENT-ARGS-20FUNCTION-29 "(JOURNAL:EVENT-ARGS FUNCTION)"
   [5ef1]: #x-28JOURNAL-3AREPLAY-FORCE-UPGRADE-20RESTART-29 "(JOURNAL:REPLAY-FORCE-UPGRADE RESTART)"
+  [5f0a]: http://www.lispworks.com/documentation/HyperSpec/Body/f_values.htm "(VALUES FUNCTION)"
   [61f5]: #x-28JOURNAL-3ANLX-OUTCOME-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL:NLX-OUTCOME MGL-PAX:GLOSSARY-TERM)"
   [635d]: #x-28JOURNAL-3ADEFINE-INVOKED-20MGL-PAX-3AMACRO-29 "(JOURNAL:DEFINE-INVOKED MGL-PAX:MACRO)"
   [63a5]: #x-28JOURNAL-3APEEK-REPLAY-EVENT-20FUNCTION-29 "(JOURNAL:PEEK-REPLAY-EVENT FUNCTION)"
   [6572]: #x-28JOURNAL-3A-40BLOCK-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL:@BLOCK MGL-PAX:GLOSSARY-TERM)"
+  [67ea]: http://www.lispworks.com/documentation/HyperSpec/Body/v_pr_pre.htm "(*PRINT-PRETTY* VARIABLE)"
   [68a8]: #x-28JOURNAL-3A-40IN-MEMORY-JOURNALS-20MGL-PAX-3ASECTION-29 "In-memory journals"
+  [69c7]: http://www.lispworks.com/documentation/HyperSpec/Body/v_debug_.htm "(*TRACE-OUTPUT* VARIABLE)"
   [6bc6]: #x-28JOURNAL-3ASYNC-JOURNAL-20FUNCTION-29 "(JOURNAL:SYNC-JOURNAL FUNCTION)"
   [6be9]: #x-28JOURNAL-3A-40LOGGING-WITH-LEAVES-20MGL-PAX-3ASECTION-29 "Logging with leaf-events"
+  [6c49]: http://www.lispworks.com/documentation/HyperSpec/Body/f_symb_1.htm "(SYMBOL-FUNCTION FUNCTION)"
   [6db0]: #x-28JOURNAL-3AJOURNALING-FAILURE-20CONDITION-29 "(JOURNAL:JOURNALING-FAILURE CONDITION)"
   [6ed4]: #x-28JOURNAL-3AREAD-EVENT-20GENERIC-FUNCTION-29 "(JOURNAL:READ-EVENT GENERIC-FUNCTION)"
   [7049]: #x-28JOURNAL-3ASYNC-STREAMLET-20GENERIC-FUNCTION-29 "(JOURNAL:SYNC-STREAMLET GENERIC-FUNCTION)"
@@ -3746,6 +3767,7 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
   [74d2]: #x-28JOURNAL-3APPRINT-EVENTS-20FUNCTION-29 "(JOURNAL:PPRINT-EVENTS FUNCTION)"
   [75ef]: #x-28JOURNAL-3AEQUIVALENT-REPLAY-JOURNALS-P-20GENERIC-FUNCTION-29 "(JOURNAL:EQUIVALENT-REPLAY-JOURNALS-P GENERIC-FUNCTION)"
   [75ff]: #x-28JOURNAL-3A-40COMPARING-JOURNALS-20MGL-PAX-3ASECTION-29 "Comparing journals"
+  [774e]: http://www.lispworks.com/documentation/HyperSpec/Body/f_pn.htm "(PATHNAME FUNCTION)"
   [77df]: #x-28JOURNAL-3A-40LOGGING-20MGL-PAX-3ASECTION-29 "Logging"
   [7849]: #x-28JOURNAL-3A-40TRACING-20MGL-PAX-3ASECTION-29 "Tracing"
   [7bd1]: #x-28JOURNAL-3A-40FILE-JOURNALS-20MGL-PAX-3ASECTION-29 "File journals"
@@ -3753,13 +3775,19 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
   [7c19]: #x-28JOURNAL-3A-40JOURNAL-BASICS-20MGL-PAX-3ASECTION-29 "Basics"
   [806e]: #x-28JOURNAL-3AFRAMED-20MGL-PAX-3AMACRO-29 "(JOURNAL:FRAMED MGL-PAX:MACRO)"
   [8383]: #x-28JOURNAL-3AWITH-OPEN-JOURNAL-20MGL-PAX-3AMACRO-29 "(JOURNAL:WITH-OPEN-JOURNAL MGL-PAX:MACRO)"
+  [85a3]: http://www.lispworks.com/documentation/HyperSpec/Body/f_rd_fro.htm "(READ-FROM-STRING FUNCTION)"
   [86a2]: #x-28JOURNAL-3A-40SYNCHRONIZATION-WITH-IN-MEMORY-JOURNALS-20MGL-PAX-3ASECTION-29 "Synchronization with in-memory journals"
   [86bc]: #x-28JOURNAL-3AJOURNAL-20CLASS-29 "(JOURNAL:JOURNAL CLASS)"
   [8906]: #x-28JOURNAL-3ABUNDLE-20CLASS-29 "(JOURNAL:BUNDLE CLASS)"
+  [896c]: http://www.lispworks.com/documentation/HyperSpec/Body/e_error.htm "(ERROR CONDITION)"
+  [8b8c]: http://www.lispworks.com/documentation/HyperSpec/Body/t_pn.htm "(PATHNAME TYPE)"
+  [8bc1]: http://www.lispworks.com/documentation/HyperSpec/Body/s_flet_.htm "(FLET MGL-PAX:MACRO)"
   [8d93]: #x-28JOURNAL-3AREPLAY-UNEXPECTED-OUTCOME-20CONDITION-29 "(JOURNAL:REPLAY-UNEXPECTED-OUTCOME CONDITION)"
+  [8f14]: http://www.lispworks.com/documentation/HyperSpec/Body/f_rd_rd.htm "(READ FUNCTION)"
   [917c]: #x-28JOURNAL-3AEVENT-VERSION-20TYPE-29 "(JOURNAL:EVENT-VERSION TYPE)"
   [9382]: #x-28JOURNAL-3A-40EVENT-VERSIONS-20MGL-PAX-3ASECTION-29 "Event versions"
   [9444]: #x-28JOURNAL-3AJOURNAL-REPLAY-MISMATCH-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNAL-29-29 "(JOURNAL:JOURNAL-REPLAY-MISMATCH (MGL-PAX:READER JOURNAL:JOURNAL))"
+  [94b1]: http://www.lispworks.com/documentation/HyperSpec/Body/t_nil.htm "(NIL TYPE)"
   [955f]: #x-28JOURNAL-3AREPLAY-FAILURE-20CONDITION-29 "(JOURNAL:REPLAY-FAILURE CONDITION)"
   [958b]: #x-28JOURNAL-3A-2ATRACE-TIME-2A-20VARIABLE-29 "(JOURNAL:*TRACE-TIME* VARIABLE)"
   [95b8]: #x-28JOURNAL-3AEVENT-OUTCOME-20FUNCTION-29 "(JOURNAL:EVENT-OUTCOME FUNCTION)"
@@ -3767,42 +3795,63 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
   [98d3]: #x-28JOURNAL-3A-40PERSISTENCE-20MGL-PAX-3ASECTION-29 "Persistence"
   [9c42]: #x-28-23A-28-287-29-20BASE-CHAR-20-2E-20-22journal-22-29-20ASDF-2FSYSTEM-3ASYSTEM-29 "(#A((7) BASE-CHAR . \"journal\") ASDF/SYSTEM:SYSTEM)"
   [9c7e]: #x-28JOURNAL-3AEND-OF-JOURNAL-20CONDITION-29 "(JOURNAL:END-OF-JOURNAL CONDITION)"
+  [9d3a]: http://www.lispworks.com/documentation/HyperSpec/Body/v_nil.htm "(NIL MGL-PAX:CONSTANT)"
   [9dd2]: #x-28JOURNAL-3A-40OUT-EVENTS-REFERENCE-20MGL-PAX-3ASECTION-29 "Out-events"
   [a074]: #x-28JOURNAL-3A-40SYNCHRONIZATION-20MGL-PAX-3ASECTION-29 "Synchronization to storage"
+  [a162]: http://www.lispworks.com/documentation/HyperSpec/Body/f_identi.htm "(IDENTITY FUNCTION)"
   [a1fe]: #x-28JOURNAL-3A-40BUNDLES-REFERENCE-20MGL-PAX-3ASECTION-29 "Bundles reference"
+  [a2d6]: http://www.lispworks.com/documentation/HyperSpec/Body/m_assert.htm "(ASSERT MGL-PAX:MACRO)"
+  [a332]: http://www.lispworks.com/documentation/HyperSpec/Body/m_w_std_.htm "(WITH-STANDARD-IO-SYNTAX MGL-PAX:MACRO)"
   [a4ee]: #x-28JOURNAL-3APPRINT-JOURNAL-PRETTIFIER-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3APPRINT-JOURNAL-29-29 "(JOURNAL:PPRINT-JOURNAL-PRETTIFIER (MGL-PAX:ACCESSOR JOURNAL:PPRINT-JOURNAL))"
   [a6d1]: #x-28JOURNAL-3AEVENT-EXIT-20FUNCTION-29 "(JOURNAL:EVENT-EXIT FUNCTION)"
   [a799]: #x-28JOURNAL-3AVALUES--3E-20FUNCTION-29 "(JOURNAL:VALUES-> FUNCTION)"
+  [a7df]: http://www.lispworks.com/documentation/HyperSpec/Body/f_symb_5.htm "(SYMBOL-VALUE FUNCTION)"
   [a8b4]: #x-28JOURNAL-3AREQUEST-COMPLETED-ON-ABORT-20GENERIC-FUNCTION-29 "(JOURNAL:REQUEST-COMPLETED-ON-ABORT GENERIC-FUNCTION)"
+  [aa93]: http://www.lispworks.com/documentation/HyperSpec/Body/f_rd_lin.htm "(READ-LINE FUNCTION)"
+  [ad09]: http://www.lispworks.com/documentation/HyperSpec/Body/f_tn.htm "(TRUENAME FUNCTION)"
   [ade5]: #x-28JOURNAL-3A-40OPENING-AND-CLOSING-20MGL-PAX-3ASECTION-29 "Opening and closing"
   [ae7d]: #x-28JOURNAL-3A-40LEAF-EVENTS-REFERENCE-20MGL-PAX-3ASECTION-29 "Leaf-events"
   [afa1]: #x-28JOURNAL-3A-40WRITING-TO-STREAMLETS-20MGL-PAX-3ASECTION-29 "Writing to streamlets"
   [afda]: #x-28JOURNAL-3A-40IN-MEMORY-BUNDLES-20MGL-PAX-3ASECTION-29 "In-memory bundles"
   [b6d1]: #x-28JOURNAL-3A-40REPLAYING-THE-OUTCOME-20MGL-PAX-3ASECTION-29 "Replaying the outcome"
+  [b743]: http://www.lispworks.com/documentation/HyperSpec/Body/v_t.htm "(T MGL-PAX:CONSTANT)"
   [b9bc]: #x-28JOURNAL-3AJOURNALING-FAILURE-EMBEDDED-CONDITION-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNALING-FAILURE-29-29 "(JOURNAL:JOURNALING-FAILURE-EMBEDDED-CONDITION (MGL-PAX:READER JOURNAL:JOURNALING-FAILURE))"
   [ba76]: #x-28JOURNAL-3A-3A-40ASYNC-UNWIND-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL::@ASYNC-UNWIND MGL-PAX:GLOSSARY-TERM)"
   [bb0f]: #x-28JOURNAL-3A-40CUSTOMIZING-LOGS-20MGL-PAX-3ASECTION-29 "Customizing logs"
+  [bbf1]: http://www.lispworks.com/documentation/HyperSpec/Body/s_throw.htm "(THROW MGL-PAX:MACRO)"
   [bc40]: #x-28JOURNAL-3ACLOSE-STREAMLET-20GENERIC-FUNCTION-29 "(JOURNAL:CLOSE-STREAMLET GENERIC-FUNCTION)"
   [bca2]: #x-28JOURNAL-3AOUTPUT-STREAMLET-P-20FUNCTION-29 "(JOURNAL:OUTPUT-STREAMLET-P FUNCTION)"
   [bce9]: #x-28JOURNAL-3APPRINT-JOURNAL-STREAM-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3APPRINT-JOURNAL-29-29 "(JOURNAL:PPRINT-JOURNAL-STREAM (MGL-PAX:ACCESSOR JOURNAL:PPRINT-JOURNAL))"
+  [bd39]: http://www.lispworks.com/documentation/HyperSpec/Body/t_syn_st.htm "(SYNONYM-STREAM TYPE)"
   [c28b]: #x-28JOURNAL-3A-40TESTING-20MGL-PAX-3ASECTION-29 "Testing"
   [c2fb]: #x-28JOURNAL-3AREPLAYED-20MGL-PAX-3AMACRO-29 "(JOURNAL:REPLAYED MGL-PAX:MACRO)"
+  [c3cd]: http://www.lispworks.com/documentation/HyperSpec/Body/e_storag.htm "(STORAGE-CONDITION CONDITION)"
+  [c56b]: http://www.lispworks.com/documentation/HyperSpec/Body/f_parse_.htm "(PARSE-INTEGER FUNCTION)"
   [c7bd]: #x-28JOURNAL-3A-2ATRACE-PRETTY-2A-20VARIABLE-29 "(JOURNAL:*TRACE-PRETTY* VARIABLE)"
+  [c962]: http://www.lispworks.com/documentation/HyperSpec/Body/m_setf.htm "(SETF MGL-PAX:MACRO)"
+  [c9d9]: http://www.lispworks.com/documentation/HyperSpec/Body/f_equal.htm "(EQUAL FUNCTION)"
   [ca07]: #x-28JOURNAL-3AREPLAY-EVENT-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL:REPLAY-EVENT MGL-PAX:GLOSSARY-TERM)"
   [ca1a]: #x-28JOURNAL-3A-40DECORATION-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL:@DECORATION MGL-PAX:GLOSSARY-TERM)"
+  [cb19]: http://www.lispworks.com/documentation/HyperSpec/Body/t_t.htm "(T TYPE)"
   [cb6d]: #x-28JOURNAL-3ASET-READ-POSITION-20GENERIC-FUNCTION-29 "(JOURNAL:SET-READ-POSITION GENERIC-FUNCTION)"
   [cba8]: #x-28JOURNAL-3AOUT-EVENT-20TYPE-29 "(JOURNAL:OUT-EVENT TYPE)"
   [cc3d]: #x-28JOURNAL-3ACHECKED-20MGL-PAX-3AMACRO-29 "(JOURNAL:CHECKED MGL-PAX:MACRO)"
+  [cd80]: http://www.lispworks.com/documentation/HyperSpec/Body/t_stream.htm "(STREAM TYPE)"
+  [cdb9]: http://www.lispworks.com/documentation/HyperSpec/Body/s_ret_fr.htm "(RETURN-FROM MGL-PAX:MACRO)"
   [ce19]: #x-28JOURNAL-3ATO-JOURNAL-20GENERIC-FUNCTION-29 "(JOURNAL:TO-JOURNAL GENERIC-FUNCTION)"
   [cf72]: #x-28JOURNAL-3ARECORD-UNEXPECTED-OUTCOME-20CONDITION-29 "(JOURNAL:RECORD-UNEXPECTED-OUTCOME CONDITION)"
   [d031]: #x-28JOURNAL-3AREPLAY-NAME-MISMATCH-20CONDITION-29 "(JOURNAL:REPLAY-NAME-MISMATCH CONDITION)"
+  [d1b4]: http://www.lispworks.com/documentation/HyperSpec/Body/f_char_c.htm "(CHAR-CODE FUNCTION)"
   [d3f7]: #x-28JOURNAL-3AJOURNAL-LOG-DECORATOR-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3AJOURNAL-29-29 "(JOURNAL:JOURNAL-LOG-DECORATOR (MGL-PAX:ACCESSOR JOURNAL:JOURNAL))"
   [d472]: #x-28JOURNAL-3AMAX-N-COMPLETED-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3ABUNDLE-29-29 "(JOURNAL:MAX-N-COMPLETED (MGL-PAX:ACCESSOR JOURNAL:BUNDLE))"
   [d5b1]: #x-28JOURNAL-3AOPEN-STREAMLET-P-20GENERIC-FUNCTION-29 "(JOURNAL:OPEN-STREAMLET-P GENERIC-FUNCTION)"
   [d6c0]: #x-28JOURNAL-3A-40JOURNAL-SLIME-INTEGRATION-20MGL-PAX-3ASECTION-29 "Slime integration"
+  [d921]: http://www.lispworks.com/documentation/HyperSpec/Body/f_eq.htm "(EQ FUNCTION)"
   [d95f]: #x-28JOURNAL-3A-40TESTING-ON-MULTIPLE-LEVELS-20MGL-PAX-3ASECTION-29 "Testing on multiple levels"
   [d9ae]: #x-28JOURNAL-3A-40EVENTS-REFERENCE-20MGL-PAX-3ASECTION-29 "Events reference"
+  [dc1d]: http://www.lispworks.com/documentation/HyperSpec/Body/f_vals_l.htm "(VALUES-LIST FUNCTION)"
   [dcba]: #x-28JOURNAL-3A-3A-40BOOLEAN-VALUED-SYMBOL-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL::@BOOLEAN-VALUED-SYMBOL MGL-PAX:GLOSSARY-TERM)"
+  [de03]: http://www.lispworks.com/documentation/HyperSpec/Body/f_wr_pr.htm "(PRINC FUNCTION)"
   [e04a]: #x-28JOURNAL-3A-40MATCHING-IN-EVENTS-20MGL-PAX-3ASECTION-29 "Matching in-events"
   [e04b]: #x-28JOURNAL-3AMAKE-LOG-DECORATOR-20FUNCTION-29 "(JOURNAL:MAKE-LOG-DECORATOR FUNCTION)"
   [e099]: #x-28JOURNAL-3A-40READING-FROM-STREAMLETS-20MGL-PAX-3ASECTION-29 "Reading from streamlets"
@@ -3812,8 +3861,10 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
   [eb29]: #x-28JOURNAL-3A-40SYNCHRONIZATION-WITH-FILE-JOURNALS-20MGL-PAX-3ASECTION-29 "Synchronization with file journals"
   [eb5d]: #x-28JOURNAL-3AFILE-BUNDLE-20CLASS-29 "(JOURNAL:FILE-BUNDLE CLASS)"
   [ecce]: #x-28JOURNAL-3ADATA-EVENT-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL:DATA-EVENT MGL-PAX:GLOSSARY-TERM)"
+  [ed30]: http://www.lispworks.com/documentation/HyperSpec/Body/f_map.htm "(MAP FUNCTION)"
   [eed7]: #x-28JOURNAL-3AEXTERNAL-EVENT-20TYPE-29 "(JOURNAL:EXTERNAL-EVENT TYPE)"
   [eeda]: #x-28JOURNAL-3A-40PPRINT-JOURNALS-20MGL-PAX-3ASECTION-29 "Pretty-printing journals"
+  [f003]: http://www.lispworks.com/documentation/HyperSpec/Body/e_seriou.htm "(SERIOUS-CONDITION CONDITION)"
   [f4eb]: #x-28JOURNAL-3ACONDITION-OUTCOME-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL:CONDITION-OUTCOME MGL-PAX:GLOSSARY-TERM)"
   [f57e]: #x-28JOURNAL-3AUNEXPECTED-OUTCOME-20MGL-PAX-3AGLOSSARY-TERM-29 "(JOURNAL:UNEXPECTED-OUTCOME MGL-PAX:GLOSSARY-TERM)"
   [f6b2]: #x-28JOURNAL-3AFILE-JOURNAL-20CLASS-29 "(JOURNAL:FILE-JOURNAL CLASS)"
