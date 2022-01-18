@@ -2072,9 +2072,64 @@
 
 
 (defsection @logging (:title "Logging")
-  """Imagine a utility library called glib.
+  """Before we get into the details, here is a self contained example
+  that demonstrates typical use.
+
+  ```
+  (defvar *communication-log* nil)
+  (defvar *logic-log* nil)
+  (defvar *logic-log-level* 0)
+
+  (defun call-with-connection (port fn)
+    (framed (call-with-connection :log-record *communication-log*
+                                  :args `(,port))
+      (funcall fn)))
+
+  (defun fetch-data (key)
+    (let ((value 42))
+      (logged ((and (<= 1 *logic-log-level*) *logic-log*))
+        "The value of ~S is ~S." key value)
+      value))
+
+  (defun init-logging (&key (logic-log-level 1))
+    (let* ((stream (open "/tmp/xxx.log"
+                         :direction :output
+                         :if-does-not-exist :create
+                         :if-exists :append))
+           (journal (make-pprint-journal
+                     :stream (make-broadcast-stream
+                              (make-synonym-stream '*standard-output*)
+                              stream))))
+      (setq *communication-log* journal)
+      (setq *logic-log* journal)
+      (setq *logic-log-level* logic-log-level)))
+
+  (init-logging)
+
+  (call-with-connection 8080 (lambda () (fetch-data :foo)))
+  ..
+  .. (CALL-WITH-CONNECTION 8080)
+  ..   The value of :FOO is 42.
+  .. => 42
+  => 42
+
+  (setq *logic-log-level* 0)
+  (call-with-connection 8080 (lambda () (fetch-data :foo)))
+  ..
+  .. (CALL-WITH-CONNECTION 8080)
+  .. => 42
+  => 42
+
+  (ignore-errors
+    (call-with-connection 8080 (lambda () (error "Something unexpected."))))
+  ..
+  .. (CALL-WITH-CONNECTION 8080)
+  .. =E "SIMPLE-ERROR" "Something unexpected."
+  ```
 
   ##### Default to muffling
+
+  Imagine a utility library called glib.
 
   ```
   (defvar *glib-log* nil)
@@ -2113,7 +2168,17 @@
   .. Sleeping for 0.01s.
   ```
 
-  ##### Capturing logs in with-journaling record
+  To log to a file:
+
+  ```
+  (setq *glib-log* (make-pprint-journal
+                    :stream (open "/tmp/glib.log"
+                                  :direction :output
+                                  :if-does-not-exist :create
+                                  :if-exists :append)))
+  ```
+
+  ##### Capturing logs in WITH-JOURNALING's RECORD-JOURNAL
 
   If we were recording a journal for replay and wanted to include glib
   logs in the journal, we would do something like this:
@@ -2137,13 +2202,15 @@
   ##### Rerouting a category
 
   Next, we route `*GLIB-LOG*` to wherever `*APP-LOG*` is pointing by
-  binding `*GLIB-LOG*` _to the symbol_ `*APP-LOG*`.
+  binding `*GLIB-LOG*` _to the symbol_ `*APP-LOG*` (see @LOG-RECORD).
 
   ```
   (defvar *app-log* nil)
 
-  (let ((*glib-log* '*app-log*)
-        (*app-log* (make-pprint-journal :pretty nil)))
+  (let ((*glib-log* '*app-log*))
+    (setq *app-log* nil)
+    (logged (*glib-log*) "This is not written anywhere.")
+    (setq *app-log* (make-pprint-journal :pretty nil))
     (sl33p 0.01))
   ..
   .. (:LEAF "Sleeping for 0.01s.")
@@ -2166,7 +2233,8 @@
     (sleep seconds))
 
   ;;; Check that it all works:
-  (let ((*glib-log-level* 1))
+  (let ((*glib-log-level* 1)
+        (*glib-log* (make-pprint-journal)))
     (format t "~%With log-level ~A" *glib-log-level*)
     (sl33p 0.01)
     (setq *glib-log-level* 2)
@@ -2180,7 +2248,8 @@
 
   ##### Nested log contexts
 
-  LOGGED is for single messages. JOURNALED can provide nested context:
+  LOGGED is for single messages. JOURNALED, or in this example FRAMED,
+  can provide nested context:
 
   ```
   (defun callv (var value symbol &rest args)
@@ -2316,7 +2385,7 @@
          :format-args (list log-record)))
 
 
-(defsection @logging-with-leaves (:title "Logging with leaf-events")
+(defsection @logging-with-leaves (:title "Logging with LEAF-EVENTs")
   (logged macro))
 
 (defmacro logged ((&optional (log-record :record))

@@ -19,7 +19,7 @@
 - [7 Logging][77df]
     - [7.1 Customizing logs][bb0f]
     - [7.2 Log record][3380]
-    - [7.3 Logging with leaf-events][6be9]
+    - [7.3 Logging with LEAF-EVENTs][6be9]
 - [8 Tracing][7849]
     - [8.1 Slime integration][d6c0]
 - [9 Replay][0dc7]
@@ -877,9 +877,64 @@ most often used for [Logging][77df] and [Tracing][7849].
 
 ## 7 Logging
 
-Imagine a utility library called glib.
+Before we get into the details, here is a self contained example
+that demonstrates typical use.
+
+```
+(defvar *communication-log* nil)
+(defvar *logic-log* nil)
+(defvar *logic-log-level* 0)
+
+(defun call-with-connection (port fn)
+  (framed (call-with-connection :log-record *communication-log*
+                                :args `(,port))
+    (funcall fn)))
+
+(defun fetch-data (key)
+  (let ((value 42))
+    (logged ((and (<= 1 *logic-log-level*) *logic-log*))
+      "The value of ~S is ~S." key value)
+    value))
+
+(defun init-logging (&key (logic-log-level 1))
+  (let* ((stream (open "/tmp/xxx.log"
+                       :direction :output
+                       :if-does-not-exist :create
+                       :if-exists :append))
+         (journal (make-pprint-journal
+                   :stream (make-broadcast-stream
+                            (make-synonym-stream '*standard-output*)
+                            stream))))
+    (setq *communication-log* journal)
+    (setq *logic-log* journal)
+    (setq *logic-log-level* logic-log-level)))
+
+(init-logging)
+
+(call-with-connection 8080 (lambda () (fetch-data :foo)))
+..
+.. (CALL-WITH-CONNECTION 8080)
+..   The value of :FOO is 42.
+.. => 42
+=> 42
+
+(setq *logic-log-level* 0)
+(call-with-connection 8080 (lambda () (fetch-data :foo)))
+..
+.. (CALL-WITH-CONNECTION 8080)
+.. => 42
+=> 42
+
+(ignore-errors
+  (call-with-connection 8080 (lambda () (error "Something unexpected."))))
+..
+.. (CALL-WITH-CONNECTION 8080)
+.. =E "SIMPLE-ERROR" "Something unexpected."
+```
 
 ##### Default to muffling
+
+Imagine a utility library called glib.
 
 ```
 (defvar *glib-log* nil)
@@ -918,7 +973,17 @@ verbose output:
 .. Sleeping for 0.01s.
 ```
 
-##### Capturing logs in with-journaling record
+To log to a file:
+
+```
+(setq *glib-log* (make-pprint-journal
+                  :stream (open "/tmp/glib.log"
+                                :direction :output
+                                :if-does-not-exist :create
+                                :if-exists :append)))
+```
+
+##### Capturing logs in [`WITH-JOURNALING`][234e]'s [`RECORD-JOURNAL`][35c4]
 
 If we were recording a journal for replay and wanted to include glib
 logs in the journal, we would do something like this:
@@ -935,20 +1000,22 @@ logs in the journal, we would do something like this:
 ```
 
 We could even `(SETQ *GLIB-LOG* :RECORD)` to make it so that glib
-messages are included by default in the [`RECORD-JOURNAL`][35c4]. In this
+messages are included by default in the `RECORD-JOURNAL`. In this
 example, the special `*GLIB-LOG*` acts like a log category for all
 the log messages of the glib library (currently one).
 
 ##### Rerouting a category
 
 Next, we route `*GLIB-LOG*` to wherever `*APP-LOG*` is pointing by
-binding `*GLIB-LOG*` *to the symbol* `*APP-LOG*`.
+binding `*GLIB-LOG*` *to the symbol* `*APP-LOG*` (see [Log record][3380]).
 
 ```
 (defvar *app-log* nil)
 
-(let ((*glib-log* '*app-log*)
-      (*app-log* (make-pprint-journal :pretty nil)))
+(let ((*glib-log* '*app-log*))
+  (setq *app-log* nil)
+  (logged (*glib-log*) "This is not written anywhere.")
+  (setq *app-log* (make-pprint-journal :pretty nil))
   (sl33p 0.01))
 ..
 .. (:LEAF "Sleeping for 0.01s.")
@@ -971,7 +1038,8 @@ Finally, to make routing decisions conditional we need to change
   (sleep seconds))
 
 ;;; Check that it all works:
-(let ((*glib-log-level* 1))
+(let ((*glib-log-level* 1)
+      (*glib-log* (make-pprint-journal)))
   (format t "~%With log-level ~A" *glib-log-level*)
   (sl33p 0.01)
   (setq *glib-log-level* 2)
@@ -985,7 +1053,8 @@ Finally, to make routing decisions conditional we need to change
 
 ##### Nested log contexts
 
-`LOGGED` is for single messages. [`JOURNALED`][4f52] can provide nested context:
+`LOGGED` is for single messages. [`JOURNALED`][4f52], or in this example [`FRAMED`][806e],
+can provide nested context:
 
 ```
 (defun callv (var value symbol &rest args)
@@ -1104,7 +1173,7 @@ Also see notes on thread [Safety][7224].
 
 <a id='x-28JOURNAL-3A-40LOGGING-WITH-LEAVES-20MGL-PAX-3ASECTION-29'></a>
 
-### 7.3 Logging with leaf-events
+### 7.3 Logging with LEAF-EVENTs
 
 <a id='x-28JOURNAL-3ALOGGED-20MGL-PAX-3AMACRO-29'></a>
 
@@ -3758,7 +3827,7 @@ normal operation, [`STREAMLET`][4f72]s are not worked with directly.
   [68a8]: #x-28JOURNAL-3A-40IN-MEMORY-JOURNALS-20MGL-PAX-3ASECTION-29 "In-memory journals"
   [69c7]: http://www.lispworks.com/documentation/HyperSpec/Body/v_debug_.htm "(*TRACE-OUTPUT* VARIABLE)"
   [6bc6]: #x-28JOURNAL-3ASYNC-JOURNAL-20FUNCTION-29 "(JOURNAL:SYNC-JOURNAL FUNCTION)"
-  [6be9]: #x-28JOURNAL-3A-40LOGGING-WITH-LEAVES-20MGL-PAX-3ASECTION-29 "Logging with leaf-events"
+  [6be9]: #x-28JOURNAL-3A-40LOGGING-WITH-LEAVES-20MGL-PAX-3ASECTION-29 "Logging with LEAF-EVENTs"
   [6c49]: http://www.lispworks.com/documentation/HyperSpec/Body/f_symb_1.htm "(SYMBOL-FUNCTION FUNCTION)"
   [6db0]: #x-28JOURNAL-3AJOURNALING-FAILURE-20CONDITION-29 "(JOURNAL:JOURNALING-FAILURE CONDITION)"
   [6ed4]: #x-28JOURNAL-3AREAD-EVENT-20GENERIC-FUNCTION-29 "(JOURNAL:READ-EVENT GENERIC-FUNCTION)"
