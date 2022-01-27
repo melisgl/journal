@@ -3724,12 +3724,7 @@
             (let ((c (and condition-key (funcall condition-key condition))))
               (if c
                   (values :condition c)
-                  (values :error
-                          (with-standard-io-syntax
-                            (cleanup
-                             (list
-                              (princ-to-string (type-of condition))
-                              (princ-to-string condition)))))))
+                  (values :error (condition-to-string condition))))
             (values :nlx nil))
       (when (and version record-streamlet)
         (let ((state *record-journal-state*))
@@ -3742,6 +3737,17 @@
                      (eq state :logging))
                  (setq version nil)))))
       (values gone-logging version exit outcome))))
+
+(defun condition-to-string (c)
+  (with-standard-io-syntax
+    (cleanup
+     (list
+      (princ-to-string (type-of c))
+      (if (typep c 'simple-condition)
+          (apply #'format nil
+                 (simple-condition-format-control c)
+                 (simple-condition-format-arguments c))
+          (princ-to-string c))))))
 
 (defun cleanup (obj)
   ;; On SBCL, BASE-STRINGs are particularly ugly when printed:

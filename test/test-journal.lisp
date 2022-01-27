@@ -2344,13 +2344,8 @@
     (is (equal (with-output-to-string (*trace-output*)
                  (signals (simple-error :pred "xxx")
                    (bar 1)))
-               #-cmucl
                (format nil "~%(BAR 1)~%  (FOO 3)~%  => 4~%~
-                            =E \"SIMPLE-ERROR\" \"xxx\"")
-               #+cmucl
-               (format nil "~%(BAR 1)~%  (FOO 3)~%  => 4~%~
-                         =E \"SIMPLE-ERROR\" ~
-                         \"Error in function JOURNAL-TEST::BAR:  xxx\"")))
+                            =E \"SIMPLE-ERROR\" \"xxx\"")))
     (juntrace bar)
     (is (equal (sort (jtrace) #'string< :key #'symbol-name) '(foo)))
     (juntrace)
