@@ -394,12 +394,12 @@ The events recorded often need to be @READABLE. This is always
 required with FILE-JOURNALs, often with IN-MEMORY-JOURNALs, but
 never with PPRINT-JOURNALs. By choosing an appropriate identifier or
 string representation of the unreadable object to journal, this is
-not a problem in practice. JOURNALED provides the `VALUES`
+not a problem in practice. JOURNALED provides the VALUES
 hook for this purpose.
 
 With EXTERNAL-EVENTs, whose outcome is replayed (see
 @REPLAYING-THE-OUTCOME), we also need to be able to reverse the
-transformation of `VALUES`, and this is what the
+transformation of VALUES, and this is what the
 REPLAY-VALUES argument of JOURNALED is for.
 
 Let's see a complete example.
@@ -468,7 +468,7 @@ returned along with `"hello"`.
 
 - [function] VALUES-> &REST FNS
 
-    A utility to create a function suitable as the `VALUES`
+    A utility to create a function suitable as the VALUES
     argument of JOURNALED. The VALUES function is called with the list
     of values returned by the @BLOCK and returns a transformed set of
     values that may be recorded in a journal. While arbitrary
@@ -658,7 +658,7 @@ most often used for @LOGGING and @TRACING.
     encountered reading or writing journals by WITH-JOURNALING,
     JOURNALED, LOGGED, WITH-REPLAY-FILTER, SYNC-JOURNAL, but also
     STORAGE-CONDITIONs, assertion failures, and errors calling
-    JOURNALED's `VALUES` and `CONDITION` function
+    JOURNALED's VALUES and CONDITION function
     arguments. Crucially, this does not apply to non-local exits from
     other code, such as JOURNALED @BLOCKs, whose error handling is
     largely unaltered (see @OUT-EVENTS and @REPLAY-FAILURES).
@@ -943,7 +943,7 @@ can provide nested context:
 
 Customizing the output format is possible if we don't necessarily
 expect to be able to read the logs back programmatically. There is
-an example in @TRACING, which is built on @PPRINT-JOURNALs.
+an example in @TRACING, which is built on @PPRINT-JOURNALS.
 
 Here, we discuss how to make logs more informative.
 
@@ -1580,7 +1580,7 @@ IN-MEMORY-BUNDLEs.
 
 ### The replay strategy
 
-The replay process for both @IN-EVENTs and @OUT-EVENTs starts by
+The replay process for both @IN-EVENTS and @OUT-EVENTS starts by
 determining how the generated event (the *new* event from now on)
 shall be replayed. Roughly, the decision is based on the NAME and
 VERSION of the new event and the REPLAY-EVENT (the next event to be
@@ -2445,7 +2445,7 @@ be stored durably.
 The following example saves the entire journal history when a new
 DATA-EVENT is recorded. Note how `SYNC-TO-DB` is careful to
 overwrite `*DB*` only if it is called with a journal that has not
-failed the replay (as in @REPLAY-FAILUREs) and is sufficiently
+failed the replay (as in @REPLAY-FAILURES) and is sufficiently
 different from the replay journal as determined by
 JOURNAL-DIVERGENT-P.
 
@@ -3088,7 +3088,7 @@ normal operation, STREAMLETs are not worked with directly.
 - [reader] JOURNAL STREAMLET (:JOURNAL)
 
     The JOURNAL that was passed to OPEN-STREAMLET.
-    This is the journal `STREAMLET` operates on.
+    This is the journal STREAMLET operates on.
 
 - [generic-function] OPEN-STREAMLET JOURNAL &KEY DIRECTION
 

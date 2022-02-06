@@ -2282,7 +2282,7 @@
 (defsection @customizing-logs (:title "Customizing logs")
   """Customizing the output format is possible if we don't necessarily
   expect to be able to read the logs back programmatically. There is
-  an example in @TRACING, which is built on @PPRINT-JOURNALs.
+  an example in @TRACING, which is built on @PPRINT-JOURNALS.
 
   Here, we discuss how to make logs more informative.
   """
@@ -3156,7 +3156,7 @@
 
 
 (defsection @the-replay-strategy (:title "The replay strategy")
-  "The replay process for both @IN-EVENTs and @OUT-EVENTs starts by
+  "The replay process for both @IN-EVENTS and @OUT-EVENTS starts by
   determining how the generated event (the _new_ event from now on)
   shall be replayed. Roughly, the decision is based on the NAME and
   VERSION of the new event and the REPLAY-EVENT (the next event to be
@@ -4803,7 +4803,7 @@
   The following example saves the entire journal history when a new
   DATA-EVENT is recorded. Note how `SYNC-TO-DB` is careful to
   overwrite `*DB*` only if it is called with a journal that has not
-  failed the replay (as in @REPLAY-FAILUREs) and is sufficiently
+  failed the replay (as in @REPLAY-FAILURES) and is sufficiently
   different from the replay journal as determined by
   JOURNAL-DIVERGENT-P.
 
