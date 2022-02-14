@@ -3,7 +3,7 @@
 
 ## Table of Contents
 
-- [1 JOURNAL ASDF System Details][4a9f]
+- [1 `JOURNAL` ASDF System][4a9f]
 - [2 Links][aa14]
 - [3 Portability][1d0d]
 - [4 Background][0114]
@@ -18,7 +18,7 @@
 - [7 Logging][4e53]
     - [7.1 Customizing logs][297c]
     - [7.2 Log record][a6ac]
-    - [7.3 Logging with LEAF-EVENTs][bece]
+    - [7.3 Logging with `LEAF-EVENT`s][bece]
 - [8 Tracing][e03f]
     - [8.1 Slime integration][42a5]
 - [9 Replay][041c]
@@ -60,7 +60,7 @@
 
 ###### \[in package JOURNAL with nicknames JRN\]
 <a id="x-28-22journal-22-20ASDF-2FSYSTEM-3ASYSTEM-29"></a>
-## 1 JOURNAL ASDF System Details
+## 1 `JOURNAL` ASDF System
 
 - Version: 0.1.0
 - Description: A library for logging, tracing, testing and persistence.
@@ -277,13 +277,13 @@ cycles focussing on persistence.
     [block][06a7] is entered and left, respectively.
 
 <a id="x-28JOURNAL-3ARECORD-JOURNAL-20FUNCTION-29"></a>
-- [function] **RECORD-JOURNAL** 
+- [function] **RECORD-JOURNAL**
 
     Return the journal in which events are currently being
     recorded (see [`WITH-JOURNALING`][6131] and [`WITH-BUNDLE`][12a5]) or `NIL`.
 
 <a id="x-28JOURNAL-3AREPLAY-JOURNAL-20FUNCTION-29"></a>
-- [function] **REPLAY-JOURNAL** 
+- [function] **REPLAY-JOURNAL**
 
     Return the journal from which events are currently being
     replayed (see [`WITH-JOURNALING`][6131] and [`WITH-BUNDLE`][12a5]) or `NIL`.
@@ -791,7 +791,7 @@ most often used for [Logging][4e53] and [Tracing][e03f].
     heavy-handed.
 
 <a id="x-28JOURNAL-3AJOURNALING-FAILURE-EMBEDDED-CONDITION-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNALING-FAILURE-29-29"></a>
-- [reader] **JOURNALING-FAILURE-EMBEDDED-CONDITION** *JOURNALING-FAILURE* *(:EMBEDDED-CONDITION)*
+- [reader] **JOURNALING-FAILURE-EMBEDDED-CONDITION** *JOURNALING-FAILURE (:EMBEDDED-CONDITION)*
 
 <a id="x-28JOURNAL-3ARECORD-UNEXPECTED-OUTCOME-20CONDITION-29"></a>
 - [condition] **RECORD-UNEXPECTED-OUTCOME**
@@ -1058,7 +1058,7 @@ Here, we discuss how to make logs more informative.
     most often used with [Pretty-printing][47a7].
 
 <a id="x-28JOURNAL-3AJOURNAL-LOG-DECORATOR-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3AJOURNAL-29-29"></a>
-- [accessor] **JOURNAL-LOG-DECORATOR** *JOURNAL* *(:LOG-DECORATOR = NIL)*
+- [accessor] **JOURNAL-LOG-DECORATOR** *JOURNAL (:LOG-DECORATOR = NIL)*
 
     If non-NIL, a function to add [decoration][1d11] to
     [`LOG-EVENT`][51ce]s before they are written to a journal. The only allowed
@@ -1125,7 +1125,7 @@ name of thread may be added to the events as [decoration][1d11].
 Also see notes on thread [Safety][7bf3].
 
 <a id="x-28JOURNAL-3A-40LOGGING-WITH-LEAVES-20MGL-PAX-3ASECTION-29"></a>
-### 7.3 Logging with LEAF-EVENTs
+### 7.3 Logging with `LEAF-EVENT`s
 
 <a id="x-28JOURNAL-3ALOGGED-20MGL-PAX-3AMACRO-29"></a>
 - [macro] **LOGGED** *(&OPTIONAL (LOG-RECORD :RECORD)) FORMAT-CONTROL &REST FORMAT-ARGS*
@@ -1941,13 +1941,13 @@ process failed hard without unwinding properly, or when an
     uses the *insert* replay strategy (see [The replay strategy][a8a7]).
 
 <a id="x-28JOURNAL-3AREPLAY-FAILURE-NEW-EVENT-20-28MGL-PAX-3AREADER-20JOURNAL-3AREPLAY-FAILURE-29-29"></a>
-- [reader] **REPLAY-FAILURE-NEW-EVENT** *REPLAY-FAILURE* *(:NEW-EVENT)*
+- [reader] **REPLAY-FAILURE-NEW-EVENT** *REPLAY-FAILURE (:NEW-EVENT)*
 
 <a id="x-28JOURNAL-3AREPLAY-FAILURE-REPLAY-EVENT-20-28MGL-PAX-3AREADER-20JOURNAL-3AREPLAY-FAILURE-29-29"></a>
-- [reader] **REPLAY-FAILURE-REPLAY-EVENT** *REPLAY-FAILURE* *(:REPLAY-EVENT)*
+- [reader] **REPLAY-FAILURE-REPLAY-EVENT** *REPLAY-FAILURE (:REPLAY-EVENT)*
 
 <a id="x-28JOURNAL-3AREPLAY-FAILURE-REPLAY-JOURNAL-20-28MGL-PAX-3AREADER-20JOURNAL-3AREPLAY-FAILURE-29-29"></a>
-- [reader] **REPLAY-FAILURE-REPLAY-JOURNAL** *REPLAY-FAILURE* *(= '(REPLAY-JOURNAL))*
+- [reader] **REPLAY-FAILURE-REPLAY-JOURNAL** *REPLAY-FAILURE (= '(REPLAY-JOURNAL))*
 
 <a id="x-28JOURNAL-3AREPLAY-NAME-MISMATCH-20CONDITION-29"></a>
 - [condition] **REPLAY-NAME-MISMATCH** *REPLAY-FAILURE*
@@ -2060,7 +2060,7 @@ With that, let's see how `WITH-REPLAY-FILTER` works.
     contents of the replay. It is an error if `REPLAY-JOURNAL` is `NIL`.
 
 <a id="x-28JOURNAL-3APEEK-REPLAY-EVENT-20FUNCTION-29"></a>
-- [function] **PEEK-REPLAY-EVENT** 
+- [function] **PEEK-REPLAY-EVENT**
 
     Return the [replay event][cbd5] to be read from [`REPLAY-JOURNAL`][838b]. This is
     roughly equivalent to
@@ -2976,13 +2976,13 @@ journals. Here we go into the details.
     `WITH-JOURNALING`.
 
 <a id="x-28JOURNAL-3AJOURNAL-STATE-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNAL-29-29"></a>
-- [reader] **JOURNAL-STATE** *JOURNAL* *(:STATE)*
+- [reader] **JOURNAL-STATE** *JOURNAL (:STATE)*
 
     Return the state of [`JOURNAL`][5082], which is of type
     [`JOURNAL-STATE`][03de].
 
 <a id="x-28JOURNAL-3AJOURNAL-SYNC-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNAL-29-29"></a>
-- [reader] **JOURNAL-SYNC** *JOURNAL* *(:SYNC = NIL)*
+- [reader] **JOURNAL-SYNC** *JOURNAL (:SYNC = NIL)*
 
     The `SYNC` argument specified at instantiation. See
     [Synchronization strategies][f532].
@@ -2998,7 +2998,7 @@ journals. Here we go into the details.
     thread.
 
 <a id="x-28JOURNAL-3AJOURNAL-REPLAY-MISMATCH-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNAL-29-29"></a>
-- [reader] **JOURNAL-REPLAY-MISMATCH** *JOURNAL* *(= NIL)*
+- [reader] **JOURNAL-REPLAY-MISMATCH** *JOURNAL (= NIL)*
 
     If [`JOURNAL-DIVERGENT-P`][f224], then this is a list of two
     elements: the [`READ-POSITION`][6e60]s in the [`RECORD-JOURNAL`][3b63] and
@@ -3093,13 +3093,13 @@ The rest of section is about concrete subclasses of [`JOURNAL`][5082].
     discussion, see [Synchronization with in-memory journals][12ff].
 
 <a id="x-28JOURNAL-3AJOURNAL-EVENTS-20-28MGL-PAX-3AREADER-20JOURNAL-3AIN-MEMORY-JOURNAL-29-29"></a>
-- [reader] **JOURNAL-EVENTS** *IN-MEMORY-JOURNAL* *(:EVENTS)*
+- [reader] **JOURNAL-EVENTS** *IN-MEMORY-JOURNAL (:EVENTS)*
 
     A sequence of events in the journal. Not to be
     mutated by client code.
 
 <a id="x-28JOURNAL-3AJOURNAL-PREVIOUS-SYNC-POSITION-20-28MGL-PAX-3AREADER-20JOURNAL-3AIN-MEMORY-JOURNAL-29-29"></a>
-- [reader] **JOURNAL-PREVIOUS-SYNC-POSITION** *IN-MEMORY-JOURNAL* *(= 0)*
+- [reader] **JOURNAL-PREVIOUS-SYNC-POSITION** *IN-MEMORY-JOURNAL (= 0)*
 
     The length of [`JOURNAL-EVENTS`][5e0a] at the time of the
     most recent invocation of `SYNC-FN`.
@@ -3162,7 +3162,7 @@ The rest of section is about concrete subclasses of [`JOURNAL`][5082].
     invalidation, a new `FILE-JOURNAL` object is created.
 
 <a id="x-28JOURNAL-3APATHNAME-OF-20-28MGL-PAX-3AREADER-20JOURNAL-3AFILE-JOURNAL-29-29"></a>
-- [reader] **PATHNAME-OF** *FILE-JOURNAL* *(:PATHNAME)*
+- [reader] **PATHNAME-OF** *FILE-JOURNAL (:PATHNAME)*
 
     The pathname of the file backing the journal.
 
@@ -3185,20 +3185,20 @@ The rest of section is about concrete subclasses of [`JOURNAL`][5082].
     Creates a [`PPRINT-JOURNAL`][9150].
 
 <a id="x-28JOURNAL-3APPRINT-JOURNAL-STREAM-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3APPRINT-JOURNAL-29-29"></a>
-- [accessor] **PPRINT-JOURNAL-STREAM** *PPRINT-JOURNAL* *(:STREAM = \*STANDARD-OUTPUT\*)*
+- [accessor] **PPRINT-JOURNAL-STREAM** *PPRINT-JOURNAL (:STREAM = \*STANDARD-OUTPUT\*)*
 
     The stream where events are dumped. May be set any
     time to another [`STREAM`][cbf2].
 
 <a id="x-28JOURNAL-3APPRINT-JOURNAL-PRETTY-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3APPRINT-JOURNAL-29-29"></a>
-- [accessor] **PPRINT-JOURNAL-PRETTY** *PPRINT-JOURNAL* *(:PRETTY = T)*
+- [accessor] **PPRINT-JOURNAL-PRETTY** *PPRINT-JOURNAL (:PRETTY = T)*
 
     Whether to use [`PPRINT-JOURNAL-PRETTIFIER`][853d] or write
     events in as the property lists they are. A
     [boolean-valued symbol][62678].
 
 <a id="x-28JOURNAL-3APPRINT-JOURNAL-PRETTIFIER-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3APPRINT-JOURNAL-29-29"></a>
-- [accessor] **PPRINT-JOURNAL-PRETTIFIER** *PPRINT-JOURNAL* *(:PRETTIFIER = 'PRETTIFY-EVENT)*
+- [accessor] **PPRINT-JOURNAL-PRETTIFIER** *PPRINT-JOURNAL (:PRETTIFIER = 'PRETTIFY-EVENT)*
 
     A function like [`PRETTIFY-EVENT`][11b7] that writes its an
     event to a stream. Only used when [`PPRINT-JOURNAL-PRETTY`][610f], this is
@@ -3230,7 +3230,7 @@ classes.
     an empty, completed one.
 
 <a id="x-28JOURNAL-3AMAX-N-FAILED-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3ABUNDLE-29-29"></a>
-- [accessor] **MAX-N-FAILED** *BUNDLE* *(:MAX-N-FAILED = 1)*
+- [accessor] **MAX-N-FAILED** *BUNDLE (:MAX-N-FAILED = 1)*
 
     If `MAX-N-FAILED` is non-NIL, and the number of
     journals of [`JOURNAL-STATE`][03de] `:FAILED` in the bundle exceeds
@@ -3238,7 +3238,7 @@ classes.
     deleted.
 
 <a id="x-28JOURNAL-3AMAX-N-COMPLETED-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3ABUNDLE-29-29"></a>
-- [accessor] **MAX-N-COMPLETED** *BUNDLE* *(:MAX-N-COMPLETED = 1)*
+- [accessor] **MAX-N-COMPLETED** *BUNDLE (:MAX-N-COMPLETED = 1)*
 
     If `MAX-N-COMPLETED` is non-NIL, and the number of
     journals of [`JOURNAL-STATE`][03de] `:COMPLETED` in the bundle exceeds
@@ -3274,7 +3274,7 @@ classes.
     [`FILE-JOURNAL`][8428]s. It provides easy replay-based persistence.
 
 <a id="x-28JOURNAL-3ADIRECTORY-OF-20-28MGL-PAX-3AREADER-20JOURNAL-3AFILE-BUNDLE-29-29"></a>
-- [reader] **DIRECTORY-OF** *FILE-BUNDLE* *(:DIRECTORY)*
+- [reader] **DIRECTORY-OF** *FILE-BUNDLE (:DIRECTORY)*
 
     The directory where the files backing the
     [`FILE-JOURNAL`][8428]s in the [`FILE-BUNDLE`][18955] are kept.
@@ -3283,9 +3283,9 @@ classes.
 - [function] **MAKE-FILE-BUNDLE** *DIRECTORY &KEY (MAX-N-FAILED 1) (MAX-N-COMPLETED 1) SYNC*
 
     Return a [`FILE-BUNDLE`][18955] object backed by [`FILE-JOURNAL`][8428]s in `DIRECTORY`.
-    See [`MAX-N-FAILED`][(accessor file-bundle)] and
-    [`MAX-N-COMPLETED`][(accessor file-bundle)]. For a description of
-    `SYNC`, see [Synchronization strategies][f532].
+    See [`MAX-N-FAILED`][1dc2] and
+    [`MAX-N-COMPLETED`][8073]. For a description of `SYNC`, see
+    [Synchronization strategies][f532].
     
     If there is already a `FILE-BUNDLE` with the same directory (according
     to [`TRUENAME`][09e7]), return that object is returned if it has the same
@@ -3318,7 +3318,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
     built on top of streamlets.
 
 <a id="x-28JOURNAL-3AJOURNAL-20-28MGL-PAX-3AREADER-20JOURNAL-3ASTREAMLET-29-29"></a>
-- [reader] **JOURNAL** *STREAMLET* *(:JOURNAL)*
+- [reader] **JOURNAL** *STREAMLET (:JOURNAL)*
 
     The `JOURNAL` that was passed to [`OPEN-STREAMLET`][9d79].
     This is the journal `STREAMLET` operates on.

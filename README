@@ -1,7 +1,7 @@
 # Journal manual
 
 ###### \[in package JOURNAL with nicknames JRN\]
-## JOURNAL ASDF System Details
+## JOURNAL ASDF System
 
 - Version: 0.1.0
 - Description: A library for logging, tracing, testing and persistence.
@@ -208,12 +208,12 @@ cycles focussing on persistence.
     A frame is an IN-EVENT, OUT-EVENT pair, which are created when a
     @BLOCK is entered and left, respectively.
 
-- [function] RECORD-JOURNAL 
+- [function] RECORD-JOURNAL
 
     Return the journal in which events are currently being
     recorded (see WITH-JOURNALING and WITH-BUNDLE) or NIL.
 
-- [function] REPLAY-JOURNAL 
+- [function] REPLAY-JOURNAL
 
     Return the journal from which events are currently being
     replayed (see WITH-JOURNALING and WITH-BUNDLE) or NIL.
@@ -1906,7 +1906,7 @@ With that, let's see how WITH-REPLAY-FILTER works.
     @READING-FROM-STREAMLETS api is then available to inspect the
     contents of the replay. It is an error if REPLAY-JOURNAL is NIL.
 
-- [function] PEEK-REPLAY-EVENT 
+- [function] PEEK-REPLAY-EVENT
 
     Return the REPLAY-EVENT to be read from REPLAY-JOURNAL. This is
     roughly equivalent to
@@ -3055,9 +3055,9 @@ classes.
 - [function] MAKE-FILE-BUNDLE DIRECTORY &KEY (MAX-N-FAILED 1) (MAX-N-COMPLETED 1) SYNC
 
     Return a FILE-BUNDLE object backed by FILE-JOURNALs in DIRECTORY.
-    See [MAX-N-FAILED][(accessor file-bundle)] and
-    [MAX-N-COMPLETED][(accessor file-bundle)]. For a description of
-    SYNC, see @SYNCHRONIZATION-STRATEGIES.
+    See [MAX-N-FAILED][(accessor bundle)] and
+    [MAX-N-COMPLETED][(accessor bundle)]. For a description of SYNC, see
+    @SYNCHRONIZATION-STRATEGIES.
     
     If there is already a FILE-BUNDLE with the same directory (according
     to TRUENAME), return that object is returned if it has the same

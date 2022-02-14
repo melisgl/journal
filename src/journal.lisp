@@ -5689,9 +5689,9 @@
 (defun make-file-bundle (directory &key (max-n-failed 1) (max-n-completed 1)
                          sync)
   "Return a FILE-BUNDLE object backed by FILE-JOURNALs in DIRECTORY.
-  See [MAX-N-FAILED][(accessor file-bundle)] and
-  [MAX-N-COMPLETED][(accessor file-bundle)]. For a description of
-  SYNC, see @SYNCHRONIZATION-STRATEGIES.
+  See [MAX-N-FAILED][(accessor bundle)] and
+  [MAX-N-COMPLETED][(accessor bundle)]. For a description of SYNC, see
+  @SYNCHRONIZATION-STRATEGIES.
 
   If there is already a FILE-BUNDLE with the same directory (according
   to TRUENAME), return that object is returned if it has the same
