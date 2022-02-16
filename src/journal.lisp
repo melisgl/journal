@@ -2679,7 +2679,7 @@
 
 ;;; For Slime
 (defun swank-toggle-jtrace (spec-string)
-  (let ((spec (swank::from-string spec-string)))
+  (let ((spec (uiop:symbol-call '#:swank '#:from-string spec-string)))
     (cond ((jtracedp spec)
            (eval `(juntrace ,spec))
            (format nil "~S is now untraced." spec))
