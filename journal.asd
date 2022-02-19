@@ -11,7 +11,8 @@
   :description "A library for logging, tracing, testing and persistence."
   :depends-on (#:alexandria #:bordeaux-threads #:local-time
                #:mgl-pax #:trivial-features #:trivial-garbage
-               (:feature (:not (:or :abcl :allegro :sbcl :cmucl)) :osicat))
+               (:feature (:not (:or :abcl :allegro :sbcl :cmucl)) #:osicat)
+               (:feature :sbcl #:sb-posix))
   :components ((:module "src"
                 :serial t
                 :components ((:file "package")
