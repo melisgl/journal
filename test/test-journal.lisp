@@ -3132,6 +3132,7 @@
   ;; Bind *PACKAGE* so that names of tests printed have package names,
   ;; and M-. works on them in Slime.
   (let ((*package* (find-package :common-lisp))
+        (*print-case* :upcase)
         (*print-duration* nil)
         (*print-compactly* nil)
         (*defer-describe* nil)
