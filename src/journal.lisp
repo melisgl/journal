@@ -143,6 +143,22 @@
   """)
 
 
+;;;; Silence "can't open-code test of unknown type" compiler notes on
+;;;; SBCL without reordering definitions. These will all get redefined
+;;;; when their time in the story comes.
+
+(deftype event-exit () t)
+(define-condition journal-error (error) ())
+(define-condition end-of-journal (journal-error) ())
+(define-condition journaling-failure (serious-condition) ())
+(define-condition record-unexpected-outcome (condition) ())
+(define-condition data-event-lossage (journaling-failure) ())
+(define-condition replay-failure (serious-condition) ())
+(define-condition replay-unexpected-outcome (replay-failure) ())
+(define-condition replay-incomplete (replay-failure) ())
+(defclass bundle () ())
+
+
 (defsection @events-reference (:title "Events reference")
   """Events are normally triggered upon entering and leaving the
   dynamic extent of a JOURNALED @BLOCK (see @IN-EVENTS and
@@ -1733,10 +1749,6 @@
            (fail-with-journaling-failure *record-streamlet*
                                          ,last-condition))))))
 
-(defun call-with-journaling-failure-on-nlx (fn)
-  (with-journaling-failure-on-nlx
-    (funcall fn)))
-
 ;;; These are conditions we know about and if they happen in
 ;;; HANDLE-IN-EVENT or HANDLE-OUT-EVENT, JOURNALED remains
 ;;; operational.
@@ -1751,6 +1763,10 @@
         (not replay-failure)
         (not journal-error)
         (not streamlet-error)))
+
+(defun call-with-journaling-failure-on-nlx (fn)
+  (with-journaling-failure-on-nlx
+    (funcall fn)))
 
 (defmacro with-nlx-cancelled ((datum &rest arguments) &body body)
   (alexandria:with-gensyms (name completedp)
