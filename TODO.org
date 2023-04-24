@@ -1,1 +1,19 @@
 * checkpoints
+We need O(1) startup. Currently the entire journal must be read and
+executed. Checkpoints (snapshots?) would allow state to be
+reconstructed cheaply. Checkpoints would be written only when it's the
+easiest: e.g. in T&E, at the beginning of a player's turn (not during
+revolts, wars, etc).
+
+How to support undoing past a checkpoint? By replaying from the
+previous checkpoint if any.
+
+Would restoring state from a checkpoint be a completely different code
+path? That's almost as fragile as mapping the program state to a DB by
+hand. Still, it's a bit better because it avoids the really
+complicated states deeply intertwined with the control flow.
+
+Can checkpointing be implemented with journal rewriters? Can we check
+that the resulting state is the same? Alternate code paths leading to
+the same state? A checkpoint is really a shortcut. Must check state is
+the same.

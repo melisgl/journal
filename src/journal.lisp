@@ -70,7 +70,14 @@
          (values-list ,return-values))))
   ```
 
-  The Journal library is this idea taken to its logical conclusion.")
+  This is basically how recording works. When replaying events from a
+  previous run, the return values of BODY can be checked against the
+  recorded ones, or we may return the recorded values without even
+  running BODY.
+
+  In summary, we can produce selective execution traces by wrapping
+  code in JOURNALED and use those traces for various purposes. The
+  Journal library is this idea taken to its logical conclusion.")
 
 (defsection @journal-features (:title "Distinguishing features")
   """##### As a logging facility
@@ -183,9 +190,9 @@
       (:LEAF "Oops"))
   ```
 
-  So a JOURNALED @BLOCK generates an IN-EVENT and an OUT-EVENT, which
+  So, a JOURNALED @BLOCK generates an IN-EVENT and an OUT-EVENT, which
   are simple property lists. The following reference lists these
-  properties, there semantics and the functions to read them."""
+  properties, their semantics and the functions to read them."""
   (event type)
   (event= function)
   (event-name function)
@@ -201,7 +208,7 @@
 (declaim (inline event-name))
 (defun event-name (event)
   "The name of an event can be of any type. It is often a symbol or a
-  string. When replaying, names may be compared with EQUAL. All EVENTs
+  string. When replaying, names are compared with EQUAL. All EVENTs
   have names. The names of the in- and out-events belonging to the
   same @FRAME are the same."
   (second event))
@@ -229,7 +236,7 @@
   (getf* (cddr event) :version))
 
 (deftype event-version ()
-  "An event's version is either NIL, a positive fixnum, or :INFINITY,
+  "An event's version is either NIL, a positive FIXNUM, or :INFINITY,
   which correspond to LOG-EVENTs, VERSIONED-EVENTs, and
   EXTERNAL-EVENTs, respectively, and have an increasingly strict
   behaviour with regards to @REPLAY. All EVENTs have versions. The
@@ -304,7 +311,7 @@
 
 (declaim (inline event-args))
 (defun event-args (in-event)
-  "Return the arguments of IN-EVENT, normally populated with the ARGS
+  "Return the arguments of IN-EVENT, normally populated using the ARGS
   form in JOURNALED."
   (getf* (cddr in-event) :args))
 
@@ -334,8 +341,7 @@
 (defun make-out-event (&key name version exit outcome)
   "Create an OUT-EVENT with NAME, VERSION (of type EVENT-VERSION),
   EXIT (of type EVENT-EXIT), and OUTCOME as its EVENT-NAME,
-  [EVENT-VERSION][function], [EVENT-EXIT][function] and
-  EVENT-OUTCOME."
+  [EVENT-VERSION][function], [EVENT-EXIT][function] and EVENT-OUTCOME."
   (check-type version event-version)
   (check-type exit event-exit)
   (assert (or (not (eq exit :nlx)) (null outcome)))
@@ -372,20 +378,20 @@
 
 (declaim (inline expected-outcome-p))
 (defun expected-outcome-p (out-event)
-  "See if OUT-EVENT has an EXPECTED-OUTCOME."
+  "See if OUT-EVENT has an @EXPECTED-OUTCOME."
   (let ((exit (event-exit out-event)))
     (or (eq exit :values) (eq exit :condition))))
 
 (declaim (inline unexpected-outcome-p))
 (defun unexpected-outcome-p (out-event)
-  "See if OUT-EVENT has an UNEXPECTED-OUTCOME."
+  "See if OUT-EVENT has an @UNEXPECTED-OUTCOME."
   (let ((exit (event-exit out-event)))
     (or (eq exit :error) (eq exit :nlx))))
 
 (declaim (inline event-outcome))
 (defun event-outcome (out-event)
   "Return the outcome of the @FRAME (or loosely speaking of a @BLOCK)
-  to which OUT-EVENT belongs. "
+  to which OUT-EVENT belongs."
   (let ((cd2r (cddr out-event)))
     (if (eq (first cd2r) :version)
         (fourth cd2r)
@@ -399,10 +405,10 @@
 
 (deftype leaf-event ()
   "Leaf events are triggered by LOGGED. Unlike IN-EVENTs and
-  OUT-EVENTs, which represent a @FRAME, leaf events stand alone and
-  thus cannot have children. They are also the poorest of their kind:
-  they only have an EVENT-NAME. Their VERSION is always NIL, which
-  makes them LOG-EVENTs."
+  OUT-EVENTs, which represent a @FRAME, leaf events represent a point
+  in execution thus cannot have children. They are also the poorest of
+  their kind: they only have an EVENT-NAME. Their VERSION is always
+  NIL, which makes them LOG-EVENTs."
   '(satisfies leaf-event-p))
 
 (defun leaf-event-p (event)
@@ -415,9 +421,9 @@
 
 
 (defun event= (event-1 event-2)
-  "Return whether EVENT-1 and EVENT-2 represent the same event. In-
-  and out-events belonging to the same @FRAME are _not_ the same
-  event. EVENT-OUTCOME is not compared when EVENT-EXIT is :ERROR to
+  "Return whether EVENT-1 and EVENT-2 represent the same event.
+  In- and out-events belonging to the same @FRAME are _not_ the same
+  event. EVENT-OUTCOMEs are not compared when EVENT-EXIT is :ERROR to
   avoid undue dependence on implementation specific string
   representations. This function is useful in conjunction with
   MAKE-IN-EVENT and MAKE-OUT-EVENT to write tests."
@@ -431,7 +437,7 @@
 
 (defsection @journals-reference (:title "Journals reference")
   "In @JOURNAL-BASICS, we covered the bare minimum needed to work with
-  journals. Here we go into the details."
+  journals. Here, we go into the details."
   (journal class)
   (journal-state (reader journal))
   (journal-sync (reader journal))
@@ -456,10 +462,10 @@
    (output-streamlet :initform nil :accessor %output-streamlet-of)
    (log-decorator
     :initform nil :initarg :log-decorator :accessor journal-log-decorator
-    :documentation "If non-NIL, a function to add @DECORATION to
-    LOG-EVENTs before they are written to a journal. The only allowed
-    transformation is to _append_ a plist to the event, which is a
-    plist itself. The keys can be anything.")
+    :documentation "If non-NIL, this is a function to add @DECORATION
+    to LOG-EVENTs before they are written to a journal. The only
+    allowed transformation is to _append_ a plist to the event, which
+    is a plist itself. The keys can be anything.")
    (lock :initform (bt:make-recursive-lock "a journal-lock"))
    (n-readers :initform 0)
    (n-writers :initform 0)
@@ -469,24 +475,24 @@
     elements: the READ-POSITIONs in the RECORD-JOURNAL and
     REPLAY-JOURNAL of the first events that were different (ignoring
     LOG-EVENTs). It is NIL, otherwise."))
-  (:documentation "A journal is, conceptually, a sequence of events.
-  JOURNAL is an abstract base class. In case of FILE-JOURNALs, the
-  events are stored in a file, while for IN-MEMORY-JOURNALs, they are
-  in a Lisp array. When a journal is opened, it is possible to perform
-  I/O on it (see @STREAMLETS-REFERENCE), which is normally taken care
-  of by WITH-JOURNALING. For this reason, the user's involvement with
+  (:documentation "JOURNAL is an abstract base class for a sequence of
+  events. In case of FILE-JOURNALs, the events are stored in a file,
+  while for IN-MEMORY-JOURNALs, they are in a Lisp array. When a
+  journal is opened, it is possible to perform I/O on it (see
+  @STREAMLETS-REFERENCE), which is normally taken care of by
+  WITH-JOURNALING. For this reason, the user's involvement with
   journals normally only consists of creating and using them in
   WITH-JOURNALING."))
 
 (defun journal-divergent-p (journal)
   "See if WITH-JOURNALING recorded any event so far in this journal
-  which was not EQUAL to its REPLAY-EVENT or it had no corresponding
+  that was not EQUAL to its @REPLAY-EVENT or it had no corresponding
   replay event. This completely ignores LOG-EVENTs in both journals
-  being compared, and is updated continuously during @REPLAY. It plays
-  a role in WITH-BUNDLE deciding when a journal is important enough to
-  keep, and also in @SYNCHRONIZATION-WITH-IN-MEMORY-JOURNALS.
+  being compared and can be called any time during @REPLAY. It plays a
+  role in WITH-BUNDLE deciding when a journal is important enough to
+  keep and also in @SYNCHRONIZATION-WITH-IN-MEMORY-JOURNALS.
 
-  The position of the first mismatch that is available via
+  The position of the first mismatch is available via
   JOURNAL-REPLAY-MISMATCH."
   (not (null (journal-replay-mismatch journal))))
 
@@ -509,9 +515,9 @@
 
 (defsection @comparing-journals (:title "Comparing journals")
   "After replay finished (i.e. WITH-JOURNALING completed), we can ask
-  the question whether there were any changes produced. This is
-  answered in the strictest sense by IDENTICAL-JOURNALS-P, and
-  somewhat more functionally by EQUIVALENT-REPLAY-JOURNALS-P.
+  whether there were any changes produced. This is answered in the
+  strictest sense by IDENTICAL-JOURNALS-P and somewhat more
+  functionally by EQUIVALENT-REPLAY-JOURNALS-P.
 
   Also see JOURNAL-DIVERGENT-P."
   (identical-journals-p generic-function)
@@ -627,7 +633,7 @@
 (defgeneric open-streamlet (journal &key direction)
   (:documentation "Return a STREAMLET suitable for performing I/O on
   JOURNAL. DIRECTION (defaults to :INPUT) is one of :INPUT, :OUTPUT,
-  :IO and it has the same purpose as the similarly named argument of
+  :IO, and it has the same purpose as the similarly named argument of
   CL:OPEN.")
   (:method :around (journal &key (direction :input))
     (let ((outputp (output-direction-p direction))
@@ -687,9 +693,9 @@
 
 (defgeneric make-streamlet-finalizer (streamlet)
   (:documentation "Return NIL or a function of no arguments suitable
-  as a finalizer for STREAMLET. That is, the function closes
-  STREAMLET, but holds no reference to it. This is intended for
-  streamlets which are not dynamic-extent, so using WITH-OPEN-JOURNAL
+  as a finalizer for STREAMLET. That is, a function that closes
+  STREAMLET but holds no reference to it. This is intended for
+  streamlets that are not dynamic-extent, so using WITH-OPEN-JOURNAL
   is not appropriate."))
 
 (defgeneric open-streamlet-p (streamlet)
@@ -700,11 +706,12 @@
 
 (defmacro with-open-journal ((var journal &key (direction :input))
                              &body body)
-  "This is like WITH-OPEN-FILE. Open the journal designated by
-  JOURNAL (see TO-JOURNAL) with OPEN-STREAMLET, passing DIRECTION
-  along, and bind VAR to the resulting STREAMLET. Call CLOSE-STREAMLET
-  after BODY finishes. If JOURNAL is NIL, then VAR is bound to NIL and
-  no streamlet is created."
+  "This is like WITH-OPEN-FILE but for JOURNALs.
+  Open the journal designated by JOURNAL (see TO-JOURNAL) with
+  OPEN-STREAMLET, passing DIRECTION along, and bind VAR to the
+  resulting STREAMLET. Call CLOSE-STREAMLET after BODY finishes. If
+  JOURNAL is NIL, then VAR is bound to NIL and no streamlet is
+  created."
   (alexandria:once-only (journal)
     ;; Use a gensym to remember to the streamlet. VAR may be changed
     ;; by BODY.
@@ -730,9 +737,9 @@
   ((streamlet :initarg :streamlet :reader streamlet)
    (format-control :initarg :format-control :reader format-control)
    (format-args :initform () :initarg :format-args :reader format-args))
-  (:documentation "Like CL:STREAM-ERROR: failures regarding trying to
-  perform I/O on a closed STREAMLET or of the wrong DIRECTION. Actual
-  I/O errors are _not_ encapsulated in STREAMLET-ERROR.")
+  (:documentation "Like CL:STREAM-ERROR: failures pertaining to I/O on
+  a closed STREAMLET or of the wrong DIRECTION. Actual I/O errors are
+  _not_ encapsulated in STREAMLET-ERROR.")
   (:report (lambda (condition stream)
              (apply #'format stream (format-control condition)
                     (format-args condition)))))
@@ -760,7 +767,7 @@
 
 (defgeneric read-event (streamlet &optional eoj-error-p)
   (:documentation "Read the event at the current read position from
-  STREAMLET and move the read position to the event after. If there
+  STREAMLET, and move the read position to the event after. If there
   are no more events, signal END-OF-JOURNAL or return NIL depending on
   EOJ-ERROR-P. Signals STREAMLET-ERROR if STREAMLET is not
   INPUT-STREAMLET-P or not OPEN-STREAMLET-P.")
@@ -819,10 +826,11 @@
   (sync-streamlet generic-function))
 
 (defgeneric write-event (event streamlet)
-  (:documentation "Write EVENT to STREAMLET. Writing always happens at
-  the end of STREAMLET's journal regardless of the READ-POSITION and
-  the read position is not changed. Signals STREAMLET-ERROR if
-  STREAMLET is not OUTPUT-STREAMLET-P or not OPEN-STREAMLET-P.")
+  (:documentation "Write EVENT to STREAMLET.
+  Writing always happens at the end of STREAMLET's journal regardless
+  of the READ-POSITION, and the read position is not changed. Signals
+  STREAMLET-ERROR if STREAMLET is not OUTPUT-STREAMLET-P or not
+  OPEN-STREAMLET-P.")
   (:method :around (event (streamlet streamlet))
     (unless (slot-value streamlet '%trusted)
       (check-output-streamlet-p streamlet)
@@ -834,7 +842,7 @@
     "For convenience, it is possible to write directly to a JOURNAL,
     in which case the journal's internal output streamlet is used.
     This internal streamlet is opened for :OUTPUT and may be used by
-    LOG-RECORD."
+    @LOG-RECORD."
     (with-journal-locked (journal)
       ;; JOURNAL-OUTPUT-STREAMLET creates the streamlet within the
       ;; lock. Good, logging via LOG-RECORD is thread-safe with
@@ -861,12 +869,12 @@
     (call-next-method)))
 
 (defgeneric request-completed-on-abort (streamlet)
-  (:documentation "Make it so that upon ABORTED-EXECUTION STREAMLET's
-  JOURNAL will be in JOURNAL-STATE :COMPLETED when loaded fresh (e.g.
-  FILE-JOURNAL from a file). Any previously written events must be
-  persisted before making this change. Before
-  REQUEST-COMPLETED-ON-ABORT is called, a journal must be reloaded in
-  state :FAILED.
+  (:documentation "Make it so that upon @ABORTED-EXECUTION,
+  STREAMLET's JOURNAL will be in JOURNAL-STATE :COMPLETED when loaded
+  fresh (e.g. when creating a FILE-JOURNAL with an existing file). Any
+  previously written events must be persisted before making this
+  change. Before REQUEST-COMPLETED-ON-ABORT is called, a journal must
+  be reloaded in state :FAILED.
 
   It is permissible to defer carrying out this request until the next
   SYNC-STREAMLET call. If the request was carried out, return true. If
@@ -894,7 +902,7 @@
   section. The journals used for recording and replaying are specified
   by WITH-JOURNALING or by WITH-BUNDLE.
 
-  The @JOURNALS-REFERENCE is presented later, but for most purposes
+  The @JOURNALS-REFERENCE is presented later, but for most purposes,
   creating them (e.g. with MAKE-IN-MEMORY-JOURNAL, MAKE-FILE-JOURNAL)
   and maybe querying their contents with LIST-EVENTS will suffice.
   Some common cases of journal creation are handled by the convenience
@@ -944,23 +952,23 @@
   JOURNAL, then the generated events are matched against events from
   that journal according to the rules of @REPLAY.
 
-  A JOURNAL-ERROR is signalled, if RECORD is a JOURNAL that has been
+  A JOURNAL-ERROR is signalled if RECORD is a JOURNAL that has been
   previously recorded to by another WITH-JOURNALING (that is, if its
-  JOURNAL-STATE is not :NEW), or if REPLAY is a JOURNAL that is not a
+  JOURNAL-STATE is not :NEW) or if REPLAY is a JOURNAL that is not a
   complete recording of successful replay (i.e. its JOURNAL-STATE is
   not :COMPLETED). These checks are intended to catch mistakes that
   would render the new or existing records unusable for replay. When
   WITH-JOURNALING finishes, the RECORD journal is marked :COMPLETED or
   :FAILED in its JOURNAL-STATE.
 
-  REPLAY-EOJ-ERROR-P controls whether an END-OF-JOURNAL is signalled
-  when a new event is being matched to the replay journal from which
-  there are no more events to read. If there was a JOURNALING-FAILURE
-  or a REPLAY-FAILURE during execution, then END-OF-JOURNAL is not
+  REPLAY-EOJ-ERROR-P controls whether END-OF-JOURNAL is signalled when
+  a new event is being matched to the replay journal from which there
+  are no more events to read. If there was a JOURNALING-FAILURE or a
+  REPLAY-FAILURE during execution, then END-OF-JOURNAL is not
   signalled.
 
   If BODY completes successfully, but REPLAY has unprocessed events,
-  then signal REPLAY-INCOMPLETE.
+  then REPLAY-INCOMPLETE is signalled.
 
   WITH-JOURNALING for different RECORD journals can be nested and run
   independently."
@@ -990,13 +998,13 @@
                               *replay-eoj-error-p*))
 
 (defun replay-journal ()
-  "Return the journal from which events are currently being
+  "Return the [JOURNAL][class] from which events are currently being
   replayed (see WITH-JOURNALING and WITH-BUNDLE) or NIL."
   (when *replay-streamlet*
     (journal *replay-streamlet*)))
 
 (defun record-journal ()
-  "Return the journal in which events are currently being
+  "Return the [JOURNAL][class] in which events are currently being
   recorded (see WITH-JOURNALING and WITH-BUNDLE) or NIL."
   (when *record-streamlet*
     (journal *record-streamlet*)))
@@ -1133,7 +1141,7 @@
        (set-journal-state record-streamlet :replaying))
      ;; This is to set record journal state to :RECORDING if there is
      ;; no replay journal or it has only log events. Also, this sets
-     ;; up the invariant which is that the REPLAY-EVENT is
+     ;; up the invariant which is that the @REPLAY-EVENT is
      ;; PEEK-REPLAY-EVENT.
      (skip-events-and-maybe->recording record-streamlet replay-streamlet))))
 
@@ -1228,8 +1236,8 @@
 
   - ARGS can be of any type, but is typically a list.
 
-  Also see in @LOG-RECORD in the @LOGGING section. For a description
-  of VERSION, INSERTABLE, REPLAY-VALUES and REPLAY-CONDITION, see
+  Also see @LOG-RECORD in the @LOGGING section. For a description of
+  VERSION, INSERTABLE, REPLAY-VALUES and REPLAY-CONDITION, see
   @JOURNALED-FOR-REPLAY."
   (check-type name (not null))
   (alexandria:once-only (log-record version)
@@ -1248,7 +1256,6 @@
                   *replay-streamlet* ,insertable ,replay-values
                   ,replay-condition *replay-eoj-error-p*)
                  (,journaled-body))))))))
-
 
 
 (defsection @in-events (:title "In-events")
@@ -1272,8 +1279,8 @@
 
 
 (defsection @out-events (:title "Out-events")
-  """Upon leaving a @BLOCK, JOURNALED generates and OUT-EVENT, closing
-  the @FRAME opened by the corresponding in-event. These out-events
+  """Upon leaving a @BLOCK, JOURNALED generates an OUT-EVENT, closing
+  the @FRAME opened by the corresponding IN-EVENT. These out-events
   are property lists like this:
 
   ```
@@ -1281,39 +1288,39 @@
   ```
 
   Their NAME and VERSION (`FOO` and `1` in the example) are the same
-  as in the in-event: they are the corresponding arguments of
+  as in the in-event: they come from the corresponding arguments of
   JOURNALED. EXIT and OUTCOME are filled in differently depending on
   how the block finished its execution.
   """
   (event-exit type)
-  (values-outcome glossary-term)
-  (condition-outcome glossary-term)
-  (error-outcome glossary-term)
-  (nlx-outcome glossary-term)
+  (@values-outcome glossary-term)
+  (@condition-outcome glossary-term)
+  (@error-outcome glossary-term)
+  (@nlx-outcome glossary-term)
   "There is a further grouping of outcomes into expected and unexpected."
-  (expected-outcome glossary-term)
-  (unexpected-outcome glossary-term))
+  (@expected-outcome glossary-term)
+  (@unexpected-outcome glossary-term))
 
 (deftype event-exit ()
   "One of :VALUES, :CONDITION, :ERROR and :NLX. Indicates whether a
-  journaled @BLOCK:
+  journaled @BLOCK
 
-  - returned normally (:VALUES, see VALUES-OUTCOME),
+  - returned normally (:VALUES, see @VALUES-OUTCOME),
 
-  - unwound on an expected condition (:CONDITION, see CONDITION-OUTCOME),
+  - unwound on an expected condition (:CONDITION, see @CONDITION-OUTCOME),
 
-  - unwound on an unexpected condition (:ERROR, see ERROR-OUTCOME),
+  - unwound on an unexpected condition (:ERROR, see @ERROR-OUTCOME),
 
   - unwound by performing a @NON-LOCAL-EXIT of some other kind such as
-    a throw (:NLX, see NLX-OUTCOME).
+    a throw (:NLX, see @NLX-OUTCOME).
 
-  The first two are EXPECTED-OUTCOMEs, while the latter two are
-  UNEXPECTED-OUTCOMEs."
+  The first two are @EXPECTED-OUTCOMEs, while the latter two are
+  @UNEXPECTED-OUTCOMEs."
   '(member :values :condition :error :nlx))
 
-(define-glossary-term values-outcome (:title "values outcome")
+(define-glossary-term @values-outcome (:title "values outcome")
   """If the JOURNALED @BLOCK returns normally, [EVENT-EXIT][type] is
-  :VALUES and the outcome is the list of values returned:
+  :VALUES, and the outcome is the list of values returned:
 
   ```
   (journaled (foo) (values 7 t))
@@ -1326,11 +1333,11 @@
   @WORKING-WITH-UNREADABLE-VALUES).
   """)
 
-(define-glossary-term condition-outcome (:title "condition outcome")
+(define-glossary-term @condition-outcome (:title "condition outcome")
   """If the @BLOCK unwound due to a condition, and JOURNALED's
   CONDITION argument (a function whose default is `(CONSTANTLY NIL)`)
   returns non-NIL when invoked on it, then [EVENT-EXIT][type] is
-  :CONDITION and the outcome is this return value:
+  :CONDITION, and the outcome is this return value:
 
   ```
   (journaled (foo :condition (lambda (c) (prin1-to-string c)))
@@ -1339,13 +1346,13 @@
   (:out foo :condition "xxx")
   ```
 
-  Conditions thus recognized are those that can be considered to be
-  part of normal execution. Just like return values, these expected
-  conditions may be required to match what's in the replay journal.
-  Furthermore, given a suitable REPLAY-CONDITION in JOURNALED, they
-  may be replayed without running the @BLOCK.""")
+  Conditions thus recognized are those that can be considered part of
+  normal execution. Just like return values, these expected conditions
+  may be required to match what's in the replay journal. Furthermore,
+  given a suitable REPLAY-CONDITION in JOURNALED, they may be replayed
+  without running the @BLOCK.""")
 
-(define-glossary-term error-outcome (:title "error outcome")
+(define-glossary-term @error-outcome (:title "error outcome")
   """If the JOURNALED @BLOCK unwound due to a condition, but
   JOURNALED's CONDITION argument returns NIL when invoked on it, then
   [EVENT-EXIT][type] is :ERROR and the outcome the string
@@ -1355,8 +1362,8 @@
   ```
   (journaled (foo)
     (error "xxx"))
-  ;; generates the out-event
-  (:out foo :error ("simple-error" "xxx"))
+  ;; generates this out-event:
+  ;; (:out foo :error ("simple-error" "xxx"))
   ```
 
   The conversion to string is performed with PRINC in
@@ -1364,10 +1371,10 @@
   random implementation details into the journal, which would make
   `READ`ing it back difficult.
 
-  In contrast with CONDITION-OUTCOMEs, error outcomes are what the
+  In contrast with @CONDITION-OUTCOMEs, error outcomes are what the
   code is not prepared to handle or replay in a meaningful way.""")
 
-(define-glossary-term nlx-outcome (:title "nlx outcome")
+(define-glossary-term @nlx-outcome (:title "nlx outcome")
   """If the JOURNALED @BLOCK performed a @NON-LOCAL-EXIT that was not
   due to a condition, then [EVENT-EXIT][type] is :NLX and the outcome
   is NIL.
@@ -1380,21 +1387,21 @@
   (:out foo :nlx nil)
   ```
 
-  Note that CONDITION-OUTCOMEs and ERROR-OUTCOMEs are also due to
-  @NON-LOCAL-EXITs, but are distinct from nlx outcomes.
+  Note that @CONDITION-OUTCOMEs and @ERROR-OUTCOMEs are also due to
+  @NON-LOCAL-EXITs but are distinct from nlx outcomes.
 
   Currently, nlx outcomes are detected rather heuristically as there
   is no portable way to detect what really caused the unwinding of the
   stack.""")
 
-(define-glossary-term expected-outcome (:title "expected outcome")
+(define-glossary-term @expected-outcome (:title "expected outcome")
   "An OUT-EVENT is said to have an expected outcome if it had a
-  VALUES-OUTCOME or a CONDITION-OUTCOME, or equivalently, when its
+  @VALUES-OUTCOME or a @CONDITION-OUTCOME, or equivalently, when its
   [EVENT-EXIT][type] is :VALUES or :CONDITION.")
 
-(define-glossary-term unexpected-outcome (:title "unexpected outcome")
+(define-glossary-term @unexpected-outcome (:title "unexpected outcome")
   "An OUT-EVENT is said to have an unexpected outcome if it had an
-  ERROR-OUTCOME or an NLX-OUTCOME, or equivalently, when its
+  @ERROR-OUTCOME or an @NLX-OUTCOME, or equivalently, when its
   [EVENT-EXIT][type] is :ERROR or :NLX.")
 
 
@@ -1460,11 +1467,11 @@
   => "hello"
   ```
 
-  The point of this example that for to be able to journal the return
-  values of `GET-MESSAGE`, the `USER` object must be transformed to
-  something @READABLE. On the `Recording` run, `(VALUES-> #'USER-ID)`
-  replaces the user object with its id in the EVENT-OUTCOME recorded,
-  but the original user object is returned.
+  To be able to journal the return values of `GET-MESSAGE`, the `USER`
+  object must be transformed to something @READABLE. On the
+  `Recording` run, `(VALUES-> #'USER-ID)` replaces the user object
+  with its id in the EVENT-OUTCOME recorded, but the original user
+  object is returned.
 
   When `Replaying`, the journaled OUT-EVENT is replayed (see
   @REPLAYING-THE-OUTCOME):
@@ -1533,7 +1540,7 @@
 
 (defun list-events (&optional (journal (record-journal)))
   "Return a list of all the events in the journal designated by
-  JOURNAL. Calls SYNC-JOURNAL first, to make sure that all writes are
+  JOURNAL. Calls SYNC-JOURNAL first to make sure that all writes are
   taken into account."
   (let ((journal (to-journal journal)))
     (sync-journal journal)
@@ -1620,12 +1627,12 @@
   WITH-JOURNALING when an error threatens to leave the journaling
   mechanism in an inconsistent state. These include I/O errors
   encountered reading or writing journals by WITH-JOURNALING,
-  JOURNALED, LOGGED, WITH-REPLAY-FILTER, SYNC-JOURNAL, but also
-  STORAGE-CONDITIONs, assertion failures, and errors calling
-  JOURNALED's [VALUES][argument] and [CONDITION][argument] function
-  arguments. Crucially, this does not apply to non-local exits from
-  other code, such as JOURNALED @BLOCKs, whose error handling is
-  largely unaltered (see @OUT-EVENTS and @REPLAY-FAILURES).
+  JOURNALED, LOGGED, WITH-REPLAY-FILTER, SYNC-JOURNAL, and also
+  STORAGE-CONDITIONs, assertion failures, errors calling JOURNALED's
+  [VALUES][argument] and [CONDITION][argument] function arguments.
+  Crucially, this does not apply to @NON-LOCAL-EXITs from other code,
+  such as JOURNALED @BLOCKs, whose error handling is largely
+  unaltered (see @OUT-EVENTS and @REPLAY-FAILURES).
 
   In general, any @NON-LOCAL-EXIT from critical parts of the code is
   turned into a JOURNALING-FAILURE to protect the integrity of the
@@ -1650,14 +1657,14 @@
   After a JOURNALING-FAILURE, any further attempt within the affected
   WITH-JOURNALING to use the critical machinery mentioned
   above (JOURNALED, LOGGED, etc) resignals the same journal failure
-  condition. As a consequence, the record journal cannot be changed
+  condition. As a consequence, the record journal cannot be changed,
   and the only way to recover is to leave WITH-JOURNALING. This does
   not affect processing in other threads, which by design cannot write
   to the record journal.
 
   Note that in contrast with JOURNALING-FAILURE and REPLAY-FAILURE,
   which necessitate leaving WITH-JOURNALING to recover from, the other
-  conditions - JOURNAL-ERROR, and STREAMLET-ERROR - are subclasses of
+  conditions – JOURNAL-ERROR, and STREAMLET-ERROR – are subclasses of
   [ERROR][condition] as the their handling need not be so
   heavy-handed.")
   (:report (lambda (condition stream)
@@ -1697,8 +1704,8 @@
   (when (eq streamlet *record-streamlet*)
     (check-within-with-journaling-failure-on-nlx)))
 
-;;; Signal JOURNALING-FAILURE and if within WITH-JOURNALING remember it
-;;; for resignalling.
+;;; Signal JOURNALING-FAILURE, and if within WITH-JOURNALING, remember
+;;; it for resignalling.
 (defun journaling-failure (condition-type &rest args)
   (check-within-with-journaling-failure-on-nlx)
   (cond ((in-with-journaling-p)
@@ -1721,7 +1728,7 @@
 (defun turn-off-with-journaling-failure-on-nlx ()
   (setq *with-journaling-failure-on-nlx-body-completed* t))
 
-;;; This is wrapped around HANDLE-IN-EVENT and HANDLE-OUT-EVENT and
+;;; This is wrapped around HANDLE-IN-EVENT, HANDLE-OUT-EVENT and
 ;;; basically wherever I/O is performed. If it catches any nastiness
 ;;; that threatens to corrupt the internal state, it transititions to
 ;;; :FAILED or :COMPLETED and signals a JOURNALING-FAILURE. There is
@@ -1749,9 +1756,8 @@
            (fail-with-journaling-failure *record-streamlet*
                                          ,last-condition))))))
 
-;;; These are conditions we know about and if they happen in
-;;; HANDLE-IN-EVENT or HANDLE-OUT-EVENT, JOURNALED remains
-;;; operational.
+;;; If these conditions are signalled in HANDLE-IN-EVENT or
+;;; HANDLE-OUT-EVENT, JOURNALED remains operational.
 (deftype safe-condition ()
   `(or replay-failure journal-error streamlet-error
        ;; This is not a serious condition, but one can still unwind
@@ -1808,26 +1814,26 @@
   :LOGGING, thus no more events can be recorded that will affect
   replay of the journal being recorded. The event that triggered this
   condition is recorded in state :LOGGING, with its version
-  downgraded. Since @REPLAY (except INVOKED) is built on the
+  downgraded. Since @REPLAY (except @INVOKED) is built on the
   assumption that control flow is deterministic, an unexpected outcome
   is significant because it makes this assumption to hold unlikely.
 
   Also see REPLAY-UNEXPECTED-OUTCOME.")
   (:report (lambda (condition stream)
-             (format stream "~@<Recorded event ~S with an ~
-                            UNEXPECTED-OUTCOME.~:@>~%"
-                     (new-event condition))
+             (format stream "~@<Recorded event ~S with an ~S.~:@>~%"
+                     (new-event condition)
+                     '@unexpected-outcome)
              (format stream "~@<Record journal was set to ~
                             JOURNAL-STATE :LOGGING.~:@>"))))
 
 (define-condition data-event-lossage (journaling-failure)
   ()
-  (:documentation "Signalled when a DATA-EVENT is about to be recorded
+  (:documentation "Signalled when a @DATA-EVENT is about to be recorded
   in JOURNAL-STATE :MISMATCHED or :LOGGING. Since the data event will
   not be replayed that constitutes data loss.")
   (:report (lambda (condition stream)
              (maybe-print-resignalling-message condition stream)
-             (format stream "~@<A DATA-EVENT is about to be recorded ~
+             (format stream "~@<A @DATA-EVENT is about to be recorded ~
                             in JOURNAL-STATE :MISMATCHED or :LOGGING.~:@>~%")
              (print-record-closed stream))))
 
@@ -1880,8 +1886,8 @@
 (defun print-events (events &key stream)
   """Print EVENTS to STREAM as lists, starting a new line for each
   event and indenting them according to their nesting structure.
-  EVENTS may be a JOURNAL, in which case LIST-EVENTS is called on it
-  first.
+  EVENTS may be a sequence or a JOURNAL, in which case LIST-EVENTS is
+  called on it first.
 
   ```
   (print-events '((:in log :args ("first arg" 2))
@@ -1957,9 +1963,9 @@
   (values))
 
 (defun prettify-event (event depth stream)
-  """Write EVENT to STREAM in a somewhat human-friendly format. This
-  is the function PPRINT-JOURNAL, PPRINT-EVENTS, and @TRACING use by
-  default. In addition to the basic example in PPRINT-EVENTS,
+  """Write EVENT to STREAM in a somewhat human-friendly format.
+  This is the function PPRINT-JOURNAL, PPRINT-EVENTS, and @TRACING use
+  by default. In addition to the basic example in PPRINT-EVENTS,
   @DECORATION on events is printed before normal, indented output like
   this:
 
@@ -1970,8 +1976,8 @@
   ```
 
   DEPTH is the nesting level of the EVENT. Top-level events have depth
-  0. PRETTIFY-EVENT prints indents the output, after printing the
-  decorations, by 2 spaces per depth.
+  0. PRETTIFY-EVENT prints indents the output after printing the
+  decorations by 2 spaces per depth.
   """
   (format stream "~%")
   (let ((decoratedp nil))
@@ -2029,15 +2035,15 @@
    (prettifier
     :initform 'prettify-event :initarg :prettifier
     :accessor pprint-journal-prettifier
-    :documentation "A function like PRETTIFY-EVENT that writes its an
+    :documentation "A function like PRETTIFY-EVENT that writes an
     event to a stream. Only used when PPRINT-JOURNAL-PRETTY, this is
     the output format customization knob. Also see @DECORATIONs."))
-  (:documentation "When an event is written to a PPRINT-JOURNAL it
-  writes that event to a stream in a customizable format. They are
-  intended for producing prettier output for @LOGGING and @TRACING,
-  but they do not support reads so they cannot be used as a
-  REPLAY-JOURNAL, or in LIST-EVENTS, for example. On the other hand,
-  events written to PPRINT-JOURNALs need not be @READABLE."))
+  (:documentation "Events written to a PPRINT-JOURNAL have a
+  customizable output format. PPRINT-JOURNALs are intended for
+  producing prettier output for @LOGGING and @TRACING, but they do not
+  support reads, so they cannot be used as a REPLAY-JOURNAL or in
+  LIST-EVENTS, for example. On the other hand, events written to
+  PPRINT-JOURNALs need not be @READABLE."))
 
 (defclass pprint-streamlet (streamlet)
   (;; For indenting the events in the file.
@@ -2088,7 +2094,7 @@
 
 
 (defsection @logging (:title "Logging")
-  """Before we get into the details, here is a self contained example
+  """Before we get into the details, here is a self-contained example
   that demonstrates typical use.
 
   ```
@@ -2232,7 +2238,7 @@
   .. (:LEAF "Sleeping for 0.01s.")
   ```
 
-  Note how pretty-printing was turned off and we see the LEAF-EVENT
+  Note how pretty-printing was turned off, and we see the LEAF-EVENT
   generated by LOGGED in its raw plist form.
 
   ##### Conditional routing
@@ -2308,7 +2314,7 @@
 
 (define-glossary-term @decoration (:title "decoration")
   "JOURNAL-LOG-DECORATOR adds additional data to LOG-EVENTs as they
-  are written to the journal. This data is called decoration and it is
+  are written to the journal. This data is called decoration, and it is
   to capture the context in which the event was triggered. See
   MAKE-LOG-DECORATOR for a typical example. Decorations, since they
   can be on LOG-EVENTs only, do not affect @REPLAY. Decorations are
@@ -2345,25 +2351,25 @@
     event))
 
 
-(defsection @log-record (:title "Log record")
+(defsection @log-record (:title ":LOG-RECORD")
   """WITH-JOURNALING and WITH-BUNDLE control replaying and recording
   within their dynamic extent, which is rather a necessity because
   @REPLAY needs to read the events in the same order as the JOURNALED
-  @BLOCKs are being executed. However, LOG-EVENTs do not affect replay
-  so we can allow more flexibility in routing them.
+  @BLOCKs are being executed. However, LOG-EVENTs do not affect
+  replay, so we can allow more flexibility in routing them.
 
   The LOG-RECORD argument of JOURNALED and LOGGED controls where
   LOG-EVENTs are written both within WITH-JOURNALING and without. The
   algorithm to determine the target journal is this:
 
-  1. If LOG-RECORD is :RECORD, then `(RECORD-JOURNAL)` is returned.
+  1. If LOG-RECORD is :RECORD, then the RECORD-JOURNAL is returned.
 
   2. If LOG-RECORD is NIL, then it is returned.
 
   3. If LOG-RECORD is a JOURNAL, then it is returned.
 
-  4. If LOG-RECORD is symbol (other than NIL), then the SYMBOL-VALUE
-     of that symbol is assigned to LOG-RECORD and we go to step 1.
+  4. If LOG-RECORD is a symbol (other than NIL), then the SYMBOL-VALUE
+     of that symbol is assigned to LOG-RECORD, and we go to step 1.
 
   If the return value is NIL, then the event will not be written
   anywhere, else it is written to the journal returned.
@@ -2379,12 +2385,12 @@
   it is a JOURNAL-ERROR to write to a :COMPLETED journal (see
   JOURNAL-STATE).
 
-  When multiple threads log to the same journal it is guaranteed that
+  When multiple threads log to the same journal, it is guaranteed that
   individual events are written atomically, but frames from different
   threads do not necessarily nest. To keep the log informative, the
   name of thread may be added to the events as @DECORATION.
 
-  Also see notes on thread @SAFETY.""")
+  Also, see notes on thread @SAFETY.""")
 
 (defun resolve-log-record (log-record)
   (loop repeat 100 do
@@ -2406,7 +2412,7 @@
 
 (defmacro logged ((&optional (log-record :record))
                   format-control &rest format-args)
-  """LOGGED creates a single LEAF-EVENT whose name is the string
+  """LOGGED creates a single LEAF-EVENT, whose name is the string
   constructed by FORMAT. For example:
 
   ```
@@ -2421,7 +2427,7 @@
   point-in-time textual log messages, and JOURNALED with VERSION
   NIL (i.e. FRAMED) to provide context.
 
-  Also see @LOG-RECORD."""
+  Also, see @LOG-RECORD."""
   (alexandria:once-only (log-record)
     ;; This checks that ROUTE-EVENT will write the event somewhere
     ;; before making a costly call to FORMAT.
@@ -2440,7 +2446,7 @@
 
 
 (defsection @tracing (:title "Tracing")
-  """JTRACE behaves similarly to CL:TRACE, but deals @NON-LOCAL-EXITs
+  """JTRACE behaves similarly to CL:TRACE but deals @NON-LOCAL-EXITs
   gracefully.
 
   ##### Basic tracing
@@ -2588,11 +2594,11 @@
   not available or it is not used by Journal, JTRACE simply sets
   SYMBOL-FUNCTION. This solution loses the tracing encapsulation when
   the function is recompiled. On these platforms, `(JTRACE)` also
-  retraces all functions that should be traced, but aren't.
+  retraces all functions that should be traced but aren't.
 
   The main advantage of JTRACE over CL:TRACE is the ability to trace
   errors, not just normal return values. As it is built on JOURNALED,
-  it can also detect - somewhat heuristically - THROWs and similar.
+  it can also detect – somewhat heuristically – THROWs and similar.
   """
   (if names
       `(progn
@@ -2682,7 +2688,7 @@
         do (juntrace-1 name)))
 
 (defsection @journal-slime-integration (:title "Slime integration")
-  "[Slime](https://common-lisp.net/project/slime/) by default binds
+  "[Slime](https://common-lisp.net/project/slime/), by default, binds
   `C-c C-t` to toggling CL:TRACE. To integrate JTRACE into Slime, add
   the following ELisp snippet to your Emacs initialization file or
   load `src/journal.el`:"
@@ -2707,15 +2713,15 @@
 (defsection @replay (:title "Replay")
   "During replay, code is executed normally with special rules for
   @BLOCKs. There are two modes for dealing with blocks: replaying the
-  code or replaying the outcome. When code is replayed, upon entering
+  code and replaying the outcome. When code is replayed, upon entering
   and leaving a block, the events generated are matched to events read
-  from the journal being replayed. If the events don't match, a
-  REPLAY-FAILURE is signaled which marks the record journal as having
+  from the journal being replayed. If the events don't match,
+  REPLAY-FAILURE is signalled, which marks the record journal as having
   failed the replay. This is intended to make sure that the state of
   the program during the replay matches the state at the time of
   recording. In the other mode, when the outcome is replayed, a block
   may not be executed at all, but its recorded outcome is
-  reproduced (e.g. the recorded return values are returned).
+  reproduced (i.e. the recorded return values are simply returned).
 
   Replay can be only be initiated with WITH-JOURNALING (or its close
   kin WITH-BUNDLE). After the per-event processing described below,
@@ -2742,26 +2748,26 @@
   (@upgrades-and-replay section))
 
 (deftype journal-state ()
-  "JOURNAL's state, with respect to replay, is updated during
-  WITH-JOURNALING. This possible states are:
+  "JOURNAL's state with respect to replay is updated during
+  WITH-JOURNALING. The possible states are:
 
-  - __:NEW__: This journal was just created, but never recorded to.
+  - __:NEW__: This journal was just created but never recorded to.
 
   - __:REPLAYING__: Replaying events has started, some events may have
-    been replayed successfuly, but there are more, non-log events to
+    been replayed successfully, but there are more non-log events to
     replay.
 
   - __:MISMATCHED__: There was a REPLAY-FAILURE. In this state,
     VERSIONED-EVENTs generated are downgraded to LOG-EVENTs,
-    EXTERNAL-EVENTs and INVOKED trigger a DATA-EVENT-LOSSAGE.
+    EXTERNAL-EVENTs and @INVOKED trigger DATA-EVENT-LOSSAGE.
 
   - __:RECORDING__: All events from the replay journal were
-    successfully replayed and now new events are being recorded
+    successfully replayed, and now new events are being recorded
     without being matched to the replay journal.
 
   - __:LOGGING__: There was a RECORD-UNEXPECTED-OUTCOME. In this
     state, VERSIONED-EVENTs generated are downgraded to LOG-EVENTs,
-    EXTERNAL-EVENTs and INVOKED trigger a DATA-EVENT-LOSSAGE.
+    EXTERNAL-EVENTs and @INVOKED trigger DATA-EVENT-LOSSAGE.
 
   - __:FAILED__: The journal is to be discarded. It encountered a
     JOURNALING-FAILURE or a REPLAY-FAILURE without completing the
@@ -2797,12 +2803,12 @@
                                        :time '*trace-time*
                                        :real-time '*trace-real-time*
                                        :run-time '*trace-run-time*))
-  "The JOURNAL where JTRACE writes LOG-EVENTs. By default it is a
+  "The JOURNAL where JTRACE writes LOG-EVENTs. By default, it is a
   PPRINT-JOURNAL that sets up a SYNONYM-STREAM to *TRACE-OUTPUT* and
   sends its output there. It pays attention to *TRACE-PRETTY*, and its
   log decorator is affected by *TRACE-TIME* and *TRACE-THREAD*.
   However, by changing JOURNAL-LOG-DECORATOR and
-  PPRINT-JOURNAL-PRETTIFIER content and output can be customized.")
+  PPRINT-JOURNAL-PRETTIFIER, content and output can be customized.")
 
 (defsection @journaled-for-replay (:title "Journaled for replay")
   "The following arguments of JOURNALED control behaviour under replay.
@@ -2811,11 +2817,11 @@
 
   - INSERTABLE controls whether VERSIONED-EVENTs and EXTERNAL-EVENTs
     may be replayed with the _insert_ replay strategy (see
-    @THE-REPLAY-STRATEGY). Does not affect LOG-EVENTs, that are always
-    _insert_ed. Note that inserting EXTERNAL-EVENTs while :REPLAYING
-    is often not meaningful (e.g. asking the user for input may lead
-    to a REPLAY-FAILURE). See PEEK-REPLAY-EVENT for an example on how
-    to properly insert these kinds of EXTERNAL-EVENTs.
+    @THE-REPLAY-STRATEGY). Does not affect LOG-EVENTs, which are
+    always _insert_ed. Note that inserting EXTERNAL-EVENTs while
+    :REPLAYING is often not meaningful (e.g. asking the user for input
+    may lead to a REPLAY-FAILURE). See PEEK-REPLAY-EVENT for an
+    example on how to properly insert these kinds of EXTERNAL-EVENTs.
 
   - REPLAY-VALUES, a function or NIL, may be called with EVENT-OUTCOME
     when replaying and :VERSION :INFINITY. NIL is equivalent to
@@ -2832,7 +2838,7 @@
   (versioned-event type)
   (external-event type)
   "Built on top of JOURNALED, the macros below record a pair of
-  @IN-EVENTS and @OUT-EVENTS, but differ in how they are replayed and
+  @IN-EVENTS and @OUT-EVENTS but differ in how they are replayed and
   the requirements on their @BLOCKs. The following table names the
   type of EVENT produced (`Event`), how @IN-EVENTS are
   replayed (`In-e.`), whether the block is always run (`Run`), how
@@ -2851,7 +2857,7 @@
   (framed macro)
   (checked macro)
   (replayed macro)
-  (invoked glossary-term)
+  (@invoked glossary-term)
   (define-invoked macro)
   (flet-invoked macro))
 
@@ -2878,10 +2884,10 @@
   EXTERNAL-EVENTs. In particular, higher versions are always
   considered compatible with lower versions, they become an _upgrade_
   in terms of the @THE-REPLAY-STRATEGY, and versioned events can be
-  inserted into the record without a corresponding REPLAY-EVENT with
+  inserted into the record without a corresponding @REPLAY-EVENT with
   JOURNALED's INSERTABLE.
 
-  If a VERSIONED-EVENT has an UNEXPECTED-OUTCOME,
+  If a VERSIONED-EVENT has an @UNEXPECTED-OUTCOME,
   RECORD-UNEXPECTED-OUTCOME is signalled."
  '(satisfies versioned-event-p))
 
@@ -2895,10 +2901,10 @@
   In return for these restrictions, external events can be replayed
   without running the corresponding @BLOCK (see
   @REPLAYING-THE-OUTCOME). This allows their out-event variety, called
-  DATA-EVENTs, to be non-deterministic. Data events play a crucial
+  @DATA-EVENTs, to be non-deterministic. Data events play a crucial
   role in @PERSISTENCE.
 
-  If an EXTERNAL-EVENT has an UNEXPECTED-OUTCOME,
+  If an EXTERNAL-EVENT has an @UNEXPECTED-OUTCOME,
   RECORD-UNEXPECTED-OUTCOME is signalled."
   '(satisfies external-event-p))
 
@@ -2908,7 +2914,7 @@
   omitted. The related LOGGED creates a single LEAF-EVENT.
 
   With FRAMED, BODY is always run and no REPLAY-FAILUREs are
-  triggered. BODY is not required to be deterministic and it may have
+  triggered. BODY is not required to be deterministic, and it may have
   side-effects."
   `(journaled (,name :log-record ,log-record :args ,args
                      :values ,values :condition ,condition)
@@ -2920,7 +2926,7 @@
   VERSION defaults to 1. CHECKED is for ensuring that supposedly
   deterministic processing does not veer off the replay.
 
-  With CHECKED, BODY - which must be deterministic - is always run and
+  With CHECKED, BODY – which must be deterministic – is always run and
   REPLAY-FAILUREs are triggered when the events generated do not match
   the events in the replay journal. BODY may have side-effects.
 
@@ -2939,7 +2945,7 @@
 
   With REPLAYED, the IN-EVENT is checked for consistency with the
   replay (as with CHECKED), but BODY is not run (assuming it has a
-  recorded EXPECTED-OUTCOME) and the outcome in the OUT-EVENT is
+  recorded @EXPECTED-OUTCOME), and the outcome in the OUT-EVENT is
   reproduced (see @REPLAYING-THE-OUTCOME). For this scheme to work,
   REPLAYED requires its BODY to be side-effect free, but it may be
   non-deterministic."
@@ -2950,17 +2956,17 @@
                      :replay-condition ,replay-condition)
      ,@body))
 
-(define-glossary-term invoked (:title "Invoked")
+(define-glossary-term @invoked (:title "invoked")
   "Invoked refers to functions and blocks defined by DEFINE-INVOKED or
   FLET-INVOKED. Invoked frames may be recorded in response to
   asynchronous events, and at replay the presence of its in-event
   triggers the execution of the function associated with the name of
   the event.
 
-  On one hand, FRAMED, CHECKED, REPLAYED or plain JOURNALED have
+  On the one hand, FRAMED, CHECKED, REPLAYED or plain JOURNALED have
   @IN-EVENTS that are always predictable from the code and the
-  preceding events. The control flow - on the level of recorded frames
-  - is deterministic in this sense. On the other hand, Invoked encodes
+  preceding events. The control flow – on the level of recorded frames
+  – is deterministic in this sense. On the other hand, Invoked encodes
   in its IN-EVENT what function to call next, introducing
   non-deterministic control flow.
 
@@ -2984,14 +2990,14 @@
   invocations like event or signal handlers. It defines a function
   that records VERSIONED-EVENTs with ARGS set to the actual arguments.
   At replay, it is invoked whenever the recorded IN-EVENT becomes the
-  REPLAY-EVENT.
+  @REPLAY-EVENT.
 
   DEFUN and CHECKED rolled into one, DEFINE-INVOKED defines a
   top-level function with FUNCTION-NAME and ARGS (only simple
   positional arguments are allowed) and wraps CHECKED with NAME, the
   same ARGS and INSERTABLE around BODY. Whenever an IN-EVENT becomes
-  the REPLAY-EVENT and it has a DEFINE-INVOKED defined with the name
-  of the event, then FUNCTION-NAME is invoked with EVENT-ARGS.
+  the @REPLAY-EVENT, and it has a DEFINE-INVOKED defined with the name
+  of the event, FUNCTION-NAME is invoked with EVENT-ARGS.
 
   While BODY's return values are recorded as usual, the defined
   function returns no values to make it less likely to affect control
@@ -3175,7 +3181,7 @@
   "The replay process for both @IN-EVENTS and @OUT-EVENTS starts by
   determining how the generated event (the _new_ event from now on)
   shall be replayed. Roughly, the decision is based on the NAME and
-  VERSION of the new event and the REPLAY-EVENT (the next event to be
+  VERSION of the new event and the @REPLAY-EVENT (the next event to be
   read from the replay). There are four possible strategies:
 
   - **match**: A new in-event must match the replay event in its ARGS.
@@ -3183,9 +3189,9 @@
     the replay event's EXIT and OUTCOME, see @MATCHING-OUT-EVENTS.
 
   - **upgrade**: The new event is not matched to any replay event, but
-    an event is consumed from the replay journal. This happens if next
-    new event has the same name as the replay event, but its version
-    is higher.
+    an event is consumed from the replay journal. This happens if the
+    next new event has the same name as the replay event, but its
+    version is higher.
 
   - **insert**: The new event is not matched to any replay event, and
     no events are consumed from the replay journal, which may be
@@ -3256,15 +3262,15 @@
        | Versioned | insert/eoj-error  | insert/name-error | match-version |
        | External  | insert/eoj-error  | insert/name-error | match-version |
 
-  Version matching (`match-version` above) is based which event has a
-  higher version:
+  Version matching (`match-version` above) is based on which event has
+  a higher version:
 
        | replay event    | =     | new event |
        |-----------------+-------+-----------|
        | downgrade-error | match | upgrade   |"
-  (replay-event glossary-term))
+  (@replay-event glossary-term))
 
-(define-glossary-term replay-event (:title "replay event")
+(define-glossary-term @replay-event (:title "replay event")
   "The replay event is the next event to be read from REPLAY-JOURNAL
   which is not to be skipped. There may be no replay event if there
   are no more unread events in the replay journal.
@@ -3275,7 +3281,7 @@
 
   Events from the replay journal are read when they are `:MATCH`ed or
   `:UPGRADE`d (see @THE-REPLAY-STRATEGY), when nested events are
-  echoed while @REPLAYING-THE-OUTCOME, or when there is an INVOKED
+  echoed while @REPLAYING-THE-OUTCOME, or when there is an @INVOKED
   defined with the same name as the replay event.
 
   The replay event is available via PEEK-REPLAY-EVENT.")
@@ -3327,12 +3333,12 @@
   - At this point, two things might happen:
 
       - For VERSIONED-EVENTs, the @BLOCK will be executed as normal
-        and its outcome will be matched to the REPLAY-EVENT (see
+        and its outcome will be matched to the @REPLAY-EVENT (see
         @MATCHING-OUT-EVENTS).
 
       - For EXTERNAL-EVENTs, the corresponding replay OUT-EVENT is
         looked at. If there is one, meaning that the frame finished
-        with an EXPECTED-OUTCOME, then its outcome will be
+        with an @EXPECTED-OUTCOME, then its outcome will be
         replayed (see @REPLAYING-THE-OUTCOME). If the OUT-EVENT is
         missing, then EXTERNAL-EVENTs behave like VERSIONED-EVENTs,
         and the @BLOCK is executed."
@@ -3539,7 +3545,7 @@
   - All events (including LOG-EVENTs) skipped over are echoed to the
     record journal. This serves to keep a trail of what happened
     during the original recording. Note that functions corresponding
-    to INVOKED frames are called when their IN-EVENT is skipped over.
+    to @INVOKED frames are called when their IN-EVENT is skipped over.
 
   - The out-event corresponding to the in-event being processed is
     then read from the replay journal and is recorded again (to allow
@@ -3548,7 +3554,7 @@
   To be able to reproduce the outcome in the replay journal, some
   assistance may be required from REPLAY-VALUES and REPLAY-CONDITION:
 
-  - If the REPLAY-EVENT has normal return (i.e. EVENT-EXIT :VALUES),
+  - If the @REPLAY-EVENT has a normal return (i.e. EVENT-EXIT :VALUES),
     then the recorded return values (in EVENT-OUTCOME) are returned
     immediately as in `(VALUES-LIST (EVENT-OUTCOME REPLAY-EVENT))`. If
     REPLAY-VALUES is specified, it is called instead of VALUES-LIST.
@@ -3559,7 +3565,7 @@
     condition (in EVENT-OUTCOME) is signalled as
     IN `(ERROR (EVENT-OUTCOME REPLAY-EVENT))`. If REPLAY-CONDITION is
     specified, it is called instead of ERROR. REPLAY-CONDITION must
-    not return normally.
+    not return normally, and it's a JOURNAL-ERROR if it does.
 
   WITH-REPLAY-FILTER's NO-REPLAY-OUTCOME can selectively turn off
   replaying the outcome. See @TESTING-ON-MULTIPLE-LEVELS, for an
@@ -3587,7 +3593,7 @@
                                 must not return normally."))))
 
 ;;; Assuming the frame's in-event has just been read from
-;;; INPUT-STREAMLET and the frame's out-event is present in it, read
+;;; INPUT-STREAMLET, and the frame's out-event is present in it, read
 ;;; all events up to and including the frame's out-event. If
 ;;; OUTPUT-STREAMLET is not NIL, write all events read to it.
 (defun echo-current-frame (input-streamlet output-streamlet)
@@ -3628,13 +3634,13 @@
   name from the REPLAY-JOURNAL in the latter case. If the strategy is
   _match_, then:
 
-  - If the new event has an UNEXPECTED-OUTCOME, then
+  - If the new event has an @UNEXPECTED-OUTCOME, then
     __REPLAY-UNEXPECTED-OUTCOME__ is signalled. Note that the replay
-    event always has an EXPECTED-OUTCOME due to the handling of
+    event always has an @EXPECTED-OUTCOME due to the handling of
     RECORD-UNEXPECTED-OUTCOME.
 
-  - If the new event has an EXPECTED-OUTCOME, then unless the new and
-    REPLAY-EVENT's EVENT-EXITs are `EQ` and their EVENT-OUTCOMEs are
+  - If the new event has an @EXPECTED-OUTCOME, then unless the new and
+    @REPLAY-EVENT's EVENT-EXITs are `EQ` and their EVENT-OUTCOMEs are
     EQUAL, __REPLAY-OUTCOME-MISMATCH__ is signalled.
 
   - Else, the replay event is consumed and the new event is written
@@ -3644,7 +3650,7 @@
   the same @FRAME may differ if the corresponding out-event is not
   present in REPLAY-JOURNAL, which may be the case when the recording
   process failed hard without unwinding properly, or when an
-  UNEXPECTED-OUTCOME triggered the transition to JOURNAL-STATE
+  @UNEXPECTED-OUTCOME triggered the transition to JOURNAL-STATE
   :LOGGING.")
 
 ;;; Like MAKE-OUT-EVENT, but with reduced consing and keeping track of
@@ -3858,7 +3864,7 @@
    (replay-position
     :initform (read-position *replay-streamlet*)
     :reader replay-failure-replay-position))
-  (:documentation "A common superclass (never signalled itself) for
+  (:documentation "A abstract superclass (never itself signalled) for
   all kinds of mismatches between the events produced and the replay
   journal. Signalled only in JOURNAL-STATE :REPLAYING and only once
   per WITH-JOURNALING. If a REPLAY-FAILURE is signalled for an EVENT,
@@ -3925,76 +3931,81 @@
 
 (define-condition replay-name-mismatch (replay-failure)
   ()
-  (:documentation "Signaled when the new event's and REPLAY-EVENT's
+  (:documentation "Signalled when the new event's and @REPLAY-EVENT's
   EVENT-NAME are not EQUAL. The REPLAY-FORCE-INSERT,
   REPLAY-FORCE-UPGRADE restarts are provided.")
   (:report (lambda (condition stream)
              (format stream "~@<The names of the new event ~S and ~
-                            the REPLAY-EVENT ~S (at READ-POSITION ~A) ~
-                            are not EQUAL.~:@>"
+                            the ~S ~S (at ~S ~A) are not EQUAL.~:@>"
                      (replay-failure-new-event condition)
+                     '@replay-event
                      (replay-failure-replay-event condition)
+                     'read-position
                      (replay-failure-replay-position condition)))))
 
 (define-condition replay-version-downgrade (replay-failure)
   ()
-  (:documentation "Signaled when the new event and the REPLAY-EVENT
+  (:documentation "Signalled when the new event and the @REPLAY-EVENT
   have the same EVENT-NAME, but the new event has a lower version. The
   REPLAY-FORCE-UPGRADE restart is provided.")
   (:report (lambda (condition stream)
              (format stream "~@<The new event ~S has a lower :VERSION than ~
-                            the REPLAY-EVENT ~S (at READ-POSITION ~A).~:@>"
+                            the ~S ~S (at ~S ~A).~:@>"
                      (replay-failure-new-event condition)
+                     '@replay-event
                      (replay-failure-replay-event condition)
+                     'read-position
                      (replay-failure-replay-position condition)))))
 
 (define-condition replay-args-mismatch (replay-failure)
   ()
-  (:documentation "Signaled when the new event's and REPLAY-EVENT's
+  (:documentation "Signalled when the new event's and @REPLAY-EVENT's
   EVENT-ARGS are not EQUAL. The REPLAY-FORCE-UPGRADE restart is
   provided.")
   (:report (lambda (condition stream)
              (format stream "~@<The :ARGS of the new event ~S ~
-                            and the REPLAY-EVENT ~S (at position ~A) ~
+                            and the ~S ~S (at position ~A) ~
                             are not EQUAL.~:@>"
                      (replay-failure-new-event condition)
+                     '@replay-event
                      (replay-failure-replay-event condition)
                      (replay-failure-replay-position condition)))))
 
 (define-condition replay-outcome-mismatch (replay-failure)
   ()
-  (:documentation "Signaled when the new event's and REPLAY-EVENT's
+  (:documentation "Signalled when the new event's and @REPLAY-EVENT's
   EVENT-EXIT and/or EVENT-OUTCOME are not EQUAL. The
   REPLAY-FORCE-UPGRADE restart is provided.")
   (:report (lambda (condition stream)
              (format stream "~@<The EXITs and OUTCOMEs of the new event ~S ~
-                            and the REPLAY-EVENT ~S (at position ~A) ~
+                            and the ~S ~S (at position ~A) ~
                             are not equal.~:@>"
                      (replay-failure-new-event condition)
+                     '@replay-event
                      (replay-failure-replay-event condition)
                      (replay-failure-replay-position condition)))))
 
 (define-condition replay-unexpected-outcome (replay-failure)
   ()
-  (:documentation "Signaled when the new event has an
-  UNEXPECTED-OUTCOME. Note that the REPLAY-EVENT always has an
-  EXPECTED-OUTCOME due to the logic of RECORD-UNEXPECTED-OUTCOME. No
+  (:documentation "Signalled when the new event has an
+  @UNEXPECTED-OUTCOME. Note that the @REPLAY-EVENT always has an
+  @EXPECTED-OUTCOME due to the logic of RECORD-UNEXPECTED-OUTCOME. No
   restarts are provided.")
   (:report (lambda (condition stream)
              (format stream
                      "~@<The new event ~S has an unexpected outcome while the ~
-                     REPLAY-EVENT ~S (at position ~A) has not.~:@>"
+                     ~S ~S (at position ~A) has not.~:@>"
                      (replay-failure-new-event condition)
+                     '@replay-event
                      (replay-failure-replay-event condition)
                      (replay-failure-replay-position condition)))))
 
 (define-condition replay-incomplete (replay-failure)
   ()
-  (:documentation "Signaled if there are unprocessed non-log events in
+  (:documentation "Signalled if there are unprocessed non-log events in
   REPLAY-JOURNAL when WITH-JOURNALING finishes and the body of
   WITH-JOURNALING returned normally, which is to prevent this
-  condition to cancel an ongoing unwinding. No restarts are
-  provided.")
+  condition to cancel an ongoing unwinding. No restarts are provided.")
   (:report (lambda (condition stream)
              (format stream "~@<Replay incomplete: there are unprocessed ~
                             events left in ~S. The next one is ~S ~
@@ -4037,7 +4048,7 @@
     to be taken.
 
   - Or we may decide to keep the bare minimum of the replay journal
-    around, and discard everything except for EXTERNAL-EVENTs. This
+    around and discard everything except for EXTERNAL-EVENTs. This
     option is equivalent to
 
           (let ((*force-insertable* t))
@@ -4058,7 +4069,7 @@
   (with-replay-filter macro))
 
 (defmacro with-replay-streamlet ((var) &body body)
-  "Open REPLAY-JOURNAL for reading with WITH-OPEN-JOURNAL set the
+  "Open REPLAY-JOURNAL for reading with WITH-OPEN-JOURNAL, set the
   READ-POSITION on it to the event next read by the @REPLAY
   mechanism (which is never a LOG-EVENT). The low-level
   @READING-FROM-STREAMLETS api is then available to inspect the
@@ -4068,7 +4079,7 @@
      ,@body))
 
 (defun peek-replay-event ()
-  "Return the REPLAY-EVENT to be read from REPLAY-JOURNAL. This is
+  "Return the @REPLAY-EVENT to be read from REPLAY-JOURNAL. This is
   roughly equivalent to
 
   ```
@@ -4151,11 +4162,11 @@
 
   - SKIP: In addition to filtering out LOG-EVENTs (which always
     happens during replay), filter out all events that belong to
-    descendant frames that match any of its SKIP patterns. Filtered
-    out events are never seen by JOURNALED as it replays events. SKIP
-    patterns are of the format `(&KEY NAME VERSION<)`, where VERSION<
-    is a valid [EVENT-VERSION][type], and NAME may be NIL, which acts
-    as a wildcard.
+    frames that match any of its SKIP patterns. Filtered out events
+    are never seen by JOURNALED as it replays events. SKIP patterns
+    are of the format `(&KEY NAME VERSION<)`, where VERSION< is a
+    valid [EVENT-VERSION][type], and NAME may be NIL, which acts as a
+    wildcard.
 
       SKIP is for when JOURNALED @BLOCKs are removed from the code,
       which would render replaying previously recorded journals
@@ -4387,7 +4398,7 @@
       (maybe-win-the-grand-prize)))
   ```
 
-  Now we write a test that records these interactions in a file when
+  Now, we write a test that records these interactions in a file when
   it's run for the first time.
 
   ```
@@ -4456,7 +4467,7 @@
   ```
 
   Note that when this journal is replayed, new VERSIONED-EVENTs are
-  required to match the replay. So after the original recording, we
+  required to match the replay. So, after the original recording, we
   can check by eyeballing that the record represents a correct
   execution. Then on subsequent replays, even though
   `MAYBE-WIN-THE-GRAND-PRIZE` sits behind `REGISTER-USER` and is hard
@@ -4689,7 +4700,7 @@
   [continuation]: https://en.wikipedia.org/wiki/Continuation
 
   In contrast, the Journal library does not favour certain styles of
-  control flow, and only requires that non-determinism is packaged up
+  control flow and only requires that non-determinism is packaged up
   in REPLAYED, which allows it to reconstruct the state of the program
   from the recorded events at any point during its execution and
   resume from there.
@@ -4703,33 +4714,33 @@
   [ACID](https://en.wikipedia.org/wiki/ACID) properties, atomicity and
   isolation, do not apply because Journal is single-client and does
   not need transactions."
-  (aborted-execution glossary-term)
-  (data-event glossary-term)
+  (@aborted-execution glossary-term)
+  (@data-event glossary-term)
   (@synchronization-strategies section)
   (@synchronization-with-in-memory-journals section)
   (@synchronization-with-file-journals section))
 
-(define-glossary-term aborted-execution (:title "aborted execution")
+(define-glossary-term @aborted-execution (:title "aborted execution")
   "Aborted execution is when the operating system or the application
   crashes, calls `abort()`, is killed by a `SIGKILL` signal or there
-  is a power outage. Synchronization guarantees are defined in face of
-  aborted execution and do not apply to hardware errors, Lisp or OS
-  bugs.")
+  is a power outage. Synchronization guarantees are defined in the
+  face of aborted execution and do not apply to hardware errors, Lisp
+  or OS bugs.")
 
-(define-glossary-term data-event (:title "data event")
+(define-glossary-term @data-event (:title "data event")
   "Data events are the only events that may be non-deterministic. They
-  record information which could change if the same code were run
+  record information that could change if the same code were run
   multiple times. Data events typically correspond to interactions
   with the user, servers or even the random number generator. Due to
   their non-determinism, they are the only parts of the journal not
-  reproducible by rerunning the code. In this sense, only data events
-  are not redundant with the code and whether other events are
+  reproducible by rerunning the code. In this sense, only the data
+  events are not redundant with the code, and whether other events are
   persisted does not affect durability. There are two kinds of data
   events:
 
   - An EXTERNAL-EVENT that is also an OUT-EVENT.
 
-  - The IN-EVENT of an INVOKED function, which lies outside the
+  - The IN-EVENT of an @INVOKED function, which lies outside the
     normal, deterministic control flow.")
 
 ;;; These functions test for :RECORDING, thus must be called after
@@ -4752,18 +4763,19 @@
 (defsection @synchronization-strategies (:title "Synchronization strategies")
   "When a journal or bundle is created (see MAKE-IN-MEMORY-JOURNAL,
   MAKE-FILE-JOURNAL, MAKE-IN-MEMORY-BUNDLE, MAKE-FILE-BUNDLE), the
-  SYNC option determines when - as a RECORD-JOURNAL - the recorded
+  SYNC option determines when – as a RECORD-JOURNAL – the recorded
   events and JOURNAL-STATE changes are persisted durably. For
-  FILE-JOURNALs, persisting means calling something like `fsync()`,
+  FILE-JOURNALs, persisting means calling something like `fsync`,
   while for IN-MEMORY-JOURNALs, a user defined function is called to
   persist the data.
 
   - NIL: Never synchronize. A FILE-JOURNAL's file may be corrupted on
-    ABORTED-EXECUTION. In IN-MEMORY-JOURNALs, SYNC-FN is never called.
+    @ABORTED-EXECUTION. In IN-MEMORY-JOURNALs, SYNC-FN is never
+    called.
 
   - T: This is the _no data loss_ setting with minimal
     synchronization. It guarantees _consistency_ (i.e. no corruption)
-    and _durability_ up to the most recent DATA-EVENT written in
+    and _durability_ up to the most recent @DATA-EVENT written in
     JOURNAL-STATE :RECORDING or for the entire record journal in
     states :FAILED and :COMPLETED. :FAILED or :COMPLETED is guaranteed
     when leaving WITH-JOURNALING at the latest.
@@ -4777,12 +4789,17 @@
 (defvar *testing* nil)
 
 (defun sync-journal (&optional (journal (record-journal)))
-  "Durably persist all preceding writes made to JOURNAL during an
-  enclosing WITH-JOURNALING or via LOG-RECORD from any thread. Writes
-  made in a WITH-JOURNALING in another thread are not persisted. The
-  changes in question are WRITE-EVENT calls and state changes. This is
-  a noop JOURNAL-SYNC is NIL. This function is safe to call from any
-  thread."
+  "Durably persist changes made to JOURNAL if JOURNAL-SYNC is T.
+  The changes that are persisted are 
+
+  - WRITE-EVENTs and JOURNAL-STATE changes made in an enclosing
+    WITH-JOURNALING; and
+
+  - LOG-RECORDs from any thread. 
+
+  In particular, writes made in a WITH-JOURNALING in another thread
+  are not persisted. SYNC-JOURNAL is a noop if JOURNAL-SYNC is NIL. It
+  is safe to call from any thread."
   (check-type journal journal)
   (when (and *testing* (not *without-interrupts-available*))
     (funcall (read-from-string "try:skip-trial")))
@@ -4817,7 +4834,7 @@
   be stored durably.
 
   The following example saves the entire journal history when a new
-  DATA-EVENT is recorded. Note how `SYNC-TO-DB` is careful to
+  @DATA-EVENT is recorded. Note how `SYNC-TO-DB` is careful to
   overwrite `*DB*` only if it is called with a journal that has not
   failed the replay (as in @REPLAY-FAILURES) and is sufficiently
   different from the replay journal as determined by
@@ -4860,9 +4877,9 @@
 
   In a real application, external events often involve unreliable or
   high-latency communication. In the above example, block `B` signals
-  an error, say, to simulate some kind of network condition. Now a new
-  journal _for replay_ is created and initialized with the saved
-  events and the whole process is restarted.
+  an error, say, to simulate some kind of network condition. Now, a
+  new journal _for replay_ is created and initialized with the saved
+  events, and the whole process is restarted.
 
   ```
   (defun run-with-db ()
@@ -4889,9 +4906,9 @@
   Note that on the rerun, block `A` is not executed because external
   events are replayed simply by reproducing their outcome, in this
   case returning 2. See @REPLAYING-THE-OUTCOME. Block `B`, on the
-  other hand, was rerun because it had an UNEXPECTED-OUTCOME the first
-  time around. This time it ran without error, a DATA-EVENT was
-  triggered and SYNC-FN invoked.
+  other hand, was rerun because it had an @UNEXPECTED-OUTCOME the
+  first time around. This time it ran without error, a @DATA-EVENT was
+  triggered, and SYNC-FN was invoked.
 
   If we were to invoke the now completed `RUN-WITH-DB` again, it would
   simply return 3 without ever invoking SYNC-FN:
@@ -4923,7 +4940,7 @@
     :initform 0 :reader journal-previous-sync-position
     :documentation "The length of JOURNAL-EVENTS at the time of the
     most recent invocation of SYNC-FN."))
-  (:documentation "IN-MEMORY-JOURNALs are backed by a non-persistent,
+  (:documentation "IN-MEMORY-JOURNALs are backed by a non-persistent
   Lisp array of events. Much quicker than FILE-JOURNALs, they are
   ideal for smallish journals persisted manually (see
   @SYNCHRONIZATION-WITH-IN-MEMORY-JOURNALS for an example).
@@ -4932,7 +4949,7 @@
   generated. They differ from FILE-JOURNALs in that events written to
   IN-MEMORY-JOURNALs are not serialized (and deserialized on replay)
   with the following consequences for the objects recorded by
-  JOURNALED (i.e. its NAME, ARGS arguments, but also the return VALUES
+  JOURNALED (i.e. its NAME, ARGS arguments, and also the return VALUES
   of the block, or the value returned by CONDITION):
 
   - These objects need not be @READABLE.
@@ -4970,16 +4987,19 @@
 
 (defun make-in-memory-journal (&key (events () eventsp) state
                                (sync nil syncp) sync-fn)
-  "By default, creates an empty IN-MEMORY-JOURNAL in JOURNAL-STATE
-  :NEW, which is suitable for recording. To make a replay journal, use
-  :STATE :COMPLETED with some sequence of EVENTS:
+  "Create an IN-MEMORY-JOURNAL.
+
+  The returned journal's JOURNAL-STATE will be set to STATE. If STATE
+  is NIL, then it is replaced by a default value, which is :COMPLETED
+  if the EVENTS argument is provided, else it is :NEW.
+
+  Thus, `(make-in-memory-journal)` creates a journal suitable for
+  recording, and to make a replay journal, use :STATE :COMPLETED with
+  some sequence of EVENTS:
 
   ```
   (make-in-memory-journal :events '((:in foo :version 1)) :state :completed)
   ```
-
-  If the EVENTS argument is provided, then STATE defaults to :NEW,
-  else to :COMPLETED.
 
   SYNC determines when SYNC-FN will be invoked on the RECORD-JOURNAL.
   SYNC defaults to T if SYNC-FN, else to NIL. For a description of
@@ -5060,10 +5080,10 @@
 
   Since serialization in FILE-JOURNALs is built on top of Lisp READ
   and WRITE, everything that JOURNALED records in events (i.e. its
-  NAME, ARGS arguments, but also the return VALUES of the block, or
+  NAME, ARGS arguments, and also the return VALUES of the block, or
   the value returned by CONDITION) must be @READABLE.
 
-  File journals are human-readable, and editable by hand with some
+  File journals are human-readable and editable by hand with some
   care. When editing, the following needs to be remembered:
 
   - The first character of the file represents its JOURNAL-STATE. It
@@ -5071,10 +5091,10 @@
     :FAILED), or a `#\Newline` (for state :RECORDING, :LOGGING and
     :COMPLETED).
 
-  - If the journal has SYNC (see @SYNCHRONIZATION-STRATEGIES), then in
-    between events, there may be `#\Del` (also called `#\Rubout`) or
-    `#\Ack` characters (CHAR-CODE 127 and 6). `#\Del` marks the end of
-    the journal contents which may be read back: it's kind of an
+  - If the journal has SYNC (see @SYNCHRONIZATION-STRATEGIES), then
+    between two events, there may be `#\Del` (also called `#\Rubout`)
+    or `#\Ack` characters (CHAR-CODE 127 and 6). `#\Del` marks the end
+    of the journal contents that may be read back: it's kind of an
     uncommitted-transaction marker for the events that follow it.
     `#\Ack` characters, of which there may be many in the file, mark
     the sequence of events until the next marker of either kind as
@@ -5178,8 +5198,8 @@
                        :if-does-not-exist (if (output-direction-p direction)
                                               :create
                                               :error)
-                       ;; On CCL without this, the stream finalizer,
-                       ;; that runs in another thread, will run afoul
+                       ;; On CCL, without this, the stream finalizer,
+                       ;; which runs in another thread, will run afoul
                        ;; of the :SHARING :PRIVATE default.
                        #+ccl :sharing #+ccl :external))
          (streamlet (make-instance 'file-streamlet
@@ -5206,7 +5226,8 @@
       (close stream))))
 
 (defun position-to-write (streamlet)
-  ;; If the last operation was a read, we need to the file positition.
+  ;; If the last operation was a read, we need to set the file
+  ;; position.
   (unless (wrote-last-p streamlet)
     ;; Save the read position. If we never switch between reading
     ;; and writing, there is no overhead.
@@ -5216,7 +5237,8 @@
       (file-position stream (file-length stream)))))
 
 (defun position-to-read (streamlet)
-  ;; If the last operation was a write, we need to the file positition.
+  ;; If the last operation was a write, we need to set the file
+  ;; position.
   (when (wrote-last-p streamlet)
     (let ((stream (%stream streamlet)))
       (setf (wrote-last-p streamlet) nil)
@@ -5272,7 +5294,7 @@
             do (write-char #\Space stream))
       (prin1 event stream)
       (terpri stream))
-    ;; Flush stream buffers. This is not that bad for performance, and
+    ;; Flush stream buffers. This is not that bad for performance and
     ;; makes it less likely to lose events if running without SYNC.
     ;; Also, if running with SYNC, it's necessary to do before calling
     ;; fsync() in SYNC-STREAMLET.
@@ -5290,14 +5312,14 @@
     (:title "Synchronization with file journals")
   "For FILE-JOURNALs, SYNC determines when the events written to the
   RECORD-JOURNAL and its JOURNAL-STATE will be persisted durably in
-  the file. Syncing to the file involves two calls to `fsync()`, and
-  is not cheap.
+  the file. Syncing to the file involves two calls to `fsync` and is
+  not cheap.
 
   Syncing events to files is implemented as follows.
 
   - When the journal file is created, its parent directory is
     immediately fsynced to make sure that the file will not be lost on
-    ABORTED-EXECUTION.
+    @ABORTED-EXECUTION.
 
   - When an event is about to be written the first time after file
     creation or after a sync, a transaction start marker is written to
@@ -5306,16 +5328,16 @@
   - Any number of events may be subsequently written until syncing is
     deemed necessary (see @SYNCHRONIZATION-STRATEGIES).
 
-  - At this point, `fsync()` is called to flush all event data and
-    state changes to the file, and the transaction start marker is
+  - At this point, `fsync` is called to flush all event data and state
+    changes to the file, and the transaction start marker is
     _overwritten_ with a transaction completed marker and another
-    `fsync()` is performed.
+    `fsync` is performed.
 
   - When reading back this file (e.g. for replay), an open transaction
     marker is treated as the end of file.
 
   Note that this implementation assumes that after writing the start
-  transaction marker a crash cannot leave any kind of garbage bytes
+  transaction marker, a crash cannot leave any kind of garbage bytes
   around: it must leave zeros. This is not true for all filesytems.
   For example, ext3/ext4 with `data=writeback` [can leave garbage
   around][ext4-writeback].
@@ -5383,11 +5405,11 @@
     (when sync
       (fsync stream))))
 
-;;; Currently, we do at call fsync() at least 4 times during
-;;; recording: to flush the events, to write txn committed marker, to
-;;; flush the completed state, and to fsync the directory. The first
-;;; two is actually per-transaction, so that 2+2*N, where N is max(1,
-;;; n-new-data-events).
+;;; Currently, we call fsync at least 4 times during recording: to
+;;; flush the events, to write the txn committed marker, to flush the
+;;; completed state, and to fsync the directory. The first two are
+;;; actually per-transaction, so the total number of fsync calls is
+;;; 2+2*N, where N is max(1, n-new-data-events).
 (defmethod sync-streamlet ((streamlet file-streamlet))
   (let* ((stream (%stream streamlet))
          (saved-position (file-position stream)))
@@ -5486,17 +5508,17 @@
   is thread-safe.
 
   - Every journal is guaranteed to have at most a single writer active
-    at any time. Writers are WITH-JOURNALING and WITH-BUNDLE, but also
-    any journals used as LOG-RECORD (unless that journal is the
-    RECORD-JOURNAL) have a log writer stored in the journal object.
+    at any time. Writers are mainly WITH-JOURNALING and WITH-BUNDLE,
+    but any journals directly logged to have a log writer stored in
+    the journal object. See @LOGGING.
 
   - WITH-JOURNALING and WITH-BUNDLE have dynamic extent as writers,
     but log writers of journals have indefinite extent: once a journal
-    is used as a LOG-RECORD there remains a writer.
+    is used as a LOG-RECORD, there remains a writer.
 
   - Attempting to create a second writer triggers a JOURNAL-ERROR.
 
-  - Writing to the same journal via LOG-RECORD from multiple threads
+  - Writing to the same journal via @LOG-RECORD from multiple threads
     concurrently is possible since this doesn't create multiple
     writers. It is ensured with locking that events are written
     atomically. Frames can be interleaved, but these are LOG-EVENTs,
@@ -5517,17 +5539,17 @@
 
   ##### Signal safety
 
-  Journal is _designed_ to be @ASYNC-UNWIND safe, but _not reentrant_.
+  Journal is _designed_ to be @ASYNC-UNWIND safe but _not reentrant_.
   Interrupts are disabled only for the most critical cleanup forms. If
   a thread is killed without unwinding, that constitutes
-  ABORTED-EXECUTION, so guarantees about @SYNCHRONIZATION apply, but
+  @ABORTED-EXECUTION, so guarantees about @SYNCHRONIZATION apply, but
   JOURNAL objects written by the thread are not safe to access, and
   the Lisp should probably be restarted.")
 
 
 (defsection @bundles-reference (:title "Bundles reference")
   """In @BUNDLES, we covered the repeated replay problem that
-  WITH-BUNDLE automates. Here we provide a reference for the bundle
+  WITH-BUNDLE automates. Here, we provide a reference for the bundle
   classes."""
   (bundle class)
   (max-n-failed (accessor bundle))
@@ -5552,20 +5574,20 @@
     deleted.")
    (lock :initform (bt:make-recursive-lock "a bundle-lock"))
    (n-writers :initform 0))
-  (:documentation "This is an abstract base class. Direct subclasses
-  are IN-MEMORY-BUNDLE and FILE-BUNDLE.
+  (:documentation "A BUNDLE consists of a sequence of journals which
+  are all reruns of the same code, hopefully making more and more
+  progress towards completion. These journals are @REPLAYs of the
+  previous successful one, extending it with new events. Upon
+  replay (see WITH-BUNDLE), the latest journal in the bundle in
+  JOURNAL-STATE :COMPLETED plays the role of the replay journal, and a
+  new journal is added to the bundle for recording. If the replay
+  succeeds, this new journal eventually becomes :COMPLETED and takes
+  over the role of the replay journal for future replays until another
+  replay succeeds. When the bundle is created and it has no journals
+  yet, the replay journal is an empty, completed one.
 
-  A BUNDLE consists of a sequence of journals which are all reruns of
-  the same code, hopefully making more and more progress towards
-  completion. These journals are @REPLAYs of the previous successful
-  one, extending it with new events. Upon replay (see WITH-BUNDLE),
-  the latest journal in the bundle in JOURNAL-STATE :COMPLETED plays
-  the role of the replay journal, and a new journal is added to the
-  bundle for recording. If the replay succeeds, this new journal
-  eventually becomes :COMPLETED and takes over the role of the replay
-  journal for future replays until another replay succeeds. When the
-  bundle is created and it has no journals yet, the replay journal is
-  an empty, completed one."))
+  This is an abstract base class. Direct subclasses are
+  IN-MEMORY-BUNDLE and FILE-BUNDLE."))
 
 (defmethod print-object ((bundle bundle) stream)
   (print-unreadable-object (bundle stream :type t)
@@ -5807,7 +5829,7 @@
   delivered to a thread running Lisp or foreign code called from Lisp,
   a Lisp condition is typically signalled. If the handler for this
   condition unwinds the stack, then we have an asynchronous unwind.
-  Another example is BT:INTERRUPT-THREAD which, as it can execute
+  Another example is BT:INTERRUPT-THREAD, which, as it can execute
   arbitrary code, may unwind the stack in the target thread.")
 
 (define-glossary-term @boolean-valued-symbol (:title "boolean-valued symbol")
@@ -5815,8 +5837,8 @@
   wanting to have pretty-printed output on one of them. Unfortunately,
   binding *PRINT-PRETTY* to T will affect writes to both streams.
 
-  A solution is to have streams look up their own print-pretty flag
-  with `(SYMBOL-VALUE (STREAM-PRETTY-PRINT STREAM))` and have the
+  One solution would be to have streams look up their own print-pretty
+  flag with `(SYMBOL-VALUE (STREAM-PRETTY-PRINT STREAM))` and have the
   caller specify the dynamic variable they want:
 
   ```
@@ -5831,7 +5853,8 @@
   `STREAM-PRINT-PRETTY` to NIL or T also works, because they are
   self-evaluating.
 
-  If not by CL:STREAMs, boolean-valued symbols are used by
+  The above hypothetical example demonstrates the concept of
+  boolean-valued symbols on CL:STREAMs. In Journal, they are used by
   MAKE-LOG-DECORATOR and PPRINT-JOURNALs.")
 
 (define-glossary-term @non-local-exit (:title "non-local exit")
