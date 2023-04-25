@@ -2517,7 +2517,7 @@
                          (:out b2 :version 1 :values (7))
                          (:out b1 :error
                           ("REPLAY-OUTCOME-MISMATCH"
-                           "The EXITs and OUTCOMEs of the new event (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (7)) and the JOURNAL:@REPLAY-EVENT (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) are not equal.")))))))))
+                           "The EXITs and OUTCOMEs of the new event (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (7)) and the JOURNAL::@REPLAY-EVENT (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) are not equal.")))))))))
 
 (deftest test-replay-failure-two-deep-with-error ()
   (let ((journal-1 (funcall *make-journal*)))
@@ -2548,7 +2548,7 @@
                           :error ("SOME-ERROR" "SOME-ERROR was signalled."))
                          (:out b1 :error
                           ("REPLAY-UNEXPECTED-OUTCOME"
-                           "The new event (:OUT JOURNAL-TEST::B2 :VERSION 1 :ERROR (\"SOME-ERROR\" \"SOME-ERROR was signalled.\")) has an unexpected outcome while the JOURNAL:@REPLAY-EVENT (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) has not.")))))))))
+                           "The new event (:OUT JOURNAL-TEST::B2 :VERSION 1 :ERROR (\"SOME-ERROR\" \"SOME-ERROR was signalled.\")) has an unexpected outcome while the JOURNAL::@REPLAY-EVENT (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) has not.")))))))))
 
 (deftest test-values-fn-failure-recording ()
   (let* ((journal-1 (funcall *make-journal*))
