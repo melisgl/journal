@@ -2718,7 +2718,7 @@
 
 (defun install-elisp (target-dir)
   "Copy `mgl-jrn.el` distributed with this package to TARGET-DIR."
-  (uiop:copy-file (asdf:system-relative-pathname "mgl-pax" "src/mgl-jrn.el")
+  (uiop:copy-file (asdf:system-relative-pathname "journal" "src/mgl-jrn.el")
                   (merge-pathnames "mgl-jrn.el"
                                    (uiop:ensure-directory-pathname
                                     target-dir))))
