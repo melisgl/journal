@@ -2613,40 +2613,46 @@
 (defmacro jtrace-1 (name)
   #+sbcl
   (alexandria:with-gensyms (fn args)
-    `(unless (sb-int:encapsulated-p ',name 'jtrace)
-       (sb-int:encapsulate
-        ',name 'jtrace
-        (sb-int:named-lambda jtrace-encapsulation (,fn &rest ,args)
-          (if *suppress-trace*
-              (apply ,fn ,args)
-              (let ((*suppress-trace* t))
-                (journaled (,name :args ,args :log-record *trace-journal*)
-                  (let ((*suppress-trace* nil))
-                    (apply ,fn ,args)))))))
-       (setf (gethash ',name *traced-functions*) t)))
+    `(progn
+       (unless (ignore-errors (fboundp ',name))
+         (error "~S does not name a function." ',name))
+       (unless (sb-int:encapsulated-p ',name 'jtrace)
+         (sb-int:encapsulate
+          ',name 'jtrace
+          (sb-int:named-lambda jtrace-encapsulation (,fn &rest ,args)
+            (if *suppress-trace*
+                (apply ,fn ,args)
+                (let ((*suppress-trace* t))
+                  (journaled (,name :args ,args :log-record *trace-journal*)
+                    (let ((*suppress-trace* nil))
+                      (apply ,fn ,args)))))))
+         (setf (gethash ',name *traced-functions*) t))))
   #-sbcl
   (alexandria:with-gensyms (fn args encapsulation)
-    `(unless (jtracedp ',name)
-       (let ((,fn (symbol-function ',name)))
-         (flet ((jtrace-encapsulation (&rest ,args)
-                  (if *suppress-trace*
-                      (apply ,fn ,args)
-                      (let ((*suppress-trace* t))
-                        (journaled (,name :args ,args
-                                          :log-record *trace-journal*)
-                          (let ((*suppress-trace* nil))
-                            (apply ,fn ,args)))))))
-           (let ((,encapsulation nil))
-             ;; KLUDGE: On CMUCL, two evaluations
-             ;; #'JTRACE-ENCAPSULATION are not always EQ, and we need
-             ;; that in JTRACEDP. The LET above and the SETQ below
-             ;; seem to change its mind. Somewhat related discussion:
-             ;; https://groups.google.com/g/comp.lang.lisp/c/Cg3c6BJ92ew?pli=1
-             (setq ,encapsulation #'jtrace-encapsulation)
-             (setf (symbol-function ',name) ,encapsulation)
-             (setf (gethash ',name *traced-functions*)
-                   (cons ,fn ,encapsulation)))))
-       t)))
+    `(progn
+       (unless (ignore-errors (fboundp ',name))
+         (error "~S does not name a function." ',name))
+       (unless (jtracedp ',name)
+         (let ((,fn (symbol-function ',name)))
+           (flet ((jtrace-encapsulation (&rest ,args)
+                    (if *suppress-trace*
+                        (apply ,fn ,args)
+                        (let ((*suppress-trace* t))
+                          (journaled (,name :args ,args
+                                            :log-record *trace-journal*)
+                            (let ((*suppress-trace* nil))
+                              (apply ,fn ,args)))))))
+             (let ((,encapsulation nil))
+               ;; KLUDGE: On CMUCL, two evaluations
+               ;; #'JTRACE-ENCAPSULATION are not always EQ, and we need
+               ;; that in JTRACEDP. The LET above and the SETQ below
+               ;; seem to change its mind. Somewhat related discussion:
+               ;; https://groups.google.com/g/comp.lang.lisp/c/Cg3c6BJ92ew?pli=1
+               (setq ,encapsulation #'jtrace-encapsulation)
+               (setf (symbol-function ',name) ,encapsulation)
+               (setf (gethash ',name *traced-functions*)
+                     (cons ,fn ,encapsulation)))))
+         t))))
 
 (defun jtracedp (name)
   #+sbcl

@@ -46,7 +46,9 @@ function run_tests {
   num_passes=0
   ${test_suite} ${lisp} ros --lisp ${lisp} run -- $@
   if ((num_failures > 0)); then
-    if [ ${stop_on_failure} = "t" ]; then
+    if [ "${stop_on_failure}" = "t" ]; then
+      echo "SHTEST: Aborting with ${num_failures} failures,"\
+           "${num_passes} passes."
       exit 1
     fi
   fi
@@ -58,5 +60,7 @@ run_tests lisp_tests sbcl --noinform
 run_tests lisp_tests ccl-bin
 run_tests lisp_tests cmu-bin -batch
 run_tests lisp_tests ecl
-run_tests lisp_tests clisp -on-error exit
+# Some encoding related problems with CLISP unders Roswell. Seems to
+# work fine with the system binary.
+# run_tests lisp_tests clisp -on-error exit
 run_tests lisp_tests abcl-bin
