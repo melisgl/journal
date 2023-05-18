@@ -1,7 +1,7 @@
 # Journal manual
 
 ###### \[in package JOURNAL with nicknames JRN\]
-## JOURNAL ASDF System
+## The journal ASDF System
 
 - Version: 0.1.0
 - Description: A library built around explicit execution traces for
@@ -1204,34 +1204,30 @@ PPRINT-JOURNAL-STREAM and JOURNAL-LOG-DECORATOR.
 
 ### Slime integration
 
-[Slime](https://common-lisp.net/project/slime/), by default, binds
-`C-c C-t` to toggling CL:TRACE. To integrate JTRACE into Slime, add
-the following ELisp snippet to your Emacs initialization file or
-load `src/journal.el`:
+[Slime](https://common-lisp.net/project/slime/), by default,
+binds `C-c C-t` to toggling CL:TRACE. To integrate JTRACE into
+Slime, load `src/mgl-jrn.el` into Emacs.
+
+- If you installed Journal with Quicklisp, the location of
+  `mgl-jrn.el` may change with updates, and you may want to copy the
+  current version to a stable location:
+
+    (journal:install-elisp "~/quicklisp/")
+
+Then, assuming the Elisp file is in the quicklisp directory, add
+this to your `.emacs`:
 
 ```elisp
-(defun slime-toggle-jtrace-fdefinition (spec)
-  "Toggle JTRACE."
-  (interactive (list (slime-read-from-minibuffer
-                      "j(un)trace: " (slime-symbol-at-point))))
-  (message "%s" (slime-eval
-                 ;; Silently fail if Journal is not loaded.
-                 `(cl:when (cl:find-package :journal)
-                           (cl:funcall
-                            (cl:find-symbol
-                             (cl:symbol-name :swank-toggle-jtrace) :journal)
-                            ,spec)))))
-
-(define-key slime-mode-map (kbd "C-c C-j")
-  'slime-toggle-jtrace-fdefinition)
-
-(define-key slime-repl-mode-map (kbd "C-c C-j")
-  'slime-toggle-jtrace-fdefinition)
+(load "~/quicklisp/mgl-jrn.el")
 ```
 
 Since JTRACE lacks some features of CL:TRACE, most notably that of
 tracing non-global functions, it is assigned a separate binding,
 `C-c C-j`.
+
+- [function] INSTALL-ELISP TARGET-DIR
+
+    Copy `mgl-jrn.el` distributed with this package to TARGET-DIR.
 
 ## Replay
 

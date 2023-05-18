@@ -15,7 +15,8 @@
 ;;; Regenerate documentation
 #+nil
 (progn
-  (update-asdf-system-readmes @journal-manual :journal)
+  (update-asdf-system-readmes @journal-manual :journal
+                              :formats '(:markdown :plain))
   (let ((*document-downcase-uppercase-code* t))
     (update-asdf-system-html-docs @journal-manual :journal
                                   :pages (pax-pages))))

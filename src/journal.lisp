@@ -2688,26 +2688,61 @@
         do (juntrace-1 name)))
 
 (defsection @journal-slime-integration (:title "Slime integration")
-  "[Slime](https://common-lisp.net/project/slime/), by default, binds
-  `C-c C-t` to toggling CL:TRACE. To integrate JTRACE into Slime, add
-  the following ELisp snippet to your Emacs initialization file or
-  load `src/journal.el`:"
-  (journal.el (include #.(asdf:system-relative-pathname
-                          :journal "src/journal.el")
-                       :header-nl "```elisp" :footer-nl "```"))
-  "Since JTRACE lacks some features of CL:TRACE, most notably that of
+  """[Slime](https://common-lisp.net/project/slime/), by default,
+  binds `C-c C-t` to toggling CL:TRACE. To integrate JTRACE into
+  Slime, load `src/mgl-jrn.el` into Emacs.
+
+  - If you installed Journal with Quicklisp, the location of
+    `mgl-jrn.el` may change with updates, and you may want to copy the
+    current version to a stable location:
+
+        (journal:install-elisp "~/quicklisp/")
+
+  Then, assuming the Elisp file is in the quicklisp directory, add
+  this to your `.emacs`:
+
+  ```elisp
+  (load "~/quicklisp/mgl-jrn.el")
+  ```
+
+  Since JTRACE lacks some features of CL:TRACE, most notably that of
   tracing non-global functions, it is assigned a separate binding,
-  `C-c C-j`.")
+  `C-c C-j`."""
+  (install-elisp function))
+
+(defun install-elisp (target-dir)
+  "Copy `mgl-jrn.el` distributed with this package to TARGET-DIR."
+  (uiop:copy-file (asdf:system-relative-pathname "mgl-pax" "src/mgl-jrn.el")
+                  (merge-pathnames "mgl-jrn.el"
+                                   (uiop:ensure-directory-pathname
+                                    target-dir))))
+
+;;; For now, everything is compatible.
+(defun check-jrn-elisp-version (version)
+  (declare (ignore version))
+  t)
 
 ;;; For Slime
 (defun swank-toggle-jtrace (spec-string)
-  (let ((spec (uiop:symbol-call '#:swank '#:from-string spec-string)))
-    (cond ((jtracedp spec)
-           (eval `(juntrace ,spec))
-           (format nil "~S is now untraced." spec))
-          (t
-           (eval `(jtrace ,spec))
-           (format nil "~S is now traced." spec)))))
+  (handler-case
+      (cond ((string= spec-string "")
+             (juntrace)
+             "Untraced all.")
+            (t
+             (let ((spec (ignore-errors
+                          (uiop:symbol-call '#:swank '#:from-string
+                                            spec-string))))
+               (cond ((null spec)
+                      (format nil "Cannot parse function name ~S." spec-string))
+                     ((jtracedp spec)
+                      (eval `(juntrace ,spec))
+                      (format nil "~S is now untraced." spec))
+                     (t
+                      (eval `(jtrace ,spec))
+                      (format nil "~S is now traced." spec))))))
+    (condition (c)
+      (with-standard-io-syntax*
+        (princ-to-string c)))))
 
 
 (defsection @replay (:title "Replay")
