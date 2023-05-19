@@ -2702,7 +2702,7 @@
     `mgl-jrn.el` may change with updates, and you may want to copy the
     current version to a stable location:
 
-        (journal:install-elisp "~/quicklisp/")
+        (journal:install-journal-elisp "~/quicklisp/")
 
   Then, assuming the Elisp file is in the quicklisp directory, add
   this to your `.emacs`:
@@ -2714,9 +2714,9 @@
   Since JTRACE lacks some features of CL:TRACE, most notably that of
   tracing non-global functions, it is assigned a separate binding,
   `C-c C-j`."""
-  (install-elisp function))
+  (install-journal-elisp function))
 
-(defun install-elisp (target-dir)
+(defun install-journal-elisp (target-dir)
   "Copy `mgl-jrn.el` distributed with this package to TARGET-DIR."
   (uiop:copy-file (asdf:system-relative-pathname "journal" "src/mgl-jrn.el")
                   (merge-pathnames "mgl-jrn.el"

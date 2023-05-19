@@ -1328,7 +1328,7 @@ Slime, load `src/mgl-jrn.el` into Emacs.
   `mgl-jrn.el` may change with updates, and you may want to copy the
   current version to a stable location:
 
-    (journal:install-elisp "~/quicklisp/")
+    (journal:install-journal-elisp "~/quicklisp/")
 
 Then, assuming the Elisp file is in the quicklisp directory, add
 this to your `.emacs`:
@@ -1341,8 +1341,8 @@ Since `JTRACE` lacks some features of `CL:TRACE`, most notably that of
 tracing non-global functions, it is assigned a separate binding,
 `C-c C-j`.
 
-<a id="x-28MGL-PAX-3AINSTALL-ELISP-20FUNCTION-29"></a>
-- [function] **INSTALL-ELISP** *TARGET-DIR*
+<a id="x-28JOURNAL-3AINSTALL-JOURNAL-ELISP-20FUNCTION-29"></a>
+- [function] **INSTALL-JOURNAL-ELISP** *TARGET-DIR*
 
     Copy `mgl-jrn.el` distributed with this package to `TARGET-DIR`.
 
