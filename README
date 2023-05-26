@@ -971,18 +971,24 @@ Here, we discuss how to make logs more informative.
     allowed transformation is to *append* a plist to the event, which
     is a plist itself. The keys can be anything.
 
-- [function] MAKE-LOG-DECORATOR &KEY THREAD TIME REAL-TIME RUN-TIME
+- [function] MAKE-LOG-DECORATOR &KEY TIME REAL-TIME RUN-TIME THREAD DEPTH OUT-NAME
 
     Return a function suitable as JOURNAL-LOG-DECORATOR that may add
-    the name of the thread, a timestamp, the internal real-time or
-    run-time (both in seconds) to events. THREAD, TIME, REAL-TIME and
-    RUN-TIME are @BOOLEAN-VALUED-SYMBOLs.
+    a string timestamp, the internal real-time or run-time (both in
+    seconds), the name of the thread, to events, which will be handled
+    by PRETTIFY-EVENT. If DEPTH, then PRETTIFY-EVENT will the nesting
+    level of the event being printed. If OUT-NAME, the PRETTIFY-EVENT
+    will print the name of @OUT-EVENTS.
+    
+    All arguments are @BOOLEAN-VALUED-SYMBOLs.
     
     ```
-    (funcall (make-log-decorator :thread t :time t :real-time t :run-time t)
+    (funcall (make-log-decorator :depth t :out-name t :thread t
+                                 :time t :real-time t :run-time t)
              (make-leaf-event :foo))
-    => (:LEAF :FOO :TIME "2020-08-31T13:38:58.129178+02:00"
-        :REAL-TIME 66328.82 :RUN-TIME 98.663 :THREAD "worker")
+    => (:LEAF :FOO :DEPTH T :OUT-NAME T :THREAD "worker"
+                   :TIME "2023-05-26T12:27:44.172614+01:00"
+                   :REAL-TIME 2531.3254 :RUN-TIME 28.972797)
     ```
 
 
@@ -1056,7 +1062,7 @@ gracefully.
 
 ##### Basic tracing
 
-```
+```common-lisp
 (defun foo (x)
   (sleep 0.12)
   (1+ x))
@@ -1069,10 +1075,10 @@ gracefully.
 
 (ignore-errors (bar 1))
 ..
-.. (BAR 1)
-..   (FOO 3)
-..   => 4
-.. =E "SIMPLE-ERROR" "xxx"
+.. 0: (BAR 1)
+..   1: (FOO 3)
+..   1: FOO => 4
+.. 0: BAR =E "SIMPLE-ERROR" "xxx"
 ```
 
 ##### Log-like output
@@ -1082,7 +1088,9 @@ timestamps in the output:
 
 ```
 (let ((*trace-thread* t)
-      (*trace-time* t))
+      (*trace-time* t)
+      (*trace-depth* nil)
+      (*trace-out-name* nil))
   (ignore-errors (bar 1)))
 ..
 .. 2020-09-02T19:58:19.415204+02:00 worker: (BAR 1)
@@ -1095,7 +1103,9 @@ timestamps in the output:
 
 ```
 (let ((*trace-real-time* t)
-      (*trace-run-time* t))
+      (*trace-run-time* t)
+      (*trace-depth* nil)
+      (*trace-out-name* nil))
   (ignore-errors (bar 1)))
 ..
 .. #16735.736 !68.368: (BAR 1)
@@ -1172,6 +1182,17 @@ PPRINT-JOURNAL-STREAM and JOURNAL-LOG-DECORATOR.
 
     If *TRACE-PRETTY* is true, then JTRACE produces output like
     PPRINT-EVENTS, else it's like PRINT-EVENTS.
+
+- [variable] *TRACE-DEPTH* T
+
+    Controls whether to decorate the trace with the depth of event.
+    See MAKE-LOG-DECORATOR.
+
+- [variable] *TRACE-OUT-NAME* T
+
+    Controls whether trace should print the EVENT-NAME of @OUT-EVENTS,
+    which is redundant with the EVENT-NAME of the corresponding
+    @IN-EVENTS. See MAKE-LOG-DECORATOR.
 
 - [variable] *TRACE-THREAD* NIL
 

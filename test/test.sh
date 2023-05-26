@@ -64,3 +64,5 @@ run_tests lisp_tests ecl
 # work fine with the system binary.
 # run_tests lisp_tests clisp -on-error exit
 run_tests lisp_tests abcl-bin
+
+echo "SHTEST: ${num_failures} failures, ${num_passes} passes."

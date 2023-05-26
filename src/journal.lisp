@@ -1983,7 +1983,8 @@
   (let ((decoratedp nil))
     (loop for (k v) on event by #'cddr
           do (unless (member k '(:in :out :leaf :name :version :args
-                                 :values :condition :error :nlx))
+                                 :values :condition :error :nlx
+                                 :depth :out-name))
                (when decoratedp
                  (format stream " "))
                (case k
@@ -1994,7 +1995,11 @@
     (when decoratedp
       (format stream ": "))
     (let ((indent (make-string (* 2 depth) :initial-element #\Space)))
-      (format stream  "~A" indent))
+      (format stream "~A" indent))
+    (when (getf event :depth)
+      (format stream "~S: " depth))
+    (when (and (out-event-p event) (getf event :out-name))
+      (format stream "~S " (second event)))
     (cond ((leaf-event-p event)
            (format stream "~A" (event-name event)))
           ((in-event-p event)
@@ -2320,17 +2325,23 @@
   can be on LOG-EVENTs only, do not affect @REPLAY. Decorations are
   most often used with @PRETTY-PRINTING.")
 
-(defun make-log-decorator (&key thread time real-time run-time)
+(defun make-log-decorator (&key time real-time run-time thread depth out-name)
   """Return a function suitable as JOURNAL-LOG-DECORATOR that may add
-  the name of the thread, a timestamp, the internal real-time or
-  run-time (both in seconds) to events. THREAD, TIME, REAL-TIME and
-  RUN-TIME are @BOOLEAN-VALUED-SYMBOLs.
+  a string timestamp, the internal real-time or run-time (both in
+  seconds), the name of the thread, to events, which will be handled
+  by PRETTIFY-EVENT. If DEPTH, then PRETTIFY-EVENT will the nesting
+  level of the event being printed. If OUT-NAME, the PRETTIFY-EVENT
+  will print the name of @OUT-EVENTS.
+
+  All arguments are @BOOLEAN-VALUED-SYMBOLs.
 
   ```
-  (funcall (make-log-decorator :thread t :time t :real-time t :run-time t)
+  (funcall (make-log-decorator :depth t :out-name t :thread t
+                               :time t :real-time t :run-time t)
            (make-leaf-event :foo))
-  => (:LEAF :FOO :TIME "2020-08-31T13:38:58.129178+02:00"
-      :REAL-TIME 66328.82 :RUN-TIME 98.663 :THREAD "worker")
+  => (:LEAF :FOO :DEPTH T :OUT-NAME T :THREAD "worker"
+                 :TIME "2023-05-26T12:27:44.172614+01:00"
+                 :REAL-TIME 2531.3254 :RUN-TIME 28.972797)
   ```
   """
   (lambda (event)
@@ -2348,6 +2359,10 @@
     (when (symbol-value thread)
       (setq event (append event `(:thread ,(bt:thread-name
                                             (bt:current-thread))))))
+    (when (symbol-value depth)
+      (setq event (append event `(:depth t))))
+    (when (symbol-value out-name)
+      (setq event (append event `(:out-name t))))
     event))
 
 
@@ -2451,7 +2466,7 @@
 
   ##### Basic tracing
 
-  ```
+  ```cl-transcript
   (defun foo (x)
     (sleep 0.12)
     (1+ x))
@@ -2464,10 +2479,10 @@
 
   (ignore-errors (bar 1))
   ..
-  .. (BAR 1)
-  ..   (FOO 3)
-  ..   => 4
-  .. =E "SIMPLE-ERROR" "xxx"
+  .. 0: (BAR 1)
+  ..   1: (FOO 3)
+  ..   1: FOO => 4
+  .. 0: BAR =E "SIMPLE-ERROR" "xxx"
   ```
 
   ##### Log-like output
@@ -2477,7 +2492,9 @@
 
   ```
   (let ((*trace-thread* t)
-        (*trace-time* t))
+        (*trace-time* t)
+        (*trace-depth* nil)
+        (*trace-out-name* nil))
     (ignore-errors (bar 1)))
   ..
   .. 2020-09-02T19:58:19.415204+02:00 worker: (BAR 1)
@@ -2490,7 +2507,9 @@
 
   ```
   (let ((*trace-real-time* t)
-        (*trace-run-time* t))
+        (*trace-run-time* t)
+        (*trace-depth* nil)
+        (*trace-out-name* nil))
     (ignore-errors (bar 1)))
   ..
   .. #16735.736 !68.368: (BAR 1)
@@ -2529,6 +2548,8 @@
   (jtrace macro)
   (juntrace macro)
   (*trace-pretty* variable)
+  (*trace-depth* variable)
+  (*trace-out-name* variable)
   (*trace-thread* variable)
   (*trace-time* variable)
   (*trace-real-time* variable)
@@ -2539,6 +2560,15 @@
 (defvar *trace-pretty* t
   "If *TRACE-PRETTY* is true, then JTRACE produces output like
   PPRINT-EVENTS, else it's like PRINT-EVENTS.")
+
+(defvar *trace-depth* t
+  "Controls whether to decorate the trace with the depth of event.
+  See MAKE-LOG-DECORATOR.")
+
+(defvar *trace-out-name* t
+  "Controls whether trace should print the EVENT-NAME of @OUT-EVENTS,
+  which is redundant with the EVENT-NAME of the corresponding
+  @IN-EVENTS. See MAKE-LOG-DECORATOR.")
 
 (defvar *trace-thread* nil
   "Controls whether to decorate the trace with the name of the
@@ -2840,6 +2870,8 @@
   (make-pprint-journal :pretty '*trace-pretty*
                        :stream (make-synonym-stream '*trace-output*)
                        :log-decorator (make-log-decorator
+                                       :depth '*trace-depth*
+                                       :out-name '*trace-out-name*
                                        :thread '*trace-thread*
                                        :time '*trace-time*
                                        :real-time '*trace-real-time*
@@ -3510,7 +3542,7 @@
                (if logp
                    (apply-key (journal-log-decorator journal) event)
                    event))
-             ;; KLUDGE: We rely on (write-event (method () (t journal))),
+             ;; KLUDGE: We rely on (WRITE-EVENT (METHOD () (T JOURNAL))),
              ;; but that writes through JOURNAL-OUTPUT-STREAMLET not
              ;; *RECORD-STREAMLET* even if JOURNAL is the same
              ;; journal *RECORD-STREAMLET* is writing.

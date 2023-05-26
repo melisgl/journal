@@ -2329,7 +2329,9 @@
   (error "xxx"))
 
 (deftest test-jtrace-basic ()
-  (let ((*package* (find-package :journal-test)))
+  (let ((*package* (find-package :journal-test))
+        (*trace-depth* nil)
+        (*trace-out-name* nil))
     (juntrace)
     (jtrace foo bar)
     (is (equal (sort (jtrace) #'string< :key #'symbol-name) '(bar foo)))
