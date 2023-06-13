@@ -98,7 +98,7 @@
 
   ##### Compared to CL:TRACE
 
-  - Ability to handle @NON-LOCAL-EXITs
+  - Ability to handle [non-local exit][clhs]s
 
   - Customizable content and format
 
@@ -1311,8 +1311,8 @@
 
   - unwound on an unexpected condition (:ERROR, see @ERROR-OUTCOME),
 
-  - unwound by performing a @NON-LOCAL-EXIT of some other kind such as
-    a throw (:NLX, see @NLX-OUTCOME).
+  - unwound by performing a [non-local exit][clhs] of some other kind
+    such as a throw (:NLX, see @NLX-OUTCOME).
 
   The first two are @EXPECTED-OUTCOMEs, while the latter two are
   @UNEXPECTED-OUTCOMEs."
@@ -1375,9 +1375,9 @@
   code is not prepared to handle or replay in a meaningful way.""")
 
 (define-glossary-term @nlx-outcome (:title "nlx outcome")
-  """If the JOURNALED @BLOCK performed a @NON-LOCAL-EXIT that was not
-  due to a condition, then [EVENT-EXIT][type] is :NLX and the outcome
-  is NIL.
+  """If the JOURNALED @BLOCK performed a [non-local exit][clhs] that
+  was not due to a condition, then [EVENT-EXIT][type] is :NLX and the
+  outcome is NIL.
 
   ```
   (catch 'xxx
@@ -1388,7 +1388,7 @@
   ```
 
   Note that @CONDITION-OUTCOMEs and @ERROR-OUTCOMEs are also due to
-  @NON-LOCAL-EXITs but are distinct from nlx outcomes.
+  [non-local exit][clhs]s but are distinct from nlx outcomes.
 
   Currently, nlx outcomes are detected rather heuristically as there
   is no portable way to detect what really caused the unwinding of the
@@ -1630,16 +1630,16 @@
   JOURNALED, LOGGED, WITH-REPLAY-FILTER, SYNC-JOURNAL, and also
   STORAGE-CONDITIONs, assertion failures, errors calling JOURNALED's
   [VALUES][argument] and [CONDITION][argument] function arguments.
-  Crucially, this does not apply to @NON-LOCAL-EXITs from other code,
-  such as JOURNALED @BLOCKs, whose error handling is largely
+  Crucially, this does not apply to [non-local exit][clhs]s from other
+  code, such as JOURNALED @BLOCKs, whose error handling is largely
   unaltered (see @OUT-EVENTS and @REPLAY-FAILURES).
 
-  In general, any @NON-LOCAL-EXIT from critical parts of the code is
-  turned into a JOURNALING-FAILURE to protect the integrity of the
-  RECORD-JOURNAL. The condition that caused the unwinding is in
+  In general, any [non-local exit][clhs] from critical parts of the
+  code is turned into a JOURNALING-FAILURE to protect the integrity of
+  the RECORD-JOURNAL. The condition that caused the unwinding is in
   JOURNALING-FAILURE-EMBEDDED-CONDITION, or NIL if it was a pure
-  @NON-LOCAL-EXIT like THROW. This is a SERIOUS-CONDITION, not to be
-  handled within WITH-JOURNALING.
+  [non-local exit][clhs] like THROW. This is a SERIOUS-CONDITION, not
+  to be handled within WITH-JOURNALING.
 
   After a JOURNALING-FAILURE, the journaling mechanism cannot be
   trusted anymore. The REPLAY-JOURNAL might have failed a read and be
@@ -2461,8 +2461,8 @@
 
 
 (defsection @tracing (:title "Tracing")
-  """JTRACE behaves similarly to CL:TRACE but deals @NON-LOCAL-EXITs
-  gracefully.
+  """JTRACE behaves similarly to CL:TRACE but deals with
+  [non-local exit][clhs]s gracefully.
 
   ##### Basic tracing
 
@@ -3807,7 +3807,7 @@
         (t
          version)))
 
-;;; By NLX, here, we mean the lisp @NON-LOCAL-EXITs. That is,
+;;; By NLX, here, we mean the lisp [non-local exit][clhs]s. That is,
 ;;; EVENT-EXIT :CONDITION, :ERROR and :NLX.
 (defun nlx-outcome-and-maybe->logging
     (version record-streamlet condition condition-key)
@@ -5894,7 +5894,6 @@
 (defsection @journal/glossary (:title "Glossary" :export nil)
   (@async-unwind glossary-term)
   (@boolean-valued-symbol glossary-term)
-  (@non-local-exit glossary-term)
   (@readable glossary-term))
 
 (define-glossary-term @async-unwind (:title "async-unwind")
@@ -5930,13 +5929,7 @@
   boolean-valued symbols on CL:STREAMs. In Journal, they are used by
   MAKE-LOG-DECORATOR and PPRINT-JOURNALs.")
 
-(define-glossary-term @non-local-exit (:title "non-local exit")
-  "This is a term from the Common Lisp ANSI standard. If a form does
-  not return normally, but control is transferred via `GO`, RETURN,
-  RETURN-FROM or THROW, then it is said to have performed a non-local
-  exit. This definition of a non-local exit includes EVENT-EXIT
-  :CONDITION, :ERROR and :NLX.")
-
 (define-glossary-term @readable (:title "readable")
-  "In Common Lisp, readable objects are those that can be printed readably.
-  Anything written to stream-based journals needs to be readable.")
+  "In Common Lisp, readable objects are those that can be printed
+  [readably][clhs]. Anything written to stream-based journals needs to
+  be readable.")

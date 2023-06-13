@@ -155,7 +155,7 @@ See [Logging][4e53] for a complete example.
 
 ##### Compared to [`CL:TRACE`][10c3]
 
-- Ability to handle [non-local exit][3b76]s
+- Ability to handle [non-local exit][b815]s
 
 - Customizable content and format
 
@@ -371,8 +371,8 @@ how the block finished its execution.
     
     - unwound on an unexpected condition (`:ERROR`, see [error outcome][560b]),
     
-    - unwound by performing a [non-local exit][3b76] of some other kind such as
-      a throw (`:NLX`, see [nlx outcome][68eb]).
+    - unwound by performing a [non-local exit][b815] of some other kind
+      such as a throw (`:NLX`, see [nlx outcome][68eb]).
     
     The first two are [expected outcome][4657]s, while the latter two are
     [unexpected outcome][d2c1]s.
@@ -441,9 +441,9 @@ how the block finished its execution.
 <a id="x-28JOURNAL-3A-40NLX-OUTCOME-20MGL-PAX-3AGLOSSARY-TERM-29"></a>
 - [glossary-term] **nlx outcome**
 
-    If the [`JOURNALED`][6267] [block][06a7] performed a [non-local exit][3b76] that was not
-    due to a condition, then [`EVENT-EXIT`][812a] is `:NLX` and the outcome
-    is `NIL`.
+    If the [`JOURNALED`][6267] [block][06a7] performed a [non-local exit][b815] that
+    was not due to a condition, then [`EVENT-EXIT`][812a] is `:NLX` and the
+    outcome is `NIL`.
     
     ```
     (catch 'xxx
@@ -454,7 +454,7 @@ how the block finished its execution.
     ```
     
     Note that [condition outcome][9d9f]s and [error outcome][560b]s are also due to
-    [non-local exit][3b76]s but are distinct from nlx outcomes.
+    [non-local exit][b815]s but are distinct from nlx outcomes.
     
     Currently, nlx outcomes are detected rather heuristically as there
     is no portable way to detect what really caused the unwinding of the
@@ -760,16 +760,16 @@ most often used for [Logging][4e53] and [Tracing][e03f].
     [`JOURNALED`][6267], [`LOGGED`][23c4], [`WITH-REPLAY-FILTER`][0cce], [`SYNC-JOURNAL`][b2ff], and also
     [`STORAGE-CONDITION`][ecf9]s, assertion failures, errors calling `JOURNALED`'s
     `VALUES` and `CONDITION` function arguments.
-    Crucially, this does not apply to [non-local exit][3b76]s from other code,
-    such as `JOURNALED` [block][06a7]s, whose error handling is largely
+    Crucially, this does not apply to [non-local exit][b815]s from other
+    code, such as `JOURNALED` [block][06a7]s, whose error handling is largely
     unaltered (see [Out-events][48ef] and [Replay failures][2933]).
     
-    In general, any [non-local exit][3b76] from critical parts of the code is
-    turned into a `JOURNALING-FAILURE` to protect the integrity of the
-    [`RECORD-JOURNAL`][3b63]. The condition that caused the unwinding is in
+    In general, any [non-local exit][b815] from critical parts of the
+    code is turned into a `JOURNALING-FAILURE` to protect the integrity of
+    the [`RECORD-JOURNAL`][3b63]. The condition that caused the unwinding is in
     [`JOURNALING-FAILURE-EMBEDDED-CONDITION`][9f90], or `NIL` if it was a pure
-    [non-local exit][3b76] like [`THROW`][e760]. This is a [`SERIOUS-CONDITION`][af00], not to be
-    handled within `WITH-JOURNALING`.
+    [non-local exit][b815] like [`THROW`][e760]. This is a [`SERIOUS-CONDITION`][af00], not
+    to be handled within `WITH-JOURNALING`.
     
     After a `JOURNALING-FAILURE`, the journaling mechanism cannot be
     trusted anymore. The [`REPLAY-JOURNAL`][838b] might have failed a read and be
@@ -1164,8 +1164,8 @@ Also, see notes on thread [Safety][7bf3].
 <a id="x-28JOURNAL-3A-40TRACING-20MGL-PAX-3ASECTION-29"></a>
 ## 8 Tracing
 
-[`JTRACE`][18be] behaves similarly to [`CL:TRACE`][10c3] but deals [non-local exit][3b76]s
-gracefully.
+[`JTRACE`][18be] behaves similarly to [`CL:TRACE`][10c3] but deals with
+[non-local exit][b815]s gracefully.
 
 ##### Basic tracing
 
@@ -3546,20 +3546,12 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
     boolean-valued symbols on `CL:STREAM`s. In Journal, they are used by
     [`MAKE-LOG-DECORATOR`][e33e] and [`PPRINT-JOURNAL`][9150]s.
 
-<a id="x-28JOURNAL-3A-40NON-LOCAL-EXIT-20MGL-PAX-3AGLOSSARY-TERM-29"></a>
-- [glossary-term] **non-local exit**
-
-    This is a term from the Common Lisp ANSI standard. If a form does
-    not return normally, but control is transferred via [`GO`][f2e5], [`RETURN`][5b0b],
-    [`RETURN-FROM`][3eef] or [`THROW`][e760], then it is said to have performed a non-local
-    exit. This definition of a non-local exit includes `EVENT-EXIT`([`0`][c04d] [`1`][812a])
-    `:CONDITION`, `:ERROR` and `:NLX`.
-
 <a id="x-28JOURNAL-3A-40READABLE-20MGL-PAX-3AGLOSSARY-TERM-29"></a>
 - [glossary-term] **readable**
 
-    In Common Lisp, readable objects are those that can be printed readably.
-    Anything written to stream-based journals needs to be readable.
+    In Common Lisp, readable objects are those that can be printed
+    [readably][278a]. Anything written to stream-based journals needs to
+    be readable.
 
   [0002]: #x-28JOURNAL-3AJOURNAL-ERROR-20CONDITION-29 "JOURNAL:JOURNAL-ERROR CONDITION"
   [0114]: #x-28JOURNAL-3A-40JOURNAL-BACKGROUND-20MGL-PAX-3ASECTION-29 "Background"
@@ -3598,6 +3590,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [23c4]: #x-28JOURNAL-3ALOGGED-20MGL-PAX-3AMACRO-29 "JOURNAL:LOGGED MGL-PAX:MACRO"
   [260d]: #x-28JOURNAL-3A-40BUNDLES-20MGL-PAX-3ASECTION-29 "Bundles"
   [2765]: #x-28JOURNAL-3A-2ATRACE-TIME-2A-20VARIABLE-29 "JOURNAL:*TRACE-TIME* VARIABLE"
+  [278a]: http://www.lispworks.com/documentation/HyperSpec/Body/26_glo_r.htm#readably '"readably" (MGL-PAX:CLHS MGL-PAX:GLOSSARY-TERM)'
   [2933]: #x-28JOURNAL-3A-40REPLAY-FAILURES-20MGL-PAX-3ASECTION-29 "Replay failures"
   [297c]: #x-28JOURNAL-3A-40CUSTOMIZING-LOGS-20MGL-PAX-3ASECTION-29 "Customizing logs"
   [2e9b]: #x-28JOURNAL-3AREPLAY-FAILURE-20CONDITION-29 "JOURNAL:REPLAY-FAILURE CONDITION"
@@ -3613,11 +3606,9 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [3ac1]: #x-28JOURNAL-3A-40VALUES-OUTCOME-20MGL-PAX-3AGLOSSARY-TERM-29 "JOURNAL:@VALUES-OUTCOME MGL-PAX:GLOSSARY-TERM"
   [3b4e]: http://www.lispworks.com/documentation/HyperSpec/Body/f_parse_.htm "PARSE-INTEGER (MGL-PAX:CLHS FUNCTION)"
   [3b63]: #x-28JOURNAL-3ARECORD-JOURNAL-20FUNCTION-29 "JOURNAL:RECORD-JOURNAL FUNCTION"
-  [3b76]: #x-28JOURNAL-3A-40NON-LOCAL-EXIT-20MGL-PAX-3AGLOSSARY-TERM-29 "JOURNAL:@NON-LOCAL-EXIT MGL-PAX:GLOSSARY-TERM"
   [3c21]: #x-28JOURNAL-3A-40MATCHING-IN-EVENTS-20MGL-PAX-3ASECTION-29 "Matching in-events"
   [3cdb]: #x-28JOURNAL-3AEND-OF-JOURNAL-20CONDITION-29 "JOURNAL:END-OF-JOURNAL CONDITION"
   [3cde]: http://www.lispworks.com/documentation/HyperSpec/Body/t_fixnum.htm "FIXNUM (MGL-PAX:CLHS TYPE)"
-  [3eef]: http://www.lispworks.com/documentation/HyperSpec/Body/s_ret_fr.htm "RETURN-FROM (MGL-PAX:CLHS MGL-PAX:MACRO)"
   [3fb5]: http://www.lispworks.com/documentation/HyperSpec/Body/f_equal.htm "EQUAL (MGL-PAX:CLHS FUNCTION)"
   [4118]: #x-28JOURNAL-3A-2ATRACE-JOURNAL-2A-20VARIABLE-29 "JOURNAL:*TRACE-JOURNAL* VARIABLE"
   [4212]: #x-28JOURNAL-3A-40INVOKED-20MGL-PAX-3AGLOSSARY-TERM-29 "JOURNAL:@INVOKED MGL-PAX:GLOSSARY-TERM"
@@ -3638,7 +3629,6 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [560b]: #x-28JOURNAL-3A-40ERROR-OUTCOME-20MGL-PAX-3AGLOSSARY-TERM-29 "JOURNAL:@ERROR-OUTCOME MGL-PAX:GLOSSARY-TERM"
   [5833]: #x-28JOURNAL-3APPRINT-EVENTS-20FUNCTION-29 "JOURNAL:PPRINT-EVENTS FUNCTION"
   [5a82]: http://www.lispworks.com/documentation/HyperSpec/Body/f_eq.htm "EQ (MGL-PAX:CLHS FUNCTION)"
-  [5b0b]: http://www.lispworks.com/documentation/HyperSpec/Body/m_return.htm "RETURN (MGL-PAX:CLHS MGL-PAX:MACRO)"
   [5cd1]: #x-28JOURNAL-3ALEAF-EVENT-20TYPE-29 "JOURNAL:LEAF-EVENT TYPE"
   [5d05]: #x-28JOURNAL-3AFRAMED-20MGL-PAX-3AMACRO-29 "JOURNAL:FRAMED MGL-PAX:MACRO"
   [5da8]: #x-28JOURNAL-3AOPEN-STREAMLET-P-20GENERIC-FUNCTION-29 "JOURNAL:OPEN-STREAMLET-P GENERIC-FUNCTION"
@@ -3707,7 +3697,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [9ed3]: #x-28JOURNAL-3AEVENT-VERSION-20TYPE-29 "JOURNAL:EVENT-VERSION TYPE"
   [9f84]: #x-28JOURNAL-3AEVENT-NAME-20FUNCTION-29 "JOURNAL:EVENT-NAME FUNCTION"
   [9f90]: #x-28JOURNAL-3AJOURNALING-FAILURE-EMBEDDED-CONDITION-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNALING-FAILURE-29-29 "JOURNAL:JOURNALING-FAILURE-EMBEDDED-CONDITION (MGL-PAX:READER JOURNAL:JOURNALING-FAILURE)"
-  [a138]: http://www.lispworks.com/documentation/HyperSpec/Body/m_setf.htm "SETF (MGL-PAX:CLHS MGL-PAX:MACRO)"
+  [a138]: http://www.lispworks.com/documentation/HyperSpec/Body/m_setf_.htm "SETF (MGL-PAX:CLHS MGL-PAX:MACRO)"
   [a370]: http://www.lispworks.com/documentation/HyperSpec/Body/m_tracec.htm "UNTRACE (MGL-PAX:CLHS MGL-PAX:MACRO)"
   [a394]: #x-28JOURNAL-3AEVENT-20TYPE-29 "JOURNAL:EVENT TYPE"
   [a6ac]: #x-28JOURNAL-3A-40LOG-RECORD-20MGL-PAX-3ASECTION-29 "`:LOG-RECORD`"
@@ -3726,6 +3716,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [b668]: #x-28JOURNAL-3AIN-MEMORY-JOURNAL-20CLASS-29 "JOURNAL:IN-MEMORY-JOURNAL CLASS"
   [b792]: #x-28JOURNAL-3A-40IN-MEMORY-JOURNALS-20MGL-PAX-3ASECTION-29 "In-memory journals"
   [b7d2]: #x-28JOURNAL-3A-40COMPARING-JOURNALS-20MGL-PAX-3ASECTION-29 "Comparing journals"
+  [b815]: http://www.lispworks.com/documentation/HyperSpec/Body/26_glo_n.htm#non-local_exit '"non-local exit" (MGL-PAX:CLHS MGL-PAX:GLOSSARY-TERM)'
   [ba32]: #x-28JOURNAL-3A-40JOURNAL-UTILITIES-20MGL-PAX-3ASECTION-29 "Utilities"
   [bacd]: #x-28JOURNAL-3AIN-MEMORY-BUNDLE-20CLASS-29 "JOURNAL:IN-MEMORY-BUNDLE CLASS"
   [bb08]: #x-28JOURNAL-3A-40JOURNAL-ERROR-HANDLING-20MGL-PAX-3ASECTION-29 "Error handling"
@@ -3762,7 +3753,6 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [f0e7]: #x-28JOURNAL-3AMAKE-FILE-JOURNAL-20FUNCTION-29 "JOURNAL:MAKE-FILE-JOURNAL FUNCTION"
   [f17d]: #x-28JOURNAL-3AVALUES-3C--20FUNCTION-29 "JOURNAL:VALUES<- FUNCTION"
   [f224]: #x-28JOURNAL-3AJOURNAL-DIVERGENT-P-20FUNCTION-29 "JOURNAL:JOURNAL-DIVERGENT-P FUNCTION"
-  [f2e5]: http://www.lispworks.com/documentation/HyperSpec/Body/s_go.htm "GO (MGL-PAX:CLHS MGL-PAX:MACRO)"
   [f379]: #x-28JOURNAL-3APRINT-EVENTS-20FUNCTION-29 "JOURNAL:PRINT-EVENTS FUNCTION"
   [f37b]: #x-28JOURNAL-3A-40IN-EVENTS-REFERENCE-20MGL-PAX-3ASECTION-29 "In-events"
   [f472]: http://www.lispworks.com/documentation/HyperSpec/Body/m_defun.htm "DEFUN (MGL-PAX:CLHS MGL-PAX:MACRO)"
