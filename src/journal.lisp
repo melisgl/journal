@@ -3400,7 +3400,7 @@
   "If the replay strategy is _match_, then, for in-events, the
   matching process continues like this:
 
-  - If the [EVENT-ARGS] are not EQUAL, then __`REPLAY-ARGS-MISMATCH`__
+  - If the EVENT-ARGS are not EQUAL, then __`REPLAY-ARGS-MISMATCH`__
     signalled.
 
   - At this point, two things might happen:

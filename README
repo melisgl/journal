@@ -41,11 +41,11 @@ the state of a program, achieving simple persistence not unlike a
 [journaling filesystem][journaling-fs] or [Event
 Sourcing][event-sourcing].
 
-[mock-object]: https://en.wikipedia.org/wiki/Mock_object 
+[mock-object]: https://en.wikipedia.org/wiki/Mock_object
 
-[journaling-fs]: https://en.wikipedia.org/wiki/Journaling_file_system 
+[journaling-fs]: https://en.wikipedia.org/wiki/Journaling_file_system
 
-[event-sourcing]: https://martinfowler.com/eaaDev/EventSourcing.html 
+[event-sourcing]: https://martinfowler.com/eaaDev/EventSourcing.html
 
 Journal is the library to log, trace, test and persist. It has a
 single macro at its heart: JOURNALED, which does pretty much what
@@ -1214,7 +1214,7 @@ PPRINT-JOURNAL-STREAM and JOURNAL-LOG-DECORATOR.
     Controls whether to decorate the trace with the internal run-time.
     See MAKE-LOG-DECORATOR.
 
-- [variable] *TRACE-JOURNAL* #\<PPRINT-JOURNAL :NEW 1\>
+- [variable] *TRACE-JOURNAL* \#\<PPRINT-JOURNAL :NEW 1>
 
     The JOURNAL where JTRACE writes LOG-EVENTs. By default, it is a
     PPRINT-JOURNAL that sets up a SYNONYM-STREAM to *TRACE-OUTPUT* and
@@ -2389,7 +2389,7 @@ in deeply nested function calls is fraught with such peril that it
 is often easier to flatten the program into a state machine, which
 is as pleasant as manually managing [continuations][continuation].
 
-[continuation]: https://en.wikipedia.org/wiki/Continuation 
+[continuation]: https://en.wikipedia.org/wiki/Continuation
 
 In contrast, the Journal library does not favour certain styles of
 control flow and only requires that non-determinism is packaged up
@@ -2590,7 +2590,7 @@ around: it must leave zeros. This is not true for all filesytems.
 For example, ext3/ext4 with `data=writeback` [can leave garbage
 around][ext4-writeback].
 
-[ext4-writeback]: https://ext4.wiki.kernel.org/index.php/Ext3_Data=Ordered_vs_Data=Writeback_mode 
+[ext4-writeback]: https://ext4.wiki.kernel.org/index.php/Ext3_Data=Ordered_vs_Data=Writeback_mode
 
 
 ## Safety
