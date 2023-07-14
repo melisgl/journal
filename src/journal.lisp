@@ -36,23 +36,36 @@
   SYNC-JOURNAL (see @SYNCHRONIZATION-STRATEGIES and @SAFETY) will be a
   runtime error.")
 
+(define-glossary-term @mock-object
+    (:title "mock object"
+     :url "https://en.wikipedia.org/wiki/Mock_object"))
+
+(define-glossary-term @journaling-fs
+    (:title "journaling filesystem"
+     :url "https://en.wikipedia.org/wiki/Journaling_file_system"))
+
+(define-glossary-term @event-sourcing
+    (:title "event sourcing"
+     :url "https://martinfowler.com/eaaDev/EventSourcing.html"))
+
+(define-glossary-term @continuation
+    (:title "continuation"
+     :url "https://en.wikipedia.org/wiki/Continuation"))
+
+(define-glossary-term @ext4-writeback
+    (:title "Ext4 writeback"
+     :url "https://ext4.wiki.kernel.org/index.php/Ext3_Data=Ordered_vs_Data=Writeback_mode"))
+
 (defsection @journal-background (:title "Background")
   "Logging, tracing, testing, and persistence are about what happened
   during code execution. Recording machine-readable logs and traces
   can be repurposed for white-box testing. More, when the code is
   rerun, selected frames may return their recorded values without
-  executing the code, which could serve as a [mock][mock-object]
-  framework for writing tests. This ability to isolate external
-  interactions and to reexecute traces is sufficient to reconstruct
-  the state of a program, achieving simple persistence not unlike a
-  [journaling filesystem][journaling-fs] or [Event
-  Sourcing][event-sourcing].
-
-    [mock-object]: https://en.wikipedia.org/wiki/Mock_object
-
-    [journaling-fs]: https://en.wikipedia.org/wiki/Journaling_file_system
-
-    [event-sourcing]: https://martinfowler.com/eaaDev/EventSourcing.html
+  executing the code, which could serve as a @MOCK-OBJECT framework
+  for writing tests. This ability to isolate external interactions and
+  to reexecute traces is sufficient to reconstruct the state of a
+  program, achieving simple persistence not unlike a @JOURNALING-FS or
+  @EVENT-SOURCING.
 
   Journal is the library to log, trace, test and persist. It has a
   single macro at its heart: JOURNALED, which does pretty much what
@@ -3044,10 +3057,10 @@
   non-deterministic control flow.
 
   By letting events choose the code to run, Invoked resembles typical
-  [Event Sourcing][event-sourcing] frameworks. When Invoked is used
-  exclusively, the journal becomes a sequence of events. In contrast,
-  JOURNALED and its wrappers put code first, and the journal will be a
-  projection of the call tree.")
+  @EVENT-SOURCING frameworks. When Invoked is used exclusively, the
+  journal becomes a sequence of events. In contrast, JOURNALED and its
+  wrappers put code first, and the journal will be a projection of the
+  call tree.")
 
 (defvar *invoked-event-name-to-function-name* (make-hash-table :test #'equal))
 ;;; Name-to-function alist
@@ -4434,9 +4447,9 @@
   @PERSISTENCE, which rely heavily on replay. Suppose we want to unit
   test user registration. Unfortunately, the code communicates with a
   database service and also takes input from the user. A natural
-  solution is to create [mocks][mock-object] for these external
-  systems to unshackle the test from the cumbersome database
-  dependency and to allow it to run without user interaction.
+  solution is to create @MOCK-OBJECTs for these external systems to
+  unshackle the test from the cumbersome database dependency and to
+  allow it to run without user interaction.
 
   We do this below by wrapping external interaction in JOURNALED with
   :VERSION :INFINITY (see @REPLAYING-THE-OUTCOME).
@@ -4761,16 +4774,14 @@
 
   ##### Discussion
 
-  Persistence by replay, also known as [Event
-  Sourcing][event-sourcing], is appropriate when the external
-  interactions are well-defined and stable. Storing events shines in
-  comparison to persisting state when the control flow is too
-  complicated to be interrupted and resumed easily. Resuming execution
-  in deeply nested function calls is fraught with such peril that it
-  is often easier to flatten the program into a state machine, which
-  is as pleasant as manually managing [continuations][continuation].
-
-  [continuation]: https://en.wikipedia.org/wiki/Continuation
+  Persistence by replay, also known as @EVENT-SOURCING, is appropriate
+  when the external interactions are well-defined and stable. Storing
+  events shines in comparison to persisting state when the control
+  flow is too complicated to be interrupted and resumed easily.
+  Resuming execution in deeply nested function calls is fraught with
+  such peril that it is often easier to flatten the program into a
+  state machine, which is as pleasant as manually managing
+  @CONTINUATIONs.
 
   In contrast, the Journal library does not favour certain styles of
   control flow and only requires that non-determinism is packaged up
@@ -5413,9 +5424,7 @@
   transaction marker, a crash cannot leave any kind of garbage bytes
   around: it must leave zeros. This is not true for all filesytems.
   For example, ext3/ext4 with `data=writeback` [can leave garbage
-  around][ext4-writeback].
-
-  [ext4-writeback]: https://ext4.wiki.kernel.org/index.php/Ext3_Data=Ordered_vs_Data=Writeback_mode")
+  around][@ext4-writeback].")
 
 (defun read-file-journal-state (pathname)
   (let (#+clisp
