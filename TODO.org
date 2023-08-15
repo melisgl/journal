@@ -17,3 +17,7 @@ Can checkpointing be implemented with journal rewriters? Can we check
 that the resulting state is the same? Alternate code paths leading to
 the same state? A checkpoint is really a shortcut. Must check state is
 the same.
+* threads/processes
+It should be possible to start new independent "threads", each with
+its own (logical) journal, probably with synchronization primitives
+and the ability join.
