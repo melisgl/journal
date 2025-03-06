@@ -21,3 +21,6 @@ the same.
 It should be possible to start new independent "threads", each with
 its own (logical) journal, probably with synchronization primitives
 and the ability join.
+
+Maybe this could support operations whose execution order is
+unimportant?

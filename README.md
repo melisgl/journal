@@ -3587,7 +3587,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
 
 - [condition] **STREAMLET-ERROR** *[ERROR][d162]*
 
-    Like [`CL:STREAM-ERROR:`][ad6d] failures pertaining to I/O on
+    Like [`CL:STREAM-ERROR`][ad6d]: failures pertaining to I/O on
     a closed [`STREAMLET`][7a2f] or of the wrong `DIRECTION`. Actual I/O errors are
     *not* encapsulated in `STREAMLET-ERROR`.
 
