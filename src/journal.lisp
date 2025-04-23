@@ -939,7 +939,7 @@
 
 (defgeneric to-journal (designator)
   (:documentation "Return the journal designated by DESIGNATOR or
-  signal an error. The default implementation:
+  signal an error. The default implementation
 
   - returns DESIGNATOR itself if it is of type JOURNAL,
   - returns a new IN-MEMORY-JOURNAL if DESIGNATOR is T,

@@ -1,16 +1,16 @@
 # Journal manual
 
 ###### \[in package JOURNAL with nicknames JRN\]
-## The journal ASDF System
-
-- Version: 0.1.0
-- Description: A library built around explicit execution traces for
-  logging, tracing, testing and persistence.
-- Licence: MIT, see COPYING.
-- Author: Gábor Melis <mega@retes.hu>
-- Homepage: [http://github.com/melisgl/journal](http://github.com/melisgl/journal)
-- Bug tracker: [http://github.com/melisgl/journal/issues](http://github.com/melisgl/journal/issues)
-- Source control: [GIT](https://github.com/melisgl/journal.git)
+- [system] "journal"
+    - Version: 0.1.0
+    - Description: A library built around explicit execution traces for
+        logging, tracing, testing and persistence.
+    - Licence: MIT, see COPYING.
+    - Author: Gábor Melis <mega@retes.hu>
+    - Homepage: [http://github.com/melisgl/journal](http://github.com/melisgl/journal)
+    - Bug tracker: [http://github.com/melisgl/journal/issues](http://github.com/melisgl/journal/issues)
+    - Source control: [GIT](https://github.com/melisgl/journal.git)
+    - Depends on: alexandria, bordeaux-threads, local-time, mgl-pax, osicat(?), sb-posix(?), trivial-features, trivial-garbage
 
 ## Links
 
@@ -157,7 +157,7 @@ cycles focussing on persistence.
 - [generic-function] TO-JOURNAL DESIGNATOR
 
     Return the journal designated by DESIGNATOR or
-    signal an error. The default implementation:
+    signal an error. The default implementation
     
     - returns DESIGNATOR itself if it is of type JOURNAL,
     
@@ -698,7 +698,7 @@ most often used for @LOGGING and @TRACING.
     ERROR as the their handling need not be so
     heavy-handed.
 
-- [reader] JOURNALING-FAILURE-EMBEDDED-CONDITION JOURNALING-FAILURE (:EMBEDDED-CONDITION)
+- [reader] JOURNALING-FAILURE-EMBEDDED-CONDITION [JOURNALING-FAILURE][3956] (:EMBEDDED-CONDITION)
 
 - [condition] RECORD-UNEXPECTED-OUTCOME
 
@@ -957,7 +957,7 @@ Here, we discuss how to make logs more informative.
     can be on LOG-EVENTs only, do not affect @REPLAY. Decorations are
     most often used with @PRETTY-PRINTING.
 
-- [accessor] JOURNAL-LOG-DECORATOR JOURNAL (:LOG-DECORATOR = NIL)
+- [accessor] JOURNAL-LOG-DECORATOR [JOURNAL][5082] (:LOG-DECORATOR = NIL)
 
     If non-NIL, this is a function to add @DECORATION
     to LOG-EVENTs before they are written to a journal. The only
@@ -1818,11 +1818,11 @@ process failed hard without unwinding properly, or when an
     WITH-JOURNALING, keep in mind that in :MISMATCHED, replay always
     uses the *insert* replay strategy (see @THE-REPLAY-STRATEGY).
 
-- [reader] REPLAY-FAILURE-NEW-EVENT REPLAY-FAILURE (:NEW-EVENT)
+- [reader] REPLAY-FAILURE-NEW-EVENT [REPLAY-FAILURE][2e9b] (:NEW-EVENT)
 
-- [reader] REPLAY-FAILURE-REPLAY-EVENT REPLAY-FAILURE (:REPLAY-EVENT)
+- [reader] REPLAY-FAILURE-REPLAY-EVENT [REPLAY-FAILURE][2e9b] (:REPLAY-EVENT)
 
-- [reader] REPLAY-FAILURE-REPLAY-JOURNAL REPLAY-FAILURE (= '(REPLAY-JOURNAL))
+- [reader] REPLAY-FAILURE-REPLAY-JOURNAL [REPLAY-FAILURE][2e9b] (= '(REPLAY-JOURNAL))
 
 - [condition] REPLAY-NAME-MISMATCH REPLAY-FAILURE
 
@@ -2792,12 +2792,12 @@ journals. Here, we go into the details.
     journals normally only consists of creating and using them in
     WITH-JOURNALING.
 
-- [reader] JOURNAL-STATE JOURNAL (:STATE)
+- [reader] JOURNAL-STATE [JOURNAL][5082] (:STATE)
 
     Return the state of JOURNAL, which is of type
     JOURNAL-STATE.
 
-- [reader] JOURNAL-SYNC JOURNAL (:SYNC = NIL)
+- [reader] JOURNAL-SYNC [JOURNAL][5082] (:SYNC = NIL)
 
     The SYNC argument specified at instantiation. See
     @SYNCHRONIZATION-STRATEGIES.
@@ -2816,7 +2816,7 @@ journals. Here, we go into the details.
     are not persisted. SYNC-JOURNAL is a noop if JOURNAL-SYNC is NIL. It
     is safe to call from any thread.
 
-- [reader] JOURNAL-REPLAY-MISMATCH JOURNAL (= NIL)
+- [reader] JOURNAL-REPLAY-MISMATCH [JOURNAL][5082] (= NIL)
 
     If JOURNAL-DIVERGENT-P, then this is a list of two
     elements: the READ-POSITIONs in the RECORD-JOURNAL and
@@ -2906,12 +2906,12 @@ The rest of section is about concrete subclasses of JOURNAL.
     possible values, see @SYNCHRONIZATION-STRATEGIES. For more
     discussion, see @SYNCHRONIZATION-WITH-IN-MEMORY-JOURNALS.
 
-- [reader] JOURNAL-EVENTS IN-MEMORY-JOURNAL (:EVENTS)
+- [reader] JOURNAL-EVENTS [IN-MEMORY-JOURNAL][b668] (:EVENTS)
 
     A sequence of events in the journal. Not to be
     mutated by client code.
 
-- [reader] JOURNAL-PREVIOUS-SYNC-POSITION IN-MEMORY-JOURNAL (= 0)
+- [reader] JOURNAL-PREVIOUS-SYNC-POSITION [IN-MEMORY-JOURNAL][b668] (= 0)
 
     The length of JOURNAL-EVENTS at the time of the
     most recent invocation of SYNC-FN.
@@ -2970,7 +2970,7 @@ The rest of section is about concrete subclasses of JOURNAL.
     written, then invalidation fails with a JOURNAL-ERROR. After
     invalidation, a new FILE-JOURNAL object is created.
 
-- [reader] PATHNAME-OF FILE-JOURNAL (:PATHNAME)
+- [reader] PATHNAME-OF [FILE-JOURNAL][8428] (:PATHNAME)
 
     The pathname of the file backing the journal.
 
@@ -2989,18 +2989,18 @@ The rest of section is about concrete subclasses of JOURNAL.
 
     Creates a PPRINT-JOURNAL.
 
-- [accessor] PPRINT-JOURNAL-STREAM PPRINT-JOURNAL (:STREAM = \*STANDARD-OUTPUT\*)
+- [accessor] PPRINT-JOURNAL-STREAM [PPRINT-JOURNAL][9150] (:STREAM = \*STANDARD-OUTPUT\*)
 
     The stream where events are dumped. May be set any
     time to another STREAM.
 
-- [accessor] PPRINT-JOURNAL-PRETTY PPRINT-JOURNAL (:PRETTY = T)
+- [accessor] PPRINT-JOURNAL-PRETTY [PPRINT-JOURNAL][9150] (:PRETTY = T)
 
     Whether to use PPRINT-JOURNAL-PRETTIFIER or write
     events in as the property lists they are. A
     @BOOLEAN-VALUED-SYMBOL.
 
-- [accessor] PPRINT-JOURNAL-PRETTIFIER PPRINT-JOURNAL (:PRETTIFIER = 'PRETTIFY-EVENT)
+- [accessor] PPRINT-JOURNAL-PRETTIFIER [PPRINT-JOURNAL][9150] (:PRETTIFIER = 'PRETTIFY-EVENT)
 
     A function like PRETTIFY-EVENT that writes an
     event to a stream. Only used when PPRINT-JOURNAL-PRETTY, this is
@@ -3029,14 +3029,14 @@ classes.
     This is an abstract base class. Direct subclasses are
     IN-MEMORY-BUNDLE and FILE-BUNDLE.
 
-- [accessor] MAX-N-FAILED BUNDLE (:MAX-N-FAILED = 1)
+- [accessor] MAX-N-FAILED [BUNDLE][d9b6] (:MAX-N-FAILED = 1)
 
     If MAX-N-FAILED is non-NIL, and the number of
     journals of JOURNAL-STATE :FAILED in the bundle exceeds
     its value, then some journals (starting with the oldest) are
     deleted.
 
-- [accessor] MAX-N-COMPLETED BUNDLE (:MAX-N-COMPLETED = 1)
+- [accessor] MAX-N-COMPLETED [BUNDLE][d9b6] (:MAX-N-COMPLETED = 1)
 
     If MAX-N-COMPLETED is non-NIL, and the number of
     journals of JOURNAL-STATE :COMPLETED in the bundle exceeds
@@ -3066,7 +3066,7 @@ classes.
     A FILE-BUNDLE is a BUNDLE that is built on
     FILE-JOURNALs. It provides easy replay-based persistence.
 
-- [reader] DIRECTORY-OF FILE-BUNDLE (:DIRECTORY)
+- [reader] DIRECTORY-OF [FILE-BUNDLE][1895] (:DIRECTORY)
 
     The directory where the files backing the
     FILE-JOURNALs in the FILE-BUNDLE are kept.
@@ -3104,7 +3104,7 @@ normal operation, STREAMLETs are not worked with directly.
     JOURNAL. The high-level stuff (WITH-JOURNALING, JOURNALED, etc) is
     built on top of streamlets.
 
-- [reader] JOURNAL STREAMLET (:JOURNAL)
+- [reader] JOURNAL [STREAMLET][7a2f] (:JOURNAL)
 
     The JOURNAL that was passed to OPEN-STREAMLET.
     This is the journal STREAMLET operates on.
@@ -3279,6 +3279,16 @@ normal operation, STREAMLETs are not worked with directly.
     In Common Lisp, readable objects are those that can be printed
     readably. Anything written to stream-based journals needs to
     be readable.
+
+  [1895]: #JOURNAL:FILE-BUNDLE%20CLASS "JOURNAL:FILE-BUNDLE CLASS"
+  [2e9b]: #JOURNAL:REPLAY-FAILURE%20CONDITION "JOURNAL:REPLAY-FAILURE CONDITION"
+  [3956]: #JOURNAL:JOURNALING-FAILURE%20CONDITION "JOURNAL:JOURNALING-FAILURE CONDITION"
+  [5082]: #JOURNAL:JOURNAL%20CLASS "JOURNAL:JOURNAL CLASS"
+  [7a2f]: #JOURNAL:STREAMLET%20CLASS "JOURNAL:STREAMLET CLASS"
+  [8428]: #JOURNAL:FILE-JOURNAL%20CLASS "JOURNAL:FILE-JOURNAL CLASS"
+  [9150]: #JOURNAL:PPRINT-JOURNAL%20CLASS "JOURNAL:PPRINT-JOURNAL CLASS"
+  [b668]: #JOURNAL:IN-MEMORY-JOURNAL%20CLASS "JOURNAL:IN-MEMORY-JOURNAL CLASS"
+  [d9b6]: #JOURNAL:BUNDLE%20CLASS "JOURNAL:BUNDLE CLASS"
 
 * * *
 ###### \[generated by [MGL-PAX](https://github.com/melisgl/mgl-pax)\]

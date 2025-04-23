@@ -4,78 +4,77 @@
 
 ## Table of Contents
 
-- [1 The journal ASDF System][4a9f]
-- [2 Links][aa14]
-- [3 Portability][1d0d]
-- [4 Background][0114]
-- [5 Distinguishing features][9105]
-- [6 Basics][f846]
-    - [6.1 In-events][186b]
-    - [6.2 Out-events][48ef]
-    - [6.3 Working with unreadable values][b354]
-    - [6.4 Utilities][ba32]
-    - [6.5 Pretty-printing][47a7]
-    - [6.6 Error handling][bb08]
-- [7 Logging][4e53]
-    - [7.1 Customizing logs][297c]
-    - [7.2 `:LOG-RECORD`][a6ac]
-    - [7.3 Logging with `LEAF-EVENT`s][bece]
-- [8 Tracing][e03f]
-    - [8.1 Slime integration][42a5]
-- [9 Replay][041c]
-    - [9.1 Journaled for replay][d700]
-    - [9.2 Bundles][260d]
-    - [9.3 The replay strategy][a8a7]
-    - [9.4 Matching in-events][3c21]
-        - [9.4.1 Replaying the outcome][7991]
-    - [9.5 Matching out-events][7f9d]
-    - [9.6 Replay failures][2933]
-    - [9.7 Upgrades and replay][750a]
-- [10 Testing][7682]
-    - [10.1 Testing on multiple levels][9376]
-- [11 Persistence][37c4]
-    - [11.1 Persistence tutorial][6169]
-    - [11.2 Synchronization to storage][046e]
-        - [11.2.1 Synchronization strategies][f532]
-        - [11.2.2 Synchronization with in-memory journals][12ff]
-        - [11.2.3 Synchronization with file journals][674f]
-- [12 Safety][7bf3]
-- [13 Events reference][faf2]
-    - [13.1 Event versions][54c1]
-    - [13.2 In-events][f37b]
-    - [13.3 Out-events][72cd]
-    - [13.4 Leaf-events][86f6]
-- [14 Journals reference][fbbb]
-    - [14.1 Comparing journals][b7d2]
-    - [14.2 In-memory journals][b792]
-    - [14.3 File journals][e748]
-    - [14.4 Pretty-printing journals][1496]
-- [15 Bundles reference][ff8f]
-    - [15.1 In-memory bundles][8bc1]
-    - [15.2 File bundles][c05a]
-- [16 Streamlets reference][f4d5]
-    - [16.1 Opening and closing][bfc5]
-    - [16.2 Reading from streamlets][adcd]
-    - [16.3 Writing to streamlets][14f7]
-- [17 Glossary][48f5]
+- [1 Links][aa14]
+- [2 Portability][1d0d]
+- [3 Background][0114]
+- [4 Distinguishing features][9105]
+- [5 Basics][f846]
+    - [5.1 In-events][186b]
+    - [5.2 Out-events][48ef]
+    - [5.3 Working with unreadable values][b354]
+    - [5.4 Utilities][ba32]
+    - [5.5 Pretty-printing][47a7]
+    - [5.6 Error handling][bb08]
+- [6 Logging][4e53]
+    - [6.1 Customizing logs][297c]
+    - [6.2 `:LOG-RECORD`][a6ac]
+    - [6.3 Logging with `LEAF-EVENT`s][bece]
+- [7 Tracing][e03f]
+    - [7.1 Slime integration][42a5]
+- [8 Replay][041c]
+    - [8.1 Journaled for replay][d700]
+    - [8.2 Bundles][260d]
+    - [8.3 The replay strategy][a8a7]
+    - [8.4 Matching in-events][3c21]
+        - [8.4.1 Replaying the outcome][7991]
+    - [8.5 Matching out-events][7f9d]
+    - [8.6 Replay failures][2933]
+    - [8.7 Upgrades and replay][750a]
+- [9 Testing][7682]
+    - [9.1 Testing on multiple levels][9376]
+- [10 Persistence][37c4]
+    - [10.1 Persistence tutorial][6169]
+    - [10.2 Synchronization to storage][046e]
+        - [10.2.1 Synchronization strategies][f532]
+        - [10.2.2 Synchronization with in-memory journals][12ff]
+        - [10.2.3 Synchronization with file journals][674f]
+- [11 Safety][7bf3]
+- [12 Events reference][faf2]
+    - [12.1 Event versions][54c1]
+    - [12.2 In-events][f37b]
+    - [12.3 Out-events][72cd]
+    - [12.4 Leaf-events][86f6]
+- [13 Journals reference][fbbb]
+    - [13.1 Comparing journals][b7d2]
+    - [13.2 In-memory journals][b792]
+    - [13.3 File journals][e748]
+    - [13.4 Pretty-printing journals][1496]
+- [14 Bundles reference][ff8f]
+    - [14.1 In-memory bundles][8bc1]
+    - [14.2 File bundles][c05a]
+- [15 Streamlets reference][f4d5]
+    - [15.1 Opening and closing][bfc5]
+    - [15.2 Reading from streamlets][adcd]
+    - [15.3 Writing to streamlets][14f7]
+- [16 Glossary][48f5]
 
 ###### \[in package JOURNAL with nicknames JRN\]
 <a id="x-28-22journal-22-20ASDF-2FSYSTEM-3ASYSTEM-29"></a>
 
-## 1 The journal ASDF System
-
-- Version: 0.1.0
-- Description: A library built around explicit execution traces for
-  logging, tracing, testing and persistence.
-- Licence: MIT, see COPYING.
-- Author: Gábor Melis <mega@retes.hu>
-- Homepage: [http://github.com/melisgl/journal](http://github.com/melisgl/journal)
-- Bug tracker: [http://github.com/melisgl/journal/issues](http://github.com/melisgl/journal/issues)
-- Source control: [GIT](https://github.com/melisgl/journal.git)
+- [system] **"journal"**
+    - Version: 0.1.0
+    - Description: A library built around explicit execution traces for
+        logging, tracing, testing and persistence.
+    - Licence: MIT, see COPYING.
+    - Author: Gábor Melis <mega@retes.hu>
+    - Homepage: [http://github.com/melisgl/journal](http://github.com/melisgl/journal)
+    - Bug tracker: [http://github.com/melisgl/journal/issues](http://github.com/melisgl/journal/issues)
+    - Source control: [GIT](https://github.com/melisgl/journal.git)
+    - Depends on: alexandria, bordeaux-threads, local-time, mgl-pax, osicat(?), sb-posix(?), trivial-features, trivial-garbage
 
 <a id="x-28JOURNAL-3A-40JOURNAL-LINKS-20MGL-PAX-3ASECTION-29"></a>
 
-## 2 Links
+## 1 Links
 
 Here is the [official repository](https://github.com/melisgl/journal)
 and the [HTML
@@ -84,7 +83,7 @@ for the latest version.
 
 <a id="x-28JOURNAL-3A-40JOURNAL-PORTABILITY-20MGL-PAX-3ASECTION-29"></a>
 
-## 3 Portability
+## 2 Portability
 
 Tested on ABCL, CCL, CLISP, CMUCL, ECL, and SBCL. AllegroCL Express
 edition runs out of heap while running the tests. On Lisps that seem
@@ -95,7 +94,7 @@ runtime error.
 
 <a id="x-28JOURNAL-3A-40JOURNAL-BACKGROUND-20MGL-PAX-3ASECTION-29"></a>
 
-## 4 Background
+## 3 Background
 
 Logging, tracing, testing, and persistence are about what happened
 during code execution. Recording machine-readable logs and traces
@@ -134,7 +133,7 @@ Journal library is this idea taken to its logical conclusion.
 
 <a id="x-28JOURNAL-3A-40JOURNAL-FEATURES-20MGL-PAX-3ASECTION-29"></a>
 
-## 5 Distinguishing features
+## 4 Distinguishing features
 
 ##### As a logging facility
 
@@ -206,7 +205,7 @@ See [Persistence][37c4] for a complete example.
 
 <a id="x-28JOURNAL-3A-40JOURNAL-BASICS-20MGL-PAX-3ASECTION-29"></a>
 
-## 6 Basics
+## 5 Basics
 
 The [`JOURNALED`][6267] macro does both recording and replaying of events,
 possibly at the same time. Recording is easy: events generated by
@@ -230,7 +229,7 @@ cycles focussing on persistence.
 - [generic-function] **TO-JOURNAL** *DESIGNATOR*
 
     Return the journal designated by `DESIGNATOR` or
-    signal an error. The default implementation:
+    signal an error. The default implementation
     
     - returns `DESIGNATOR` itself if it is of type [`JOURNAL`][5082],
     
@@ -332,7 +331,7 @@ cycles focussing on persistence.
 
 <a id="x-28JOURNAL-3A-40IN-EVENTS-20MGL-PAX-3ASECTION-29"></a>
 
-### 6.1 In-events
+### 5.1 In-events
 
 Upon entering a [block][06a7], [`JOURNALED`][6267] generates an [`IN-EVENT`][1729],
 which conceptually opens a new [frame][7df7]. These in-events are created
@@ -353,7 +352,7 @@ are used for [Replay][041c].
 
 <a id="x-28JOURNAL-3A-40OUT-EVENTS-20MGL-PAX-3ASECTION-29"></a>
 
-### 6.2 Out-events
+### 5.2 Out-events
 
 Upon leaving a [block][06a7], [`JOURNALED`][6267] generates an [`OUT-EVENT`][637d], closing
 the [frame][7df7] opened by the corresponding [`IN-EVENT`][1729]. These out-events
@@ -494,7 +493,7 @@ There is a further grouping of outcomes into expected and unexpected.
 
 <a id="x-28JOURNAL-3A-40WORKING-WITH-UNREADABLE-VALUES-20MGL-PAX-3ASECTION-29"></a>
 
-### 6.3 Working with unreadable values
+### 5.3 Working with unreadable values
 
 The events recorded often need to be [readable][768f]. This is always
 required with [`FILE-JOURNAL`][8428]s, often with [`IN-MEMORY-JOURNAL`][b668]s, but
@@ -620,7 +619,7 @@ returned along with `"hello"`.
 
 <a id="x-28JOURNAL-3A-40JOURNAL-UTILITIES-20MGL-PAX-3ASECTION-29"></a>
 
-### 6.4 Utilities
+### 5.4 Utilities
 
 <a id="x-28JOURNAL-3ALIST-EVENTS-20FUNCTION-29"></a>
 
@@ -668,7 +667,7 @@ returned along with `"hello"`.
 
 <a id="x-28JOURNAL-3A-40PRETTY-PRINTING-20MGL-PAX-3ASECTION-29"></a>
 
-### 6.5 Pretty-printing
+### 5.5 Pretty-printing
 
 <a id="x-28JOURNAL-3APRINT-EVENTS-20FUNCTION-29"></a>
 
@@ -776,7 +775,7 @@ most often used for [Logging][4e53] and [Tracing][e03f].
 
 <a id="x-28JOURNAL-3A-40JOURNAL-ERROR-HANDLING-20MGL-PAX-3ASECTION-29"></a>
 
-### 6.6 Error handling
+### 5.6 Error handling
 
 <a id="x-28JOURNAL-3AJOURNALING-FAILURE-20CONDITION-29"></a>
 
@@ -829,7 +828,7 @@ most often used for [Logging][4e53] and [Tracing][e03f].
 
 <a id="x-28JOURNAL-3AJOURNALING-FAILURE-EMBEDDED-CONDITION-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNALING-FAILURE-29-29"></a>
 
-- [reader] **JOURNALING-FAILURE-EMBEDDED-CONDITION** *JOURNALING-FAILURE (:EMBEDDED-CONDITION)*
+- [reader] **JOURNALING-FAILURE-EMBEDDED-CONDITION** *[JOURNALING-FAILURE][3956] (:EMBEDDED-CONDITION)*
 
 <a id="x-28JOURNAL-3ARECORD-UNEXPECTED-OUTCOME-20CONDITION-29"></a>
 
@@ -876,7 +875,7 @@ most often used for [Logging][4e53] and [Tracing][e03f].
 
 <a id="x-28JOURNAL-3A-40LOGGING-20MGL-PAX-3ASECTION-29"></a>
 
-## 7 Logging
+## 6 Logging
 
 Before we get into the details, here is a self-contained example
 that demonstrates typical use.
@@ -1083,7 +1082,7 @@ can provide nested context:
 
 <a id="x-28JOURNAL-3A-40CUSTOMIZING-LOGS-20MGL-PAX-3ASECTION-29"></a>
 
-### 7.1 Customizing logs
+### 6.1 Customizing logs
 
 Customizing the output format is possible if we don't necessarily
 expect to be able to read the logs back programmatically. There is
@@ -1104,7 +1103,7 @@ Here, we discuss how to make logs more informative.
 
 <a id="x-28JOURNAL-3AJOURNAL-LOG-DECORATOR-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3AJOURNAL-29-29"></a>
 
-- [accessor] **JOURNAL-LOG-DECORATOR** *JOURNAL (:LOG-DECORATOR = NIL)*
+- [accessor] **JOURNAL-LOG-DECORATOR** *[JOURNAL][5082] (:LOG-DECORATOR = NIL)*
 
     If non-`NIL`, this is a function to add [decoration][1d11]
     to [`LOG-EVENT`][51ce]s before they are written to a journal. The only
@@ -1136,7 +1135,7 @@ Here, we discuss how to make logs more informative.
 
 <a id="x-28JOURNAL-3A-40LOG-RECORD-20MGL-PAX-3ASECTION-29"></a>
 
-### 7.2 `:LOG-RECORD`
+### 6.2 `:LOG-RECORD`
 
 [`WITH-JOURNALING`][6131] and [`WITH-BUNDLE`][12a5] control replaying and recording
 within their dynamic extent, which is rather a necessity because
@@ -1180,7 +1179,7 @@ Also, see notes on thread [Safety][7bf3].
 
 <a id="x-28JOURNAL-3A-40LOGGING-WITH-LEAVES-20MGL-PAX-3ASECTION-29"></a>
 
-### 7.3 Logging with `LEAF-EVENT`s
+### 6.3 Logging with `LEAF-EVENT`s
 
 <a id="x-28JOURNAL-3ALOGGED-20MGL-PAX-3AMACRO-29"></a>
 
@@ -1205,7 +1204,7 @@ Also, see notes on thread [Safety][7bf3].
 
 <a id="x-28JOURNAL-3A-40TRACING-20MGL-PAX-3ASECTION-29"></a>
 
-## 8 Tracing
+## 7 Tracing
 
 [`JTRACE`][18be] behaves similarly to [`CL:TRACE`][10c3] but deals with
 [non-local exit][b815]s gracefully.
@@ -1395,7 +1394,7 @@ achieved by [`SETF`][a138]ing [`PPRINT-JOURNAL-PRETTIFIER`][853d],
 
 <a id="x-28JOURNAL-3A-40JOURNAL-SLIME-INTEGRATION-20MGL-PAX-3ASECTION-29"></a>
 
-### 8.1 Slime integration
+### 7.1 Slime integration
 
 [Slime](https://common-lisp.net/project/slime/), by default,
 binds `C-c C-t` to toggling [`CL:TRACE`][10c3]. To integrate [`JTRACE`][18be] into
@@ -1426,7 +1425,7 @@ tracing non-global functions, it is assigned a separate binding,
 
 <a id="x-28JOURNAL-3A-40REPLAY-20MGL-PAX-3ASECTION-29"></a>
 
-## 9 Replay
+## 8 Replay
 
 During replay, code is executed normally with special rules for
 [block][06a7]s. There are two modes for dealing with blocks: replaying the
@@ -1507,7 +1506,7 @@ implemented, revolves around [`JOURNAL-STATE`][03de] and
 
 <a id="x-28JOURNAL-3A-40JOURNALED-FOR-REPLAY-20MGL-PAX-3ASECTION-29"></a>
 
-### 9.1 Journaled for replay
+### 8.1 Journaled for replay
 
 The following arguments of [`JOURNALED`][6267] control behaviour under replay.
 
@@ -1753,7 +1752,7 @@ there is nowhere to return values from replay-triggered functions.
 
 <a id="x-28JOURNAL-3A-40BUNDLES-20MGL-PAX-3ASECTION-29"></a>
 
-### 9.2 Bundles
+### 8.2 Bundles
 
 Consider replaying the same code repeatedly, hoping to make
 progress in the processing. Maybe based on the availability of
@@ -1811,7 +1810,7 @@ complicated, but [`FILE-BUNDLE`][1895]s work the same way as
 
 <a id="x-28JOURNAL-3A-40THE-REPLAY-STRATEGY-20MGL-PAX-3ASECTION-29"></a>
 
-### 9.3 The replay strategy
+### 8.3 The replay strategy
 
 The replay process for both [In-events][186b] and [Out-events][48ef] starts by
 determining how the generated event (the *new* event from now on)
@@ -1926,7 +1925,7 @@ a higher version:
 
 <a id="x-28JOURNAL-3A-40MATCHING-IN-EVENTS-20MGL-PAX-3ASECTION-29"></a>
 
-### 9.4 Matching in-events
+### 8.4 Matching in-events
 
 If the replay strategy is *match*, then, for in-events, the
 matching process continues like this:
@@ -1950,7 +1949,7 @@ matching process continues like this:
 
 <a id="x-28JOURNAL-3A-40REPLAYING-THE-OUTCOME-20MGL-PAX-3ASECTION-29"></a>
 
-#### 9.4.1 Replaying the outcome
+#### 8.4.1 Replaying the outcome
 
 So, if an in-event is triggered that matches the replay,
 `EVENT-VERSION`([`0`][1f5f] [`1`][9ed3]) is `:INFINITY`, then normal execution is altered in the
@@ -1992,7 +1991,7 @@ example.
 
 <a id="x-28JOURNAL-3A-40MATCHING-OUT-EVENTS-20MGL-PAX-3ASECTION-29"></a>
 
-### 9.5 Matching out-events
+### 8.5 Matching out-events
 
 If there were no [Replay failures][2933] during the matching of the
 [`IN-EVENT`][1729], and the conditions for [Replaying the outcome][7991] were not
@@ -2028,7 +2027,7 @@ process failed hard without unwinding properly, or when an
 
 <a id="x-28JOURNAL-3A-40REPLAY-FAILURES-20MGL-PAX-3ASECTION-29"></a>
 
-### 9.6 Replay failures
+### 8.6 Replay failures
 
 <a id="x-28JOURNAL-3AREPLAY-FAILURE-20CONDITION-29"></a>
 
@@ -2047,15 +2046,15 @@ process failed hard without unwinding properly, or when an
 
 <a id="x-28JOURNAL-3AREPLAY-FAILURE-NEW-EVENT-20-28MGL-PAX-3AREADER-20JOURNAL-3AREPLAY-FAILURE-29-29"></a>
 
-- [reader] **REPLAY-FAILURE-NEW-EVENT** *REPLAY-FAILURE (:NEW-EVENT)*
+- [reader] **REPLAY-FAILURE-NEW-EVENT** *[REPLAY-FAILURE][2e9b] (:NEW-EVENT)*
 
 <a id="x-28JOURNAL-3AREPLAY-FAILURE-REPLAY-EVENT-20-28MGL-PAX-3AREADER-20JOURNAL-3AREPLAY-FAILURE-29-29"></a>
 
-- [reader] **REPLAY-FAILURE-REPLAY-EVENT** *REPLAY-FAILURE (:REPLAY-EVENT)*
+- [reader] **REPLAY-FAILURE-REPLAY-EVENT** *[REPLAY-FAILURE][2e9b] (:REPLAY-EVENT)*
 
 <a id="x-28JOURNAL-3AREPLAY-FAILURE-REPLAY-JOURNAL-20-28MGL-PAX-3AREADER-20JOURNAL-3AREPLAY-FAILURE-29-29"></a>
 
-- [reader] **REPLAY-FAILURE-REPLAY-JOURNAL** *REPLAY-FAILURE (= '(REPLAY-JOURNAL))*
+- [reader] **REPLAY-FAILURE-REPLAY-JOURNAL** *[REPLAY-FAILURE][2e9b] (= '(REPLAY-JOURNAL))*
 
 <a id="x-28JOURNAL-3AREPLAY-NAME-MISMATCH-20CONDITION-29"></a>
 
@@ -2126,7 +2125,7 @@ process failed hard without unwinding properly, or when an
 
 <a id="x-28JOURNAL-3A-40UPGRADES-AND-REPLAY-20MGL-PAX-3ASECTION-29"></a>
 
-### 9.7 Upgrades and replay
+### 8.7 Upgrades and replay
 
 The replay mechanism is built on the assumption that the tree of
 [frame][7df7]s is the same when the code is replayed as it was when the
@@ -2327,7 +2326,7 @@ With that, let's see how `WITH-REPLAY-FILTER` works.
 
 <a id="x-28JOURNAL-3A-40TESTING-20MGL-PAX-3ASECTION-29"></a>
 
-## 10 Testing
+## 9 Testing
 
 Having discussed the [Replay][041c] mechanism, next are [Testing][7682] and
 [Persistence][37c4], which rely heavily on replay. Suppose we want to unit
@@ -2470,7 +2469,7 @@ direct inspection of a journal with the low-level events api (see
 
 <a id="x-28JOURNAL-3A-40TESTING-ON-MULTIPLE-LEVELS-20MGL-PAX-3ASECTION-29"></a>
 
-### 10.1 Testing on multiple levels
+### 9.1 Testing on multiple levels
 
 Nesting [`REPLAYED`][c2b8]s (that is, [frame][7df7]s of [`EXTERNAL-EVENT`][0e53]s) is not
 obviously useful since the outer `REPLAYED` will be replayed by
@@ -2517,11 +2516,11 @@ checked as if it was a [`VERSIONED-EVENT`][4c2b] and we get a
 
 <a id="x-28JOURNAL-3A-40PERSISTENCE-20MGL-PAX-3ASECTION-29"></a>
 
-## 11 Persistence
+## 10 Persistence
 
 <a id="x-28JOURNAL-3A-40PERSISTENCE-TUTORIAL-20MGL-PAX-3ASECTION-29"></a>
 
-### 11.1 Persistence tutorial
+### 10.1 Persistence tutorial
 
 Let's write a simple game.
 
@@ -2657,7 +2656,7 @@ resume from there.
 
 <a id="x-28JOURNAL-3A-40SYNCHRONIZATION-20MGL-PAX-3ASECTION-29"></a>
 
-### 11.2 Synchronization to storage
+### 10.2 Synchronization to storage
 
 In the following, we explore how journals can serve as a
 persistence mechanism and the guarantees they offer. The high-level
@@ -2699,7 +2698,7 @@ not need transactions.
 
 <a id="x-28JOURNAL-3A-40SYNCHRONIZATION-STRATEGIES-20MGL-PAX-3ASECTION-29"></a>
 
-#### 11.2.1 Synchronization strategies
+#### 10.2.1 Synchronization strategies
 
 When a journal or bundle is created (see [`MAKE-IN-MEMORY-JOURNAL`][9955],
 [`MAKE-FILE-JOURNAL`][f0e7], [`MAKE-IN-MEMORY-BUNDLE`][8d1e], [`MAKE-FILE-BUNDLE`][d6af]), the
@@ -2726,7 +2725,7 @@ persist the data.
 
 <a id="x-28JOURNAL-3A-40SYNCHRONIZATION-WITH-IN-MEMORY-JOURNALS-20MGL-PAX-3ASECTION-29"></a>
 
-#### 11.2.2 Synchronization with in-memory journals
+#### 10.2.2 Synchronization with in-memory journals
 
 Unlike [`FILE-JOURNAL`][8428]s, [`IN-MEMORY-JOURNAL`][b668]s do not have any built-in
 persistent storage backing them, but with `SYNC-FN`, persistence can
@@ -2826,7 +2825,7 @@ divergence.
 
 <a id="x-28JOURNAL-3A-40SYNCHRONIZATION-WITH-FILE-JOURNALS-20MGL-PAX-3ASECTION-29"></a>
 
-#### 11.2.3 Synchronization with file journals
+#### 10.2.3 Synchronization with file journals
 
 For [`FILE-JOURNAL`][8428]s, `SYNC` determines when the events written to the
 [`RECORD-JOURNAL`][3b63] and its [`JOURNAL-STATE`][03de] will be persisted durably in
@@ -2862,7 +2861,7 @@ around][6907].
 
 <a id="x-28JOURNAL-3A-40SAFETY-20MGL-PAX-3ASECTION-29"></a>
 
-## 12 Safety
+## 11 Safety
 
 ##### Thread safety
 
@@ -2914,7 +2913,7 @@ the Lisp should probably be restarted.
 
 <a id="x-28JOURNAL-3A-40EVENTS-REFERENCE-20MGL-PAX-3ASECTION-29"></a>
 
-## 13 Events reference
+## 12 Events reference
 
 Events are normally triggered upon entering and leaving the
 dynamic extent of a [`JOURNALED`][6267] [block][06a7] (see [In-events][186b] and
@@ -2971,7 +2970,7 @@ properties, their semantics and the functions to read them.
 
 <a id="x-28JOURNAL-3A-40EVENT-VERSIONS-20MGL-PAX-3ASECTION-29"></a>
 
-### 13.1 Event versions
+### 12.1 Event versions
 
 <a id="x-28JOURNAL-3AEVENT-VERSION-20FUNCTION-29"></a>
 
@@ -2999,7 +2998,7 @@ properties, their semantics and the functions to read them.
 
 <a id="x-28JOURNAL-3A-40IN-EVENTS-REFERENCE-20MGL-PAX-3ASECTION-29"></a>
 
-### 13.2 In-events
+### 12.2 In-events
 
 <a id="x-28JOURNAL-3AIN-EVENT-20TYPE-29"></a>
 
@@ -3032,7 +3031,7 @@ properties, their semantics and the functions to read them.
 
 <a id="x-28JOURNAL-3A-40OUT-EVENTS-REFERENCE-20MGL-PAX-3ASECTION-29"></a>
 
-### 13.3 Out-events
+### 12.3 Out-events
 
 <a id="x-28JOURNAL-3AOUT-EVENT-20TYPE-29"></a>
 
@@ -3085,7 +3084,7 @@ properties, their semantics and the functions to read them.
 
 <a id="x-28JOURNAL-3A-40LEAF-EVENTS-REFERENCE-20MGL-PAX-3ASECTION-29"></a>
 
-### 13.4 Leaf-events
+### 12.4 Leaf-events
 
 <a id="x-28JOURNAL-3ALEAF-EVENT-20TYPE-29"></a>
 
@@ -3111,7 +3110,7 @@ properties, their semantics and the functions to read them.
 
 <a id="x-28JOURNAL-3A-40JOURNALS-REFERENCE-20MGL-PAX-3ASECTION-29"></a>
 
-## 14 Journals reference
+## 13 Journals reference
 
 In [Basics][f846], we covered the bare minimum needed to work with
 journals. Here, we go into the details.
@@ -3131,14 +3130,14 @@ journals. Here, we go into the details.
 
 <a id="x-28JOURNAL-3AJOURNAL-STATE-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNAL-29-29"></a>
 
-- [reader] **JOURNAL-STATE** *JOURNAL (:STATE)*
+- [reader] **JOURNAL-STATE** *[JOURNAL][5082] (:STATE)*
 
     Return the state of [`JOURNAL`][5082], which is of type
     [`JOURNAL-STATE`][03de].
 
 <a id="x-28JOURNAL-3AJOURNAL-SYNC-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNAL-29-29"></a>
 
-- [reader] **JOURNAL-SYNC** *JOURNAL (:SYNC = NIL)*
+- [reader] **JOURNAL-SYNC** *[JOURNAL][5082] (:SYNC = NIL)*
 
     The `SYNC` argument specified at instantiation. See
     [Synchronization strategies][f532].
@@ -3161,7 +3160,7 @@ journals. Here, we go into the details.
 
 <a id="x-28JOURNAL-3AJOURNAL-REPLAY-MISMATCH-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNAL-29-29"></a>
 
-- [reader] **JOURNAL-REPLAY-MISMATCH** *JOURNAL (= NIL)*
+- [reader] **JOURNAL-REPLAY-MISMATCH** *[JOURNAL][5082] (= NIL)*
 
     If [`JOURNAL-DIVERGENT-P`][f224], then this is a list of two
     elements: the [`READ-POSITION`][6e60]s in the [`RECORD-JOURNAL`][3b63] and
@@ -3184,7 +3183,7 @@ journals. Here, we go into the details.
 
 <a id="x-28JOURNAL-3A-40COMPARING-JOURNALS-20MGL-PAX-3ASECTION-29"></a>
 
-### 14.1 Comparing journals
+### 13.1 Comparing journals
 
 After replay finished (i.e. [`WITH-JOURNALING`][6131] completed), we can ask
 whether there were any changes produced. This is answered in the
@@ -3217,7 +3216,7 @@ The rest of section is about concrete subclasses of [`JOURNAL`][5082].
 
 <a id="x-28JOURNAL-3A-40IN-MEMORY-JOURNALS-20MGL-PAX-3ASECTION-29"></a>
 
-### 14.2 In-memory journals
+### 13.2 In-memory journals
 
 <a id="x-28JOURNAL-3AIN-MEMORY-JOURNAL-20CLASS-29"></a>
 
@@ -3267,21 +3266,21 @@ The rest of section is about concrete subclasses of [`JOURNAL`][5082].
 
 <a id="x-28JOURNAL-3AJOURNAL-EVENTS-20-28MGL-PAX-3AREADER-20JOURNAL-3AIN-MEMORY-JOURNAL-29-29"></a>
 
-- [reader] **JOURNAL-EVENTS** *IN-MEMORY-JOURNAL (:EVENTS)*
+- [reader] **JOURNAL-EVENTS** *[IN-MEMORY-JOURNAL][b668] (:EVENTS)*
 
     A sequence of events in the journal. Not to be
     mutated by client code.
 
 <a id="x-28JOURNAL-3AJOURNAL-PREVIOUS-SYNC-POSITION-20-28MGL-PAX-3AREADER-20JOURNAL-3AIN-MEMORY-JOURNAL-29-29"></a>
 
-- [reader] **JOURNAL-PREVIOUS-SYNC-POSITION** *IN-MEMORY-JOURNAL (= 0)*
+- [reader] **JOURNAL-PREVIOUS-SYNC-POSITION** *[IN-MEMORY-JOURNAL][b668] (= 0)*
 
     The length of [`JOURNAL-EVENTS`][5e0a] at the time of the
     most recent invocation of `SYNC-FN`.
 
 <a id="x-28JOURNAL-3A-40FILE-JOURNALS-20MGL-PAX-3ASECTION-29"></a>
 
-### 14.3 File journals
+### 13.3 File journals
 
 <a id="x-28JOURNAL-3AFILE-JOURNAL-20CLASS-29"></a>
 
@@ -3341,13 +3340,13 @@ The rest of section is about concrete subclasses of [`JOURNAL`][5082].
 
 <a id="x-28JOURNAL-3APATHNAME-OF-20-28MGL-PAX-3AREADER-20JOURNAL-3AFILE-JOURNAL-29-29"></a>
 
-- [reader] **PATHNAME-OF** *FILE-JOURNAL (:PATHNAME)*
+- [reader] **PATHNAME-OF** *[FILE-JOURNAL][8428] (:PATHNAME)*
 
     The pathname of the file backing the journal.
 
 <a id="x-28JOURNAL-3A-40PPRINT-JOURNALS-20MGL-PAX-3ASECTION-29"></a>
 
-### 14.4 Pretty-printing journals
+### 13.4 Pretty-printing journals
 
 <a id="x-28JOURNAL-3APPRINT-JOURNAL-20CLASS-29"></a>
 
@@ -3368,14 +3367,14 @@ The rest of section is about concrete subclasses of [`JOURNAL`][5082].
 
 <a id="x-28JOURNAL-3APPRINT-JOURNAL-STREAM-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3APPRINT-JOURNAL-29-29"></a>
 
-- [accessor] **PPRINT-JOURNAL-STREAM** *PPRINT-JOURNAL (:STREAM = \*STANDARD-OUTPUT\*)*
+- [accessor] **PPRINT-JOURNAL-STREAM** *[PPRINT-JOURNAL][9150] (:STREAM = \*STANDARD-OUTPUT\*)*
 
     The stream where events are dumped. May be set any
     time to another [`STREAM`][d5a9].
 
 <a id="x-28JOURNAL-3APPRINT-JOURNAL-PRETTY-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3APPRINT-JOURNAL-29-29"></a>
 
-- [accessor] **PPRINT-JOURNAL-PRETTY** *PPRINT-JOURNAL (:PRETTY = T)*
+- [accessor] **PPRINT-JOURNAL-PRETTY** *[PPRINT-JOURNAL][9150] (:PRETTY = T)*
 
     Whether to use [`PPRINT-JOURNAL-PRETTIFIER`][853d] or write
     events in as the property lists they are. A
@@ -3383,7 +3382,7 @@ The rest of section is about concrete subclasses of [`JOURNAL`][5082].
 
 <a id="x-28JOURNAL-3APPRINT-JOURNAL-PRETTIFIER-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3APPRINT-JOURNAL-29-29"></a>
 
-- [accessor] **PPRINT-JOURNAL-PRETTIFIER** *PPRINT-JOURNAL (:PRETTIFIER = 'PRETTIFY-EVENT)*
+- [accessor] **PPRINT-JOURNAL-PRETTIFIER** *[PPRINT-JOURNAL][9150] (:PRETTIFIER = 'PRETTIFY-EVENT)*
 
     A function like [`PRETTIFY-EVENT`][11b7] that writes an
     event to a stream. Only used when [`PPRINT-JOURNAL-PRETTY`][610f], this is
@@ -3391,7 +3390,7 @@ The rest of section is about concrete subclasses of [`JOURNAL`][5082].
 
 <a id="x-28JOURNAL-3A-40BUNDLES-REFERENCE-20MGL-PAX-3ASECTION-29"></a>
 
-## 15 Bundles reference
+## 14 Bundles reference
 
 In [Bundles][260d], we covered the repeated replay problem that
 [`WITH-BUNDLE`][12a5] automates. Here, we provide a reference for the bundle
@@ -3418,7 +3417,7 @@ classes.
 
 <a id="x-28JOURNAL-3AMAX-N-FAILED-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3ABUNDLE-29-29"></a>
 
-- [accessor] **MAX-N-FAILED** *BUNDLE (:MAX-N-FAILED = 1)*
+- [accessor] **MAX-N-FAILED** *[BUNDLE][d9b6] (:MAX-N-FAILED = 1)*
 
     If `MAX-N-FAILED` is non-`NIL`, and the number of
     journals of [`JOURNAL-STATE`][03de] `:FAILED` in the bundle exceeds
@@ -3427,7 +3426,7 @@ classes.
 
 <a id="x-28JOURNAL-3AMAX-N-COMPLETED-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3ABUNDLE-29-29"></a>
 
-- [accessor] **MAX-N-COMPLETED** *BUNDLE (:MAX-N-COMPLETED = 1)*
+- [accessor] **MAX-N-COMPLETED** *[BUNDLE][d9b6] (:MAX-N-COMPLETED = 1)*
 
     If `MAX-N-COMPLETED` is non-`NIL`, and the number of
     journals of [`JOURNAL-STATE`][03de] `:COMPLETED` in the bundle exceeds
@@ -3436,7 +3435,7 @@ classes.
 
 <a id="x-28JOURNAL-3A-40IN-MEMORY-BUNDLES-20MGL-PAX-3ASECTION-29"></a>
 
-### 15.1 In-memory bundles
+### 14.1 In-memory bundles
 
 <a id="x-28JOURNAL-3AIN-MEMORY-BUNDLE-20CLASS-29"></a>
 
@@ -3458,7 +3457,7 @@ classes.
 
 <a id="x-28JOURNAL-3A-40FILE-BUNDLES-20MGL-PAX-3ASECTION-29"></a>
 
-### 15.2 File bundles
+### 14.2 File bundles
 
 <a id="x-28JOURNAL-3AFILE-BUNDLE-20CLASS-29"></a>
 
@@ -3469,7 +3468,7 @@ classes.
 
 <a id="x-28JOURNAL-3ADIRECTORY-OF-20-28MGL-PAX-3AREADER-20JOURNAL-3AFILE-BUNDLE-29-29"></a>
 
-- [reader] **DIRECTORY-OF** *FILE-BUNDLE (:DIRECTORY)*
+- [reader] **DIRECTORY-OF** *[FILE-BUNDLE][1895] (:DIRECTORY)*
 
     The directory where the files backing the
     [`FILE-JOURNAL`][8428]s in the [`FILE-BUNDLE`][1895] are kept.
@@ -3499,7 +3498,7 @@ classes.
 
 <a id="x-28JOURNAL-3A-40STREAMLETS-REFERENCE-20MGL-PAX-3ASECTION-29"></a>
 
-## 16 Streamlets reference
+## 15 Streamlets reference
 
 This section is relevant mostly for implementing new kinds of
 [`JOURNAL`][5082]s in addition to [`FILE-JOURNAL`][8428]s and [`IN-MEMORY-JOURNAL`][b668]s. In
@@ -3507,7 +3506,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
 
 <a id="x-28JOURNAL-3A-40OPENING-AND-CLOSING-20MGL-PAX-3ASECTION-29"></a>
 
-### 16.1 Opening and closing
+### 15.1 Opening and closing
 
 <a id="x-28JOURNAL-3ASTREAMLET-20CLASS-29"></a>
 
@@ -3519,7 +3518,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
 
 <a id="x-28JOURNAL-3AJOURNAL-20-28MGL-PAX-3AREADER-20JOURNAL-3ASTREAMLET-29-29"></a>
 
-- [reader] **JOURNAL** *STREAMLET (:JOURNAL)*
+- [reader] **JOURNAL** *[STREAMLET][7a2f] (:JOURNAL)*
 
     The `JOURNAL` that was passed to [`OPEN-STREAMLET`][9d79].
     This is the journal `STREAMLET` operates on.
@@ -3593,7 +3592,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
 
 <a id="x-28JOURNAL-3A-40READING-FROM-STREAMLETS-20MGL-PAX-3ASECTION-29"></a>
 
-### 16.2 Reading from streamlets
+### 15.2 Reading from streamlets
 
 <a id="x-28JOURNAL-3AREAD-EVENT-20GENERIC-FUNCTION-29"></a>
 
@@ -3643,7 +3642,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
 
 <a id="x-28JOURNAL-3A-40WRITING-TO-STREAMLETS-20MGL-PAX-3ASECTION-29"></a>
 
-### 16.3 Writing to streamlets
+### 15.3 Writing to streamlets
 
 <a id="x-28JOURNAL-3AWRITE-EVENT-20GENERIC-FUNCTION-29"></a>
 
@@ -3696,7 +3695,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
 
 <a id="x-28JOURNAL-3A-40JOURNAL-2FGLOSSARY-20MGL-PAX-3ASECTION-29"></a>
 
-## 17 Glossary
+## 16 Glossary
 
 <a id="x-28JOURNAL-3A-40ASYNC-UNWIND-20MGL-PAX-3AGLOSSARY-TERM-29"></a>
 
@@ -3813,7 +3812,6 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [48ef]: #x-28JOURNAL-3A-40OUT-EVENTS-20MGL-PAX-3ASECTION-29 "Out-events"
   [48f5]: #x-28JOURNAL-3A-40JOURNAL-2FGLOSSARY-20MGL-PAX-3ASECTION-29 "Glossary"
   [4a00]: #x-28JOURNAL-3AIDENTICAL-JOURNALS-P-20GENERIC-FUNCTION-29 "JOURNAL:IDENTICAL-JOURNALS-P GENERIC-FUNCTION"
-  [4a9f]: #x-28-22journal-22-20ASDF-2FSYSTEM-3ASYSTEM-29 '"journal" ASDF/SYSTEM:SYSTEM'
   [4c2b]: #x-28JOURNAL-3AVERSIONED-EVENT-20TYPE-29 "JOURNAL:VERSIONED-EVENT TYPE"
   [4e53]: #x-28JOURNAL-3A-40LOGGING-20MGL-PAX-3ASECTION-29 "Logging"
   [4f2b]: #x-28JOURNAL-3ADATA-EVENT-LOSSAGE-20CONDITION-29 "JOURNAL:DATA-EVENT-LOSSAGE CONDITION"
