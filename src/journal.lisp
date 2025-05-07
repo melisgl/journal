@@ -4100,12 +4100,12 @@
                      (replay-failure-replay-event condition)
                      (replay-failure-replay-position condition)))))
 
-(define-restart replay-force-insert ()
+(dref:define-restart replay-force-insert ()
   "This restart forces @THE-REPLAY-STRATEGY to be :INSERT, overriding
   REPLAY-NAME-MISMATCH. This is intended for upgrades, and extreme
   care must be taken not to lose data.")
 
-(define-restart replay-force-upgrade ()
+(dref:define-restart replay-force-upgrade ()
   "This restart forces @THE-REPLAY-STRATEGY to be :UPGRADE, overriding
   REPLAY-NAME-MISMATCH, REPLAY-VERSION-DOWNGRADE,
   REPLAY-ARGS-MISMATCH, REPLAY-OUTCOME-MISMATCH. This is intended for
