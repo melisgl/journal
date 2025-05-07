@@ -2362,8 +2362,14 @@
   """
   (lambda (event)
     (when (symbol-value time)
-      (setq event (append event `(:time ,(local-time:format-timestring
-                                          nil (local-time:now))))))
+      (let ((time #-cmucl
+                  (local-time:format-timestring
+                   nil (local-time:now))
+                  ;; KLUDGE: Disable until a local-time bug is fixed:
+                  ;; https://github.com/dlowe-net/local-time/issues/129.
+                  #+cmucl
+                  0))
+        (setq event (append event `(:time ,time)))))
     (when (symbol-value real-time)
       (setq event (append event `(:real-time
                                   ,(/ (float (get-internal-real-time))
