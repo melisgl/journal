@@ -29,12 +29,15 @@
   for the latest version.")
 
 (defsection @journal-portability (:title "Portability")
-  "Tested on ABCL, CCL, CLISP, CMUCL, ECL, and SBCL. AllegroCL Express
-  edition runs out of heap while running the tests. On Lisps that seem
-  to lack support for disabling and enabling of interrupts, such as
-  ABCL and CLISP, durability is compromised, and any attempt to
-  SYNC-JOURNAL (see @SYNCHRONIZATION-STRATEGIES and @SAFETY) will be a
-  runtime error.")
+  "Tested and supported on on ABCL, CCL, CMUCL, ECL, and SBCL.
+  AllegroCL Express edition runs out of heap while running the tests.
+  On Lisps that seem to lack support for disabling and enabling of
+  interrupts, such as ABCL, durability is compromised, and any attempt
+  to SYNC-JOURNAL (see @SYNCHRONIZATION-STRATEGIES and @SAFETY) will
+  be a runtime error.
+
+  Journal depends on BORDEAUX-THREADS. Consequently, it does not load
+  on implementations without real thread such as CLISP.")
 
 (define-glossary-term @mock-object
     (:title "mock object"

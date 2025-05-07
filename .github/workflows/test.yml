@@ -9,7 +9,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        lisp: [sbcl-bin, ccl-bin, cmu-bin, ecl, clisp, abcl-bin]
+        lisp: [sbcl-bin, ccl-bin, cmu-bin, ecl, abcl-bin]
         os: [ubuntu-latest]
       fail-fast: false
 

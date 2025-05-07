@@ -62,15 +62,15 @@
 <a id="x-28-22journal-22-20ASDF-2FSYSTEM-3ASYSTEM-29"></a>
 
 - [system] **"journal"**
-    - Version: 0.1.0
-    - Description: A library built around explicit execution traces for
+    - _Version:_ 0.1.0
+    - _Description:_ A library built around explicit execution traces for
         logging, tracing, testing and persistence.
-    - Licence: MIT, see COPYING.
-    - Author: Gábor Melis <mega@retes.hu>
-    - Homepage: [http://github.com/melisgl/journal](http://github.com/melisgl/journal)
-    - Bug tracker: [http://github.com/melisgl/journal/issues](http://github.com/melisgl/journal/issues)
-    - Source control: [GIT](https://github.com/melisgl/journal.git)
-    - Depends on: alexandria, bordeaux-threads, local-time, mgl-pax, osicat(?), sb-posix(?), trivial-features, trivial-garbage
+    - _Licence:_ MIT, see COPYING.
+    - _Author:_ Gábor Melis <mega@retes.hu>
+    - _Homepage:_ [http://github.com/melisgl/journal](http://github.com/melisgl/journal)
+    - _Bug tracker:_ [http://github.com/melisgl/journal/issues](http://github.com/melisgl/journal/issues)
+    - _Source control:_ [GIT](https://github.com/melisgl/journal.git)
+    - *Depends on:* alexandria, bordeaux-threads, local-time, mgl-pax, osicat(?), sb-posix(?), trivial-features, trivial-garbage
 
 <a id="x-28JOURNAL-3A-40JOURNAL-LINKS-20MGL-PAX-3ASECTION-29"></a>
 
@@ -85,12 +85,15 @@ for the latest version.
 
 ## 2 Portability
 
-Tested on ABCL, CCL, CLISP, CMUCL, ECL, and SBCL. AllegroCL Express
-edition runs out of heap while running the tests. On Lisps that seem
-to lack support for disabling and enabling of interrupts, such as
-ABCL and CLISP, durability is compromised, and any attempt to
-[`SYNC-JOURNAL`][b2ff] (see [Synchronization strategies][f532] and [Safety][7bf3]) will be a
-runtime error.
+Tested and supported on on ABCL, CCL, CMUCL, ECL, and SBCL.
+AllegroCL Express edition runs out of heap while running the tests.
+On Lisps that seem to lack support for disabling and enabling of
+interrupts, such as ABCL, durability is compromised, and any attempt
+to [`SYNC-JOURNAL`][b2ff] (see [Synchronization strategies][f532] and [Safety][7bf3]) will
+be a runtime error.
+
+Journal depends on BORDEAUX-THREADS. Consequently, it does not load
+on implementations without real thread such as CLISP.
 
 <a id="x-28JOURNAL-3A-40JOURNAL-BACKGROUND-20MGL-PAX-3ASECTION-29"></a>
 
