@@ -5156,6 +5156,22 @@
   (make-file-journal function)
   (pathname-of (reader file-journal)))
 
+(defparameter *weak-hash-tables-work-p*
+  (let ((h (trivial-garbage:make-weak-hash-table :weakness :key)))
+    (setf (gethash 1 h) *package*)
+    (assert (remhash 1 h))
+    (cond
+      ((gethash 1 h)
+       (format *error-output* "~&~@<Weak hash tables are broken.
+                              MAKE-FILE-JOURNAL will signal an error.~:@>~%")
+       #+ecl
+       (format
+        *error-output*
+        "See https://gitlab.com/embeddable-common-lisp/ecl/-/issues/778~%")
+       nil)
+      (t
+       t))))
+
 (defclass file-journal (journal)
   ((pathname
     :initarg :pathname :reader pathname-of
@@ -5232,6 +5248,9 @@
   written, then invalidation fails with a JOURNAL-ERROR. After
   invalidation, a new FILE-JOURNAL object is created."
   (check-sync-value sync)
+  (when (and *testing* (not *weak-hash-tables-work-p*))
+    (funcall (read-from-string "try:skip-trial")))
+  (assert *weak-hash-tables-work-p*)
   (let ((truename (%truename pathname)))
     (bt:with-lock-held (*file-journal-lock*)
       ;; For example, if a BUNDLE's directory is blown away we'd have
