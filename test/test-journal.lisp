@@ -72,8 +72,8 @@
       (is (= 42 (journaled (foo) 42)))
       (is (eq (journal-state journal) :recording))
       (is (equal (list-events journal)
-                     '((:in foo)
-                       (:out foo :values (42))))))
+                 '((:in foo)
+                   (:out foo :values (42))))))
     (is (eq (journal-state journal) :completed))
     (check-file-journal-state journal :completed)))
 
@@ -102,8 +102,8 @@
           42))
       (is (eq (journal-state journal) :recording))
       (is (equivalent-events-p (list-events journal)
-                                   '((:in foo)
-                                     (:out foo :error this-is-not-compared)))))
+                               '((:in foo)
+                                 (:out foo :error this-is-not-compared)))))
     (is (eq (journal-state journal) :completed))
     (check-file-journal-state journal :completed)))
 
@@ -112,12 +112,12 @@
     (with-journaling (:record journal)
       (is (eq (journal-state journal) :recording))
       (is (= 42 (catch 'foo
-                      (journaled (foo)
-                        (throw 'foo 42)))))
+                  (journaled (foo)
+                    (throw 'foo 42)))))
       (is (eq (journal-state journal) :recording))
       (is (equal (list-events)
-                     '((:in foo)
-                       (:out foo :nlx nil)))))
+                 '((:in foo)
+                   (:out foo :nlx nil)))))
     (is (eq (journal-state journal) :completed))
     (check-file-journal-state journal :completed)))
 
@@ -131,8 +131,8 @@
     (checked (bar) 42)
     (replayed (bar) 42)
     (is (equal (list-events journal)
-                   '((:in foo)
-                     (:out foo :values (42)))))
+               '((:in foo)
+                 (:out foo :values (42)))))
     (is (eq (journal-state journal) :new))
     ;; TEST-LOG-RECORDING-TO-FAILED-JOURNAL is related.
     (check-file-journal-state journal :failed)))
@@ -148,13 +148,13 @@
       (replayed (bar) 42))
     (is (eq (journal-state journal) :completed))
     (is (equal (list-events journal)
-                   '((:in bar :version 1)
-                     (:out bar :version 1 :values (42))
-                     (:in bar :version :infinity)
-                     (:out bar :version :infinity :values (42)))))
+               '((:in bar :version 1)
+                 (:out bar :version 1 :values (42))
+                 (:in bar :version :infinity)
+                 (:out bar :version :infinity :values (42)))))
     (is (equal (list-events log-journal)
-                   '((:in foo)
-                     (:out foo :values (42)))))))
+               '((:in foo)
+                 (:out foo :values (42)))))))
 
 (deftest test-log-record-to-record-journal ()
   (let ((journal (funcall *make-journal*)))
@@ -165,10 +165,10 @@
       (checked (bar) 7))
     (is (eq (journal-state journal) :completed))
     (is (equal (list-events journal)
-                   '((:in foo)
-                     (:out foo :values (42))
-                     (:in bar :version 1)
-                     (:out bar :version 1 :values (7)))))))
+               '((:in foo)
+                 (:out foo :values (42))
+                 (:in bar :version 1)
+                 (:out bar :version 1 :values (7)))))))
 
 
 ;;;; Test LOGGED
@@ -178,7 +178,7 @@
     (is (eq (journal-state journal) :new))
     (is (null (logged (journal) "42")))
     (is (equal (list-events journal)
-                   '((:leaf "42"))))
+               '((:leaf "42"))))
     (is (eq (journal-state journal) :new))
     (check-file-journal-state journal :failed)))
 
@@ -192,9 +192,9 @@
       (logged (log-journal) "42"))
     (is (eq (journal-state journal) :completed))
     (is (equal (list-events journal)
-                   '((:leaf "7"))))
+               '((:leaf "7"))))
     (is (equal (list-events log-journal)
-                   '((:leaf "42"))))))
+               '((:leaf "42"))))))
 
 (deftest test-logged-to-record-journal ()
   (let ((journal (funcall *make-journal*)))
@@ -204,7 +204,7 @@
       (logged (journal) "~S" 42))
     (is (eq (journal-state journal) :completed))
     (is (equal (list-events journal)
-                   '((:leaf "42"))))))
+               '((:leaf "42"))))))
 
 
 ;;;; Test LOG-DECORATOR
@@ -238,7 +238,7 @@
         (journal-2 (funcall *make-journal*)))
     (signals (end-of-journal)
       (with-journaling (:replay journal-1 :record journal-2
-                                :replay-eoj-error-p t)
+                        :replay-eoj-error-p t)
         (is (not (journal-divergent-p journal-2)))
         (is (eq (journal-state journal-2) :recording))
         (checked (foo)
@@ -256,7 +256,7 @@
     (setf (jrn::%state journal-1) :completed)
     (signals (end-of-journal)
       (with-journaling (:replay journal-1 :record journal-2
-                                :replay-eoj-error-p t)
+                        :replay-eoj-error-p t)
         (is (eq (journal-state journal-2) :replaying))
         (checked (foo)
           (is (not (journal-divergent-p journal-2)))
@@ -358,9 +358,9 @@
         ;; We switch to the :INSERT replay strategy in :MISMATCHED.
         (is (= read-position (read-position jrn::*replay-streamlet*))))
       (is (equal (list-events)
-                     '((:in j2 :version 1)
-                       (:in j3)
-                       (:out j3 :values (nil))))))))
+                 '((:in j2 :version 1)
+                   (:in j3)
+                   (:out j3 :values (nil))))))))
 
 
 ;;;; Recording and replay of versioned events
@@ -371,12 +371,12 @@
     (with-journaling (:record journal-1)
       (journaled (foo :version 1)
         (is (equal (list-events)
-                       '((:in foo :version 1))))
+                   '((:in foo :version 1))))
         42))
     ;; Check what was recorded.
     (is (equal (list-events journal-1)
-                   '((:in foo :version 1)
-                     (:out foo :version 1 :values (42)))))
+               '((:in foo :version 1)
+                 (:out foo :version 1 :values (42)))))
     (is (journal-divergent-p journal-1))
 
     ;; Replay with the same :VALUES outcome.
@@ -399,8 +399,8 @@
           (journaled (foo :version 1) 7)
           (is nil)))
       (is (equal (list-events journal-2)
-                     '((:in foo :version 1)
-                       (:out foo :version 1 :values (7)))))
+                 '((:in foo :version 1)
+                   (:out foo :version 1 :values (7)))))
       (is (eq (journal-state journal-2) :failed))
       (check-file-journal-state journal-2 :failed)
       (is (journal-divergent-p journal-2)))
@@ -451,8 +451,8 @@
           42))
       ;; Check what was recorded.
       (is (equal (list-events journal-1)
-                     '((:in foo :version 1)
-                       (:out foo :version 1 :condition eh)))))
+                 '((:in foo :version 1)
+                   (:out foo :version 1 :condition eh)))))
     (is (journal-divergent-p journal-1))
 
     ;; Replay with any :VALUES outcome.
@@ -528,9 +528,9 @@
           42))
       ;; Check what was recorded.
       (is (equivalent-events-p
-               (list-events journal-1)
-               '((:in foo :version 1)
-                 (:out foo :version nil :error this-is-not-compared)))))
+           (list-events journal-1)
+           '((:in foo :version 1)
+             (:out foo :version nil :error this-is-not-compared)))))
     (is (journal-divergent-p journal-1))
 
     ;; Replay with any :VALUES outcome.
@@ -602,12 +602,12 @@
     ;; Record
     (with-journaling (:record journal-1)
       (is (= 42 (catch 'foo
-                      (journaled (foo :version 1)
-                        (throw 'foo 42))))))
+                  (journaled (foo :version 1)
+                    (throw 'foo 42))))))
     ;; Check what was recorded.
     (is (equal (list-events journal-1)
-                   '((:in foo :version 1)
-                     (:out foo :nlx nil))))
+               '((:in foo :version 1)
+                 (:out foo :nlx nil))))
     (is (journal-divergent-p journal-1))
 
     ;; Replay with any :VALUES outcome.
@@ -668,12 +668,12 @@
     (with-journaling (:record journal-1)
       (journaled (foo :version 2)
         (is (equal (list-events)
-                       '((:in foo :version 2))))
+                   '((:in foo :version 2))))
         42))
     ;; Check what was recorded.
     (is (equal (list-events journal-1)
-                   '((:in foo :version 2)
-                     (:out foo :version 2 :values (42)))))
+               '((:in foo :version 2)
+                 (:out foo :version 2 :values (42)))))
     (is (journal-divergent-p journal-1))
 
     (dolist (make-journal (list *make-journal* (constantly nil)))
@@ -811,19 +811,19 @@
       (let ((journal-1 (funcall *make-journal*)))
         (with-journaling (:record journal-1)
           (is (equal (multiple-value-list (bar 1 2 3))
-                         '(9 :second)))
+                     '(9 :second)))
           (is (equal (list-events)
-                         '((:in bar :args (1 2 3))
-                           (:in foo :version :infinity :args (1 2))
-                           (:out foo :version :infinity :values (3))
-                           (:out bar :values (9 :second))))))
+                     '((:in bar :args (1 2 3))
+                       (:in foo :version :infinity :args (1 2))
+                       (:out foo :version :infinity :values (3))
+                       (:out bar :values (9 :second))))))
         (is (= 2 n-foo-evals))
         (let ((journal-2 (funcall *make-journal*)))
           (with-journaling (:replay journal-1 :record journal-2)
             (is (equal (multiple-value-list (bar 1 2 3))
-                           '(9 :second)))
+                       '(9 :second)))
             (is (equal (list-events journal-1)
-                           (list-events journal-2))))
+                       (list-events journal-2))))
           (is (= 2 n-foo-evals)))))))
 
 (deftest test-log-in-external ()
@@ -921,9 +921,9 @@
     (with-journaling (:record journal)
       (get-message))
     (is (eq *user7*
-                (with-journaling (:replay journal
-                                          :record (funcall *make-journal*))
-                  (get-message))))))
+            (with-journaling (:replay journal
+                              :record (funcall *make-journal*))
+              (get-message))))))
 
 
 ;;;; Recording and replay of external events
@@ -964,17 +964,17 @@
           (signals (data-event-lossage)
             (journaled (f :version :infinity))))))
     (is (equal (list-events journal-1)
-                   (if sync
-                       ()
-                       '((:in b :version :infinity)
-                         ;; Downgraded to log
-                         (:out b 
-                          :error ("SOME-ERROR" "SOME-ERROR was signalled."))
-                         (:in l)
-                         (:out l :values (1))
-                         ;; Downgraded to log
-                         (:in v)
-                         (:out v :values (2))))))
+               (if sync
+                   ()
+                   '((:in b :version :infinity)
+                     ;; Downgraded to log
+                     (:out b
+                      :error ("SOME-ERROR" "SOME-ERROR was signalled."))
+                     (:in l)
+                     (:out l :values (1))
+                     ;; Downgraded to log
+                     (:in v)
+                     (:out v :values (2))))))
     ;; Replay is pretty much the same.
     (let ((journal-2 (funcall *make-journal*)))
       (signals (some-error)
@@ -1028,17 +1028,17 @@
           (signals (data-event-lossage)
             (journaled (f :version :infinity))))))
     (is (equal (list-events journal-1)
-                   (if sync
-                       ()
-                       '((:in b :version :infinity)
-                         ;; Downgraded to log
-                         (:out b
-                          :error ("SOME-ERROR" "SOME-ERROR was signalled."))
-                         (:in l)
-                         (:out l :values (1))
-                         ;; Downgraded to log
-                         (:in v)
-                         (:out v :values (2))))))))
+               (if sync
+                   ()
+                   '((:in b :version :infinity)
+                     ;; Downgraded to log
+                     (:out b
+                      :error ("SOME-ERROR" "SOME-ERROR was signalled."))
+                     (:in l)
+                     (:out l :values (1))
+                     ;; Downgraded to log
+                     (:in v)
+                     (:out v :values (2))))))))
 
 (deftest test-nested-external-events-with-unexpected-outcome ()
   (let ((journal-1 (funcall *make-journal*)))
@@ -1050,20 +1050,20 @@
                  (error 'some-error))
             (is (eq (journal-state journal-1) :logging))))))
     (is (equal (list-events journal-1)
-                   '((:in a :version :infinity)
-                     (:in b :version :infinity)
-                     ;; Downgraded to log
-                     (:out b
-                      :error ("SOME-ERROR" "SOME-ERROR was signalled."))
-                     (:out a
-                      :error ("SOME-ERROR" "SOME-ERROR was signalled.")))))))
+               '((:in a :version :infinity)
+                 (:in b :version :infinity)
+                 ;; Downgraded to log
+                 (:out b
+                  :error ("SOME-ERROR" "SOME-ERROR was signalled."))
+                 (:out a
+                  :error ("SOME-ERROR" "SOME-ERROR was signalled.")))))))
 
 (deftest test-expected-type ()
   (is (string= (funcall (expected-type '(member :a :b)) :a)
-                   (jrn::with-standard-io-syntax*
-                     (prin1-to-string
-                      #+allegro 'cl:symbol
-                      #-allegro 'cl:keyword)))))
+               (jrn::with-standard-io-syntax*
+                 (prin1-to-string
+                  #+allegro 'cl:symbol
+                  #-allegro 'cl:keyword)))))
 
 
 ;;;; Test replay mismatch
@@ -1110,17 +1110,17 @@
       (journaled (a :version 1)
         (journaled (b :version 1))))
     (with-journaling (:replay journal :record (funcall *make-journal*)
-                              :replay-eoj-error-p t)
+                      :replay-eoj-error-p t)
       (journaled (a :version 1)
         (journaled (a :version 1 :insertable t)
           (journaled (b :version 1))))
       (is (equal (list-events)
-                     '((:in a :version 1)
-                       (:in a :version 1)
-                       (:in b :version 1)
-                       (:out b :version 1 :values (nil))
-                       (:out a :version 1 :values (nil))
-                       (:out a :version 1 :values (nil))))))))
+                 '((:in a :version 1)
+                   (:in a :version 1)
+                   (:in b :version 1)
+                   (:out b :version 1 :values (nil))
+                   (:out a :version 1 :values (nil))
+                   (:out a :version 1 :values (nil))))))))
 
 (deftest test-force-insertable ()
   (let ((journal (funcall *make-journal*)))
@@ -1128,19 +1128,19 @@
       (journaled (a :version 1)
         (journaled (b :version 1))))
     (with-journaling (:replay journal :record (funcall *make-journal*)
-                              :replay-eoj-error-p t)
+                      :replay-eoj-error-p t)
       (journaled (a :version 1)
         (let ((*force-insertable* t))
           (journaled (a :version 1)
             (let ((*force-insertable* nil))
               (journaled (b :version 1))))))
       (is (equal (list-events)
-                     '((:in a :version 1)
-                       (:in a :version 1)
-                       (:in b :version 1)
-                       (:out b :version 1 :values (nil))
-                       (:out a :version 1 :values (nil))
-                       (:out a :version 1 :values (nil))))))))
+                 '((:in a :version 1)
+                   (:in a :version 1)
+                   (:in b :version 1)
+                   (:out b :version 1 :values (nil))
+                   (:out a :version 1 :values (nil))
+                   (:out a :version 1 :values (nil))))))))
 
 (deftest test-insert-before-unexpected ()
   (let ((journal (funcall *make-journal*)))
@@ -1196,11 +1196,11 @@
              (when (if (and replay-process-event
                             (< #+sbcl
                                (sb-ext:truly-the
-                                fixnum (event-version replay-process-event))
+                                   fixnum (event-version replay-process-event))
                                #+cmucl
                                (ext:truly-the
-                                fixnum
-                                (event-version replay-process-event))
+                                   fixnum
+                                 (event-version replay-process-event))
                                #-(or cmucl sbcl)
                                (the fixnum
                                     (event-version replay-process-event))
@@ -1271,8 +1271,8 @@
       (checked (inner)
         3)
       (is (equal (list-events)
-                     '((:in inner :version 1)
-                       (:out inner :version 1 :values (3))))))
+                 '((:in inner :version 1)
+                   (:out inner :version 1 :values (3))))))
     (with-journaling (:replay journal-1 :record (funcall *make-journal*))
       (with-replay-filter (:skip '((:name inner)))
         (is (eq (journal-state (record-journal)) :replaying))
@@ -1287,12 +1287,12 @@
       (framed (log)
         (checked (skipped) 3))
       (is (equal (list-events)
-                     '((:in skipped :version 1)
-                       (:out skipped :version 1 :values (2))
-                       (:in log)
-                       (:in skipped :version 1)
-                       (:out skipped :version 1 :values (3))
-                       (:out log :values (3))))))
+                 '((:in skipped :version 1)
+                   (:out skipped :version 1 :values (2))
+                   (:in log)
+                   (:in skipped :version 1)
+                   (:out skipped :version 1 :values (3))
+                   (:out log :values (3))))))
     (with-journaling (:replay journal-1 :record (funcall *make-journal*))
       (with-replay-filter (:skip '((:name skipped)))
         (is (eq (journal-state (record-journal)) :replaying))
@@ -1300,9 +1300,9 @@
       (is (eq (journal-state (record-journal)) :recording))
       (is (equal (list-events) '()))
       (is (equal (journal-replay-mismatch (record-journal))
-                     (if (typep journal-1 'in-memory-journal)
-                         '(0 0)
-                         '(1 0)))))))
+                 (if (typep journal-1 'in-memory-journal)
+                     '(0 0)
+                     '(1 0)))))))
 
 (deftest test-with-replay-filter-eat-full-frames/non-full ()
   (let ((journal-1 (funcall *make-journal*)))
@@ -1310,10 +1310,10 @@
       (checked (skipped)
         (checked (c)))
       (is (equal (list-events)
-                     '((:in skipped :version 1)
-                       (:in c :version 1)
-                       (:out c :version 1 :values (nil))
-                       (:out skipped :version 1 :values (nil))))))
+                 '((:in skipped :version 1)
+                   (:in c :version 1)
+                   (:out c :version 1 :values (nil))
+                   (:out skipped :version 1 :values (nil))))))
     (with-journaling (:replay journal-1 :record (funcall *make-journal*))
       (with-replay-filter (:skip '((:name skipped)))
         (is (eq (journal-state (record-journal)) :replaying))
@@ -1323,9 +1323,9 @@
       (checked (skipped)
         (checked (c)))
       (is (equal (list-events) '((:in skipped :version 1)
-                                     (:in c :version 1)
-                                     (:out c :version 1 :values (nil))
-                                     (:out skipped :version 1 :values (nil)))))
+                                 (:in c :version 1)
+                                 (:out c :version 1 :values (nil))
+                                 (:out skipped :version 1 :values (nil)))))
       (is (eq (journal-state (record-journal)) :recording))
       (is (null (journal-replay-mismatch (record-journal)))))))
 
@@ -1335,17 +1335,17 @@
       (checked (other) 2)
       (checked (skipped) 3)
       (is (equal (list-events)
-                     '((:in other :version 1)
-                       (:out other :version 1 :values (2))
-                       (:in skipped :version 1)
-                       (:out skipped :version 1 :values (3))))))
+                 '((:in other :version 1)
+                   (:out other :version 1 :values (2))
+                   (:in skipped :version 1)
+                   (:out skipped :version 1 :values (3))))))
     (with-journaling (:replay journal-1 :record (funcall *make-journal*))
       (with-replay-filter (:skip '((:name skipped)))
         (is (eq (journal-state (record-journal)) :replaying))
         (checked (other) 2))
       (is (eq (journal-state (record-journal)) :recording))
       (is (equal (list-events) '((:in other :version 1)
-                                     (:out other :version 1 :values (2)))))
+                                 (:out other :version 1 :values (2)))))
       (destructuring-bind (record-position replay-position)
           (journal-replay-mismatch (record-journal))
         (with-open-journal (streamlet (record-journal))
@@ -1458,20 +1458,20 @@
       (with-journaling (:record journal-1)
         (outer 1 2)
         (is (equal (list-events)
-                       '((:in outer :version 1)
-                         (:in foo :version 1)
-                         (:in foo :version 2)
-                         (:out foo :version 2 :values (3))
-                         (:out foo :version 1 :values (3))
-                         (:out outer :version 1 :values (3))))))
+                   '((:in outer :version 1)
+                     (:in foo :version 1)
+                     (:in foo :version 2)
+                     (:out foo :version 2 :values (3))
+                     (:out foo :version 1 :values (3))
+                     (:out outer :version 1 :values (3))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (filtered-outer 1 2)
         (is (eq (journal-state (record-journal)) :recording))
         (is (equal (list-events)
-                       '((:in outer :version 1)
-                         (:in foo :version 2)
-                         (:out foo :version 2 :values (3))
-                         (:out outer :version 1 :values (3)))))))))
+                   '((:in outer :version 1)
+                     (:in foo :version 2)
+                     (:out foo :version 2 :values (3))
+                     (:out outer :version 1 :values (3)))))))))
 
 ;;; Handled by the :MATCH case in HANDLE-OUT-EVENT.
 (deftest test-with-replay-filter-simple-unwrap-at-end-of-replay ()
@@ -1485,17 +1485,17 @@
       (with-journaling (:record journal-1)
         (foo-1 1 2)
         (is (equal (list-events)
-                       '((:in foo :version 1)
-                         (:in foo :version 2)
-                         (:out foo :version 2 :values (3))
-                         (:out foo :version 1 :values (3))))))
+                   '((:in foo :version 1)
+                     (:in foo :version 2)
+                     (:out foo :version 2 :values (3))
+                     (:out foo :version 1 :values (3))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (with-replay-filter (:skip '((:name foo :version< 2)))
           (foo-2 1 2))
         (is (eq (journal-state (record-journal)) :recording))
         (is (equal (list-events)
-                       '((:in foo :version 2)
-                         (:out foo :version 2 :values (3)))))))))
+                   '((:in foo :version 2)
+                     (:out foo :version 2 :values (3)))))))))
 
 (deftest test-with-replay-filter-external-unwrap ()
   (labels ((outer (x y)
@@ -1516,20 +1516,20 @@
       (with-journaling (:record journal-1)
         (outer 1 2)
         (is (equal (list-events)
-                       '((:in outer :version 1)
-                         (:in foo :version 1)
-                         (:in foo :version :infinity)
-                         (:out foo :version :infinity :values (3))
-                         (:out foo :version 1 :values (3))
-                         (:out outer :version 1 :values (3))))))
+                   '((:in outer :version 1)
+                     (:in foo :version 1)
+                     (:in foo :version :infinity)
+                     (:out foo :version :infinity :values (3))
+                     (:out foo :version 1 :values (3))
+                     (:out outer :version 1 :values (3))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (filtered-outer 1 2)
         (is (eq (journal-state (record-journal)) :recording))
         (is (equal (list-events)
-                       '((:in outer :version 1)
-                         (:in foo :version :infinity)
-                         (:out foo :version :infinity :values (3))
-                         (:out outer :version 1 :values (3)))))))))
+                   '((:in outer :version 1)
+                     (:in foo :version :infinity)
+                     (:out foo :version :infinity :values (3))
+                     (:out outer :version 1 :values (3)))))))))
 
 ;;; Handled by the :MATCH or :UPGRADE case in HANDLE-IN-EVENT.
 (deftest test-with-replay-filter-after-in-event ()
@@ -1557,17 +1557,17 @@
       (with-journaling (:record journal-1)
         (foo-1 1 2)
         (is (equal (list-events)
-                       '((:in foo :version 1)
-                         (:in foo :version :infinity)
-                         (:out foo :version :infinity :values (3))
-                         (:out foo :version 1 :values (3))))))
+                   '((:in foo :version 1)
+                     (:in foo :version :infinity)
+                     (:out foo :version :infinity :values (3))
+                     (:out foo :version 1 :values (3))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (with-replay-filter (:skip '((:name foo :version< 2)))
           (foo-2 1 2))
         (is (eq (journal-state (record-journal)) :recording))
         (is (equal (list-events)
-                       '((:in foo :version :infinity)
-                         (:out foo :version :infinity :values (3)))))))))
+                   '((:in foo :version :infinity)
+                     (:out foo :version :infinity :values (3)))))))))
 
 ;;; Handled by the CONDITION-EVENT-P branch in MAYBE-REPLAY-OUTCOME.
 (deftest test-with-replay-filter-external-condition-unwrap-at-end-of-replay ()
@@ -1584,19 +1584,19 @@
         (checked (foo)
           (bar))
         (is (equal (list-events)
-                       '((:in foo :version 1)
-                         (:in bar :version :infinity)
-                         (:out bar :version :infinity
-                          :condition "JOURNAL-TEST::SOME-ERROR")
-                         (:out foo :version 1 :values (nil))))))
+                   '((:in foo :version 1)
+                     (:in bar :version :infinity)
+                     (:out bar :version :infinity
+                      :condition "JOURNAL-TEST::SOME-ERROR")
+                     (:out foo :version 1 :values (nil))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (with-replay-filter (:skip '((:name foo)))
           (bar))
         (is (eq (journal-state (record-journal)) :recording))
         (is (equal (list-events)
-                       '((:in bar :version :infinity)
-                         (:out bar :version :infinity
-                          :condition "JOURNAL-TEST::SOME-ERROR"))))))))
+                   '((:in bar :version :infinity)
+                     (:out bar :version :infinity
+                      :condition "JOURNAL-TEST::SOME-ERROR"))))))))
 
 (deftest test-with-replay-filter-unwrap ()
   (labels ((outer (x y)
@@ -1633,48 +1633,48 @@
       (with-journaling (:record journal-1)
         (outer 1 2)
         (is (equal (list-events)
-                       '((:in outer :version 1)
-                         (:in foo :version 1)
-                         (:in foo :version 2)
-                         (:in foo :version 3)
-                         (:in bar :version 1)
-                         (:out bar :version 1 :values (3))
-                         (:out foo :version 3 :values (3))
-                         (:out foo :version 2 :values (3))
-                         (:out foo :version 1 :values (3))
-                         (:in foo :version 1)
-                         (:in foo-inf :version :infinity)
-                         (:in foo :version 1)
-                         (:in foo :version 2)
-                         (:in foo :version 3)
-                         (:in bar :version 1)
-                         (:out bar :version 1 :values (3))
-                         (:out foo :version 3 :values (3))
-                         (:out foo :version 2 :values (3))
-                         (:out foo :version 1 :values (3))
-                         (:out foo-inf :version :infinity :values (3))
-                         (:out foo :version 1 :values (3))
-                         (:out outer :version 1 :values (3))))))
+                   '((:in outer :version 1)
+                     (:in foo :version 1)
+                     (:in foo :version 2)
+                     (:in foo :version 3)
+                     (:in bar :version 1)
+                     (:out bar :version 1 :values (3))
+                     (:out foo :version 3 :values (3))
+                     (:out foo :version 2 :values (3))
+                     (:out foo :version 1 :values (3))
+                     (:in foo :version 1)
+                     (:in foo-inf :version :infinity)
+                     (:in foo :version 1)
+                     (:in foo :version 2)
+                     (:in foo :version 3)
+                     (:in bar :version 1)
+                     (:out bar :version 1 :values (3))
+                     (:out foo :version 3 :values (3))
+                     (:out foo :version 2 :values (3))
+                     (:out foo :version 1 :values (3))
+                     (:out foo-inf :version :infinity :values (3))
+                     (:out foo :version 1 :values (3))
+                     (:out outer :version 1 :values (3))))))
       (with-journaling (:replay journal-1 :record (funcall *make-journal*))
         (filtered-outer 1 2)
         (is (eq (journal-state (record-journal)) :recording))
         (is (equal (list-events)
-                       '((:in outer :version 1)
-                         (:in foo :version 3)
-                         (:in bar :version 1)
-                         (:out bar :version 1 :values (3))
-                         (:out foo :version 3 :values (3))
-                         (:in foo-inf :version :infinity)
-                         (:in foo :version 1)
-                         (:in foo :version 2)
-                         (:in foo :version 3)
-                         (:in bar :version 1)
-                         (:out bar :version 1 :values (3))
-                         (:out foo :version 3 :values (3))
-                         (:out foo :version 2 :values (3))
-                         (:out foo :version 1 :values (3))
-                         (:out foo-inf :version :infinity :values (3))
-                         (:out outer :version 1 :values (3)))))))))
+                   '((:in outer :version 1)
+                     (:in foo :version 3)
+                     (:in bar :version 1)
+                     (:out bar :version 1 :values (3))
+                     (:out foo :version 3 :values (3))
+                     (:in foo-inf :version :infinity)
+                     (:in foo :version 1)
+                     (:in foo :version 2)
+                     (:in foo :version 3)
+                     (:in bar :version 1)
+                     (:out bar :version 1 :values (3))
+                     (:out foo :version 3 :values (3))
+                     (:out foo :version 2 :values (3))
+                     (:out foo :version 1 :values (3))
+                     (:out foo-inf :version :infinity :values (3))
+                     (:out outer :version 1 :values (3)))))))))
 
 ;;; Check that we don't filter replay events of the parent and above.
 (deftest test-with-replay-filter-parent-intact ()
@@ -1683,22 +1683,22 @@
       (journaled (outer :version 1)
         3)
       (is (equal (list-events)
-                     '((:in outer :version 1)
-                       (:out outer :version 1 :values (3))))))
+                 '((:in outer :version 1)
+                   (:out outer :version 1 :values (3))))))
     (with-journaling (:replay journal :record (funcall *make-journal*)
-                              ;; If we had eaten the out-event of the
-                              ;; enclosing OUTER block, then when that
-                              ;; event is triggered again there would
-                              ;; be no match for it in the replay.
-                              ;; Make sure that's an error.
-                              :replay-eoj-error-p t)
+                      ;; If we had eaten the out-event of the
+                      ;; enclosing OUTER block, then when that
+                      ;; event is triggered again there would
+                      ;; be no match for it in the replay.
+                      ;; Make sure that's an error.
+                      :replay-eoj-error-p t)
       (journaled (outer :version 1)
         (with-replay-filter (:skip `((:name outer)))
           3))
       (is (eq (journal-state (record-journal)) :recording))
       (is (equal (list-events)
-                     '((:in outer :version 1)
-                       (:out outer :version 1 :values (3))))))))
+                 '((:in outer :version 1)
+                   (:out outer :version 1 :values (3))))))))
 
 ;;; When it's undecidable whether the events that could be filtered
 ;;; actually fall within the dynamic extent of replay, choose to
@@ -1821,8 +1821,8 @@
         (checked (other-name)
           42)
         (is (equal (list-events)
-                       '((:in other-name :version 1)
-                         (:out other-name :version 1 :values (42)))))))
+                   '((:in other-name :version 1)
+                     (:out other-name :version 1 :values (42)))))))
     ;; :INSERT on REPLAY-NAME-MISMATCH
     (handler-bind ((replay-name-mismatch
                      (lambda (c)
@@ -1833,10 +1833,10 @@
           (checked (c1 :args '(1) :version 2)
             42))
         (is (equal (list-events)
-                       '((:in other-name :version 1)
-                         (:in c1 :version 2 :args (1))
-                         (:out c1 :version 2 :values (42))
-                         (:out other-name :version 1 :values (42)))))))
+                   '((:in other-name :version 1)
+                     (:in c1 :version 2 :args (1))
+                     (:out c1 :version 2 :values (42))
+                     (:out other-name :version 1 :values (42)))))))
     ;; :UPGRADE on REPLAY-VERSION-DOWNGRADE
     (handler-bind ((replay-version-downgrade
                      (lambda (c)
@@ -1846,8 +1846,8 @@
         (checked (c1 :args '(1) :version 1)
           42)
         (is (equal (list-events)
-                       '((:in c1 :version 1 :args (1))
-                         (:out c1 :version 1 :values (42)))))))
+                   '((:in c1 :version 1 :args (1))
+                     (:out c1 :version 1 :values (42)))))))
     ;; :UPGRADE on REPLAY-ARGS-MISMATCH
     (handler-bind ((replay-args-mismatch
                      (lambda (c)
@@ -1857,8 +1857,8 @@
         (checked (c1 :args '(7) :version 2)
           42)
         (is (equal (list-events)
-                       '((:in c1 :version 2 :args (7))
-                         (:out c1 :version 2 :values (42)))))))
+                   '((:in c1 :version 2 :args (7))
+                     (:out c1 :version 2 :values (42)))))))
     ;; :UPGRADE on REPLAY-OUTCOME-MISMATCH
     (handler-bind ((replay-outcome-mismatch
                      (lambda (c)
@@ -1868,8 +1868,8 @@
         (checked (c1 :args '(1) :version 2)
           7)
         (is (equal (list-events)
-                       '((:in c1 :version 2 :args (1))
-                         (:out c1 :version 2 :values (7)))))))))
+                   '((:in c1 :version 2 :args (1))
+                     (:out c1 :version 2 :values (7)))))))))
 
 
 (deftest test-events ()
@@ -2045,7 +2045,7 @@
       (check-in-memory-bundle bundle '(:failed :completed))
       ;; Check that the least recent one was removed.
       (is (not (equal journals-before
-                          (coerce (jrn::journals bundle) 'list)))))
+                      (coerce (jrn::journals bundle) 'list)))))
 
     ;; Try again and succeed.
     (with-bundle (bundle)
@@ -2059,7 +2059,7 @@
 
 (defun check-in-memory-bundle (bundle states)
   (is (equal (mapcar #'journal-state (jrn::journals bundle))
-                 states)))
+             states)))
 
 (deftest test-file-bundle ()
   (call-with-file-bundle #'test-file-bundle*))
@@ -2071,7 +2071,7 @@
                      (format nil "journal-test-~A/" random-string)
                      (uiop:temporary-directory)))
          (bundle (make-file-bundle directory :max-n-failed 1
-                                   :max-n-completed nil)))
+                                             :max-n-completed nil)))
     (unwind-protect
          (funcall fn bundle)
       (delete-file-bundle directory))))
@@ -2144,7 +2144,7 @@
                                                     :test #'equal)))
               (make-file-bundle (directory-of bundle)))))
       (is (equal (ids-and-states reloaded-bundle)
-                     reloaded-ids-and-states)))))
+                 reloaded-ids-and-states)))))
 
 
 ;;;; Synchronization
@@ -2168,9 +2168,9 @@
         (write-char #\Rubout stream)
         (prin1 '(:in d :version 1) stream)))
     (is (equal (list-events (make-file-journal filename :sync t))
-                   '((:in a :version 1)
-                     (:in b :version 1)
-                     (:in c :version 1))))))
+               '((:in a :version 1)
+                 (:in b :version 1)
+                 (:in c :version 1))))))
 
 (deftest test-file-sync-garbage ()
   (let* ((random-string (format nil "~:@(~36,8,'0R~)"
@@ -2191,9 +2191,9 @@
         (write-char #\Rubout stream)
         (format stream "(:in d :ve")))
     (is (equal (list-events (make-file-journal filename :sync t))
-                   '((:in a :version 1)
-                     (:in b :version 1)
-                     (:in c :version 1))))))
+               '((:in a :version 1)
+                 (:in b :version 1)
+                 (:in c :version 1))))))
 
 (deftest test-sync-t ()
   (let ((db ())
@@ -2221,7 +2221,7 @@
                (make-db-backed-replay-journal ()
                  (make-in-memory-journal :events db)))
         (with-journaling (:record (make-db-backed-record-journal)
-                                  :replay (make-db-backed-replay-journal))
+                          :replay (make-db-backed-replay-journal))
           (framed (log))
           (is (= n-syncs 0))
           (checked (versioned))
@@ -2230,20 +2230,20 @@
           (is (= sync-pos-in-invoked 0))
           (is (= n-syncs-in-invoked 1))
           (is (equal db-since-prev-sync
-                         '((:in log)
-                           (:out log :values (nil))
-                           (:in versioned :version 1)
-                           (:out versioned :version 1 :values (nil))
-                           (:in "inv" :version 1 :args (1)))))
+                     '((:in log)
+                       (:out log :values (nil))
+                       (:in versioned :version 1)
+                       (:out versioned :version 1 :values (nil))
+                       (:in "inv" :version 1 :args (1)))))
           (is (= sync-pos 0))
           (is (= n-syncs 1))
           (replayed (a)
             (is (= n-syncs 1))
             2)
           (is (equal db-since-prev-sync
-                         '((:out "inv" :version 1 :values (2))
-                           (:in a :version :infinity)
-                           (:out a :version :infinity :values (2)))))
+                     '((:out "inv" :version 1 :values (2))
+                       (:in a :version :infinity)
+                       (:out a :version :infinity :values (2)))))
           (is (= sync-pos 5))
           (is (= n-syncs 2))
           (signals (some-error)
@@ -2263,7 +2263,7 @@
               sync-pos-in-invoked nil
               n-syncs-in-invoked 0)
         (with-journaling (:record (make-db-backed-record-journal)
-                                  :replay (make-db-backed-replay-journal))
+                          :replay (make-db-backed-replay-journal))
           ;; We don't repeat the log block, it doesn't matter.
           (checked (versioned))
           ;; INVOKED gets invoked before this.
@@ -2277,14 +2277,14 @@
           (is (= n-syncs 1))
           (is (= sync-pos 0))
           (is (equal db-since-prev-sync
-                         '((:in versioned :version 1)
-                           (:out versioned :version 1 :values (nil))
-                           (:in "inv" :version 1 :args (1))
-                           (:out "inv" :version 1 :values (2))
-                           (:in a :version :infinity)
-                           (:out a :version :infinity :values (2))
-                           (:in b :version :infinity)
-                           (:out b :version :infinity :values (3)))))
+                     '((:in versioned :version 1)
+                       (:out versioned :version 1 :values (nil))
+                       (:in "inv" :version 1 :args (1))
+                       (:out "inv" :version 1 :values (2))
+                       (:in a :version :infinity)
+                       (:out a :version :infinity :values (2))
+                       (:in b :version :infinity)
+                       (:out b :version :infinity :values (3)))))
           ;; Extend the replay with events that don't trigger syncing ...
           (journaled (c :version 1))
           (is (= n-syncs 1)))
@@ -2298,7 +2298,7 @@
               sync-pos-in-invoked nil
               n-syncs-in-invoked 0)
         (with-journaling (:record (make-db-backed-record-journal)
-                                  :replay (make-db-backed-replay-journal))
+                          :replay (make-db-backed-replay-journal))
           (checked (versioned))
           (is (= n-syncs 0))
           (replayed (a) 2)
@@ -2465,8 +2465,8 @@
           1)
         (throw 'foo nil)))
     (is (equal (list-events journal-1)
-                   '((:in b1 :version 1)
-                     (:out b1 :version 1 :values (1)))))
+               '((:in b1 :version 1)
+                 (:out b1 :version 1 :values (1)))))
     ;; Replay
     (let ((journal-2 (funcall *make-journal*)))
       (signals (some-error)
@@ -2476,8 +2476,8 @@
           (error 'some-error)))
       (is (eq (journal-state journal-2) :completed))
       (is (equal (list-events journal-2)
-                     '((:in b1 :version 1)
-                       (:out b1 :version 1 :values (1))))))))
+                 '((:in b1 :version 1)
+                   (:out b1 :version 1 :values (1))))))))
 
 (deftest test-error-two-deep ()
   (let ((journal-1 (funcall *make-journal*)))
@@ -2488,12 +2488,12 @@
             (error 'some-error))
           1)))
     (is (equal (list-events journal-1)
-                   '((:in b1 :version 1)
-                     (:in b2 :version 1)
-                     (:out b2
-                      :error ("SOME-ERROR" "SOME-ERROR was signalled."))
-                     (:out b1
-                      :error ("SOME-ERROR" "SOME-ERROR was signalled.")))))))
+               '((:in b1 :version 1)
+                 (:in b2 :version 1)
+                 (:out b2
+                  :error ("SOME-ERROR" "SOME-ERROR was signalled."))
+                 (:out b1
+                  :error ("SOME-ERROR" "SOME-ERROR was signalled.")))))))
 
 (deftest test-replay-failure-two-deep ()
   (let ((journal-1 (funcall *make-journal*)))
@@ -2517,12 +2517,12 @@
       ;; out-event is not recorded.
       (when (typep journal-2 'in-memory-journal)
         (is (equal (list-events journal-2)
-                       '((:in b1 :version 1)
-                         (:in b2 :version 1)
-                         (:out b2 :version 1 :values (7))
-                         (:out b1 :error
-                          ("REPLAY-OUTCOME-MISMATCH"
-                           "The EXITs and OUTCOMEs of the new event (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (7)) and the JOURNAL::@REPLAY-EVENT (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) are not equal.")))))))))
+                   '((:in b1 :version 1)
+                     (:in b2 :version 1)
+                     (:out b2 :version 1 :values (7))
+                     (:out b1 :error
+                      ("REPLAY-OUTCOME-MISMATCH"
+                       "The EXITs and OUTCOMEs of the new event (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (7)) and the JOURNAL::@REPLAY-EVENT (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) are not equal.")))))))))
 
 (deftest test-replay-failure-two-deep-with-error ()
   (let ((journal-1 (funcall *make-journal*)))
@@ -2547,13 +2547,13 @@
       ;; out-event is not recorded.
       (when (typep journal-2 'in-memory-journal)
         (is (equal (list-events journal-2)
-                       '((:in b1 :version 1)
-                         (:in b2 :version 1)
-                         (:out b2 :version 1
-                          :error ("SOME-ERROR" "SOME-ERROR was signalled."))
-                         (:out b1 :error
-                          ("REPLAY-UNEXPECTED-OUTCOME"
-                           "The new event (:OUT JOURNAL-TEST::B2 :VERSION 1 :ERROR (\"SOME-ERROR\" \"SOME-ERROR was signalled.\")) has an unexpected outcome while the JOURNAL::@REPLAY-EVENT (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) has not.")))))))))
+                   '((:in b1 :version 1)
+                     (:in b2 :version 1)
+                     (:out b2 :version 1
+                      :error ("SOME-ERROR" "SOME-ERROR was signalled."))
+                     (:out b1 :error
+                      ("REPLAY-UNEXPECTED-OUTCOME"
+                       "The new event (:OUT JOURNAL-TEST::B2 :VERSION 1 :ERROR (\"SOME-ERROR\" \"SOME-ERROR was signalled.\")) has an unexpected outcome while the JOURNAL::@REPLAY-EVENT (:OUT JOURNAL-TEST::B2 :VERSION 1 :VALUES (2)) (at position 2) has not.")))))))))
 
 (deftest test-values-fn-failure-recording ()
   (let* ((journal-1 (funcall *make-journal*))
@@ -2565,7 +2565,7 @@
                                               (declare (ignore list))
                                               (error 'some-error)))))))
     (is (equal (list-events journal-1)
-                   (if sync () '((:in b1 :version 1)))))
+               (if sync () '((:in b1 :version 1)))))
     (is (eq (journal-state journal-1) :completed))
     ;; Replay is the same.
     (let ((journal-2 (funcall *make-journal*)))
@@ -2577,7 +2577,7 @@
                                                 (error 'some-error)))))))
       (is (eq (journal-state journal-2) :completed))
       (is (equal (list-events journal-2)
-                     (if sync () '((:in b1 :version 1))))))))
+                 (if sync () '((:in b1 :version 1))))))))
 
 (deftest test-values-fn-failure-replaying ()
   (let* ((journal-1 (funcall *make-journal*))
@@ -2586,8 +2586,8 @@
       (journaled (b1 :version 1)
         1))
     (is (equal (list-events journal-1)
-                   '((:in b1 :version 1)
-                     (:out b1 :version 1 :values (1)))))
+               '((:in b1 :version 1)
+                 (:out b1 :version 1 :values (1)))))
     (is (eq (journal-state journal-1) :completed))
     ;; Replay
     (let ((journal-2 (funcall *make-journal*)))
@@ -2605,7 +2605,7 @@
               (journaled (b2))))))
       (is (eq (journal-state journal-2) :failed))
       (is (equal (list-events journal-2)
-                     (if sync () '((:in b1 :version 1))))))))
+                 (if sync () '((:in b1 :version 1))))))))
 
 (deftest test-journaling-failure ()
   (let* ((journal-1 (funcall *make-journal*))
@@ -2618,9 +2618,9 @@
                                               (error 'some-error)))))
         (journaled (b2 :version 1))))
     (is (equal (list-events journal-1)
-                   (if sync
-                       ()
-                       '((:in b1 :version 1)))))
+               (if sync
+                   ()
+                   '((:in b1 :version 1)))))
     (is (eq (journal-state journal-1) :completed))
 
     (dolist (make-journal (list *make-journal* (constantly nil)))
@@ -2639,13 +2639,13 @@
               ;; writeable.
               (when journal-2
                 (is (eq (journal-state journal-2)
-                            (if sync :completed :failed))))
+                        (if sync :completed :failed))))
               (signals (journaling-failure :pred "Resignal")
                 (journaled (b2 :version 1))))))
         (when journal-2
           (is (equal (list-events journal-2) ()))
           (is (eq (journal-state journal-2)
-                      (if sync :completed :failed)))))
+                  (if sync :completed :failed)))))
 
       ;; THROW in WRITE-EVENT when :REPLAYING in replay
       (let ((journal-2 (funcall make-journal)))
@@ -2664,13 +2664,13 @@
                 ;; writeable.
                 (when journal-2
                   (is (eq (journal-state journal-2)
-                              (if sync :completed :failed))))
+                          (if sync :completed :failed))))
                 (signals (journaling-failure :pred "Resignal")
                   (journaled (b2 :version 1)))))))
         (when journal-2
           (is (equal (list-events journal-2) ()))
           (is (eq (journal-state journal-2)
-                      (if sync :completed :failed))))))
+                  (if sync :completed :failed))))))
 
     (dolist (commit (if sync '(nil t) '(nil)))
       (dolist (make-journal (if commit
@@ -2697,10 +2697,10 @@
                   (journaled (b2 :version 1))))))
           (when journal-2
             (is (equal (list-events journal-2)
-                           (if (and sync (not commit))
-                               ()
-                               '((:in b1 :version 1)
-                                 (:out b1 :version 1 :values (nil))))))
+                       (if (and sync (not commit))
+                           ()
+                           '((:in b1 :version 1)
+                             (:out b1 :version 1 :values (nil))))))
             (is (eq (journal-state journal-2) :completed))))
 
         ;; THROW in WRITE-EVENT when :RECORDING in replay
@@ -2726,10 +2726,10 @@
                     (journaled (b2 :version 1)))))))
           (when journal-2
             (is (equal (list-events journal-2)
-                           (if (and sync (not commit))
-                               ()
-                               '((:in b1 :version 1)
-                                 (:out b1 :version 1 :values (nil))))))
+                       (if (and sync (not commit))
+                           ()
+                           '((:in b1 :version 1)
+                             (:out b1 :version 1 :values (nil))))))
             (is (eq (journal-state journal-2) :completed))))))))
 
 (deftest test-error-handling ()
@@ -2803,7 +2803,7 @@
        (dolist (sync '(nil t))
          (if (eq sync (journal-sync journal))
              (is (eq (make-file-journal (pathname-of journal) :sync sync)
-                         journal))
+                     journal))
              (signals (journal-error :pred "Incompatible options")
                (make-file-journal (pathname-of journal) :sync sync)))))
      ;; :COMPLETED
@@ -2813,7 +2813,7 @@
        (dolist (sync '(nil t))
          (if (eq sync (journal-sync journal))
              (is (eq (make-file-journal (pathname-of journal) :sync sync)
-                         journal))
+                     journal))
              (signals (journal-error :pred "Incompatible options")
                (make-file-journal (pathname-of journal) :sync sync)))))
      ;; :COMPLETED, deleted
@@ -2822,7 +2822,7 @@
        (is (eq (journal-state journal) :completed))
        (delete-file (pathname-of journal))
        (is (not (eq (make-file-journal (pathname-of journal))
-                        journal)))
+                    journal)))
        (is (eq (slot-value journal 'jrn::n-writers) :invalidated))
        (signals (journal-error :pred "unlinked")
          (with-open-journal (streamlet journal :direction :output)))))))
@@ -2831,10 +2831,10 @@
   (call-with-file-bundle
    (lambda (bundle)
      (is (eq (make-file-bundle (directory-of bundle)
-                                   :max-n-failed (max-n-failed bundle)
-                                   :max-n-completed (max-n-completed bundle)
-                                   :sync (slot-value bundle 'jrn::sync))
-                 bundle))
+                               :max-n-failed (max-n-failed bundle)
+                               :max-n-completed (max-n-completed bundle)
+                               :sync (slot-value bundle 'jrn::sync))
+             bundle))
      (signals (journal-error :pred "Incompatible options")
        (make-file-bundle (directory-of bundle)
                          :max-n-failed (max-n-failed bundle)
@@ -2868,10 +2868,10 @@
     (let ((*var-for-invoked* nil))
       (with-bundle (bundle)
         (is (endp
-                 (multiple-value-list
-                  (if (zerop (framed (input :log-record :record) (random 2)))
-                      (invoked-0 3)
-                      (invoked-1 4)))))
+             (multiple-value-list
+              (if (zerop (framed (input :log-record :record) (random 2)))
+                  (invoked-0 3)
+                  (invoked-1 4)))))
         (checked (c :args `(,*var-for-invoked*)))))
     (let ((*var-for-invoked* nil))
       (with-bundle (bundle)
@@ -2896,18 +2896,18 @@
       (signals (some-error)
         (erroring-invoked 42)))
     (is (equal (list-events journal-1)
-                   '((:in "erroring-invoked" :version 1 :args (42))
-                     (:out "erroring-invoked"
-                      :error ("SOME-ERROR" "SOME-ERROR was signalled.")))))
+               '((:in "erroring-invoked" :version 1 :args (42))
+                 (:out "erroring-invoked"
+                  :error ("SOME-ERROR" "SOME-ERROR was signalled.")))))
     ;; Not yet fixed. Replay triggers the same error.
     (let ((journal-2 (funcall *make-journal*)))
       (signals (some-error)
         (with-journaling (:record journal-2 :replay journal-1)))
       (is (eq (journal-state journal-2) :completed))
       (is (equal (list-events journal-2)
-                     '((:in "erroring-invoked" :version 1 :args (42))
-                       (:out "erroring-invoked"
-                        :error ("SOME-ERROR" "SOME-ERROR was signalled."))))))
+                 '((:in "erroring-invoked" :version 1 :args (42))
+                   (:out "erroring-invoked"
+                    :error ("SOME-ERROR" "SOME-ERROR was signalled."))))))
     ;; Fixed.
     (let ((journal-3 (funcall *make-journal*)))
       (let ((*var-for-invoked* nil)
@@ -2916,8 +2916,8 @@
           (is (eql *var-for-invoked* 42)))
         (is (eq (journal-state journal-3) :completed))
         (is (equal (list-events journal-3)
-                       '((:in "erroring-invoked" :version 1 :args (42))
-                         (:out "erroring-invoked" :version 1 :values (42))))))
+                   '((:in "erroring-invoked" :version 1 :args (42))
+                     (:out "erroring-invoked" :version 1 :values (42))))))
       ;; Fail again.
       (let ((*var-for-invoked* nil)
             (journal-4 (funcall *make-journal*)))
@@ -2926,10 +2926,10 @@
             (with-journaling (:record journal-4 :replay journal-3))))
         (is (eq (journal-state journal-4) :failed))
         (is (equal (list-events journal-4)
-                       '((:in "erroring-invoked" :version 1 :args (42))
-                         (:out "erroring-invoked" :version 1
-                          :error ("SOME-ERROR"
-                                  "SOME-ERROR was signalled.")))))))))
+                   '((:in "erroring-invoked" :version 1 :args (42))
+                     (:out "erroring-invoked" :version 1
+                      :error ("SOME-ERROR"
+                              "SOME-ERROR was signalled.")))))))))
 
 (deftest test-throw-in-invoked-without-external ()
   (let ((journal-1 (funcall *make-journal*)))
@@ -2938,16 +2938,16 @@
       (catch 'catch-invoked
         (throwing-invoked 42)))
     (is (equal (list-events journal-1)
-                   '((:in "throwing-invoked" :version 1 :args (42))
-                     (:out "throwing-invoked" :nlx nil))))
+               '((:in "throwing-invoked" :version 1 :args (42))
+                 (:out "throwing-invoked" :nlx nil))))
     ;; Not yet fixed. Replay triggers the same error.
     (let ((journal-2 (funcall *make-journal*)))
       (catch 'catch-invoked
         (with-journaling (:record journal-2 :replay journal-1)))
       (is (eq (journal-state journal-2) :completed))
       (is (equal (list-events journal-2)
-                     '((:in "throwing-invoked" :version 1 :args (42))
-                       (:out "throwing-invoked" :nlx nil)))))
+                 '((:in "throwing-invoked" :version 1 :args (42))
+                   (:out "throwing-invoked" :nlx nil)))))
     ;; Fixed.
     (let ((journal-3 (funcall *make-journal*)))
       (let ((*var-for-invoked* nil)
@@ -2956,8 +2956,8 @@
           (is (eql *var-for-invoked* 42)))
         (is (eq (journal-state journal-3) :completed))
         (is (equal (list-events journal-3)
-                       '((:in "throwing-invoked" :version 1 :args (42))
-                         (:out "throwing-invoked" :version 1 :values (42))))))
+                   '((:in "throwing-invoked" :version 1 :args (42))
+                     (:out "throwing-invoked" :version 1 :values (42))))))
       ;; Fail again.
       (let ((*var-for-invoked* nil)
             (journal-4 (funcall *make-journal*)))
@@ -2966,8 +2966,8 @@
             (with-journaling (:record journal-4 :replay journal-3))))
         (is (eq (journal-state journal-4) :failed))
         (is (equal (list-events journal-4)
-                       '((:in "throwing-invoked" :version 1 :args (42))
-                         (:out "throwing-invoked" :version 1 :nlx nil))))))))
+                   '((:in "throwing-invoked" :version 1 :args (42))
+                     (:out "throwing-invoked" :version 1 :nlx nil))))))))
 
 (deftest test-invoked-without-external/two ()
   (let ((bundle (make-in-memory-bundle)))
@@ -2980,12 +2980,12 @@
       (with-bundle (bundle)
         (checked (c :args `(,*var-for-invoked*)))
         (is (equal (list-events)
-                       '((:in "name-invoked-0" :version 1 :args (3))
-                         (:out "name-invoked-0" :version 1 :values (3))
-                         (:in "name-invoked-1" :version 1 :args (3))
-                         (:out "name-invoked-1" :version 1 :values (4))
-                         (:in c :version 1 :args (4))
-                         (:out c :version 1 :values (nil)))))))))
+                   '((:in "name-invoked-0" :version 1 :args (3))
+                     (:out "name-invoked-0" :version 1 :values (3))
+                     (:in "name-invoked-1" :version 1 :args (3))
+                     (:out "name-invoked-1" :version 1 :values (4))
+                     (:in c :version 1 :args (4))
+                     (:out c :version 1 :values (nil)))))))))
 
 (deftest test-invoked-without-external/two-separated ()
   (let ((bundle (make-in-memory-bundle)))
@@ -3000,14 +3000,14 @@
         (checked (c :args `(,*var-for-invoked*)))
         (checked (c :args `(,*var-for-invoked*)))
         (is (equal (list-events)
-                       '((:in "name-invoked-0" :version 1 :args (3))
-                         (:out "name-invoked-0" :version 1 :values (3))
-                         (:in c :version 1 :args (3))
-                         (:out c :version 1 :values (nil))
-                         (:in "name-invoked-1" :version 1 :args (3))
-                         (:out "name-invoked-1" :version 1 :values (4))
-                         (:in c :version 1 :args (4))
-                         (:out c :version 1 :values (nil)))))))))
+                   '((:in "name-invoked-0" :version 1 :args (3))
+                     (:out "name-invoked-0" :version 1 :values (3))
+                     (:in c :version 1 :args (3))
+                     (:out c :version 1 :values (nil))
+                     (:in "name-invoked-1" :version 1 :args (3))
+                     (:out "name-invoked-1" :version 1 :values (4))
+                     (:in c :version 1 :args (4))
+                     (:out c :version 1 :values (nil)))))))))
 
 (deftest test-invoked-successful-external ()
   (let ((bundle (make-in-memory-bundle)))
