@@ -5178,6 +5178,22 @@
       (t
        t))))
 
+(defparameter *file-position-works-p*
+  (with-open-file (s (asdf:system-relative-pathname "journal" ".gitignore"))
+    (read-line s)
+    (file-position s 0)
+    (cond
+      ((= (file-position s) 0)
+       t)
+      (t
+       (format *error-output* "~&~@<FILE-POSITION is broken.
+                              MAKE-FILE-JOURNAL will signal an error.~:@>~%")
+       #+cmucl
+       (format
+        *error-output*
+        "See https://gitlab.common-lisp.net/cmucl/cmucl/-/issues/401~%")
+       nil))))
+
 (defclass file-journal (journal)
   ((pathname
     :initarg :pathname :reader pathname-of
@@ -5254,9 +5270,11 @@
   written, then invalidation fails with a JOURNAL-ERROR. After
   invalidation, a new FILE-JOURNAL object is created."
   (check-sync-value sync)
-  (when (and *testing* (not *weak-hash-tables-work-p*))
+  (when (and *testing* (or (not *weak-hash-tables-work-p*)
+                           (not *file-position-works-p*)))
     (funcall (read-from-string "try:skip-trial")))
   (assert *weak-hash-tables-work-p*)
+  (assert *file-position-works-p*)
   (let ((truename (%truename pathname)))
     (bt:with-lock-held (*file-journal-lock*)
       ;; For example, if a BUNDLE's directory is blown away we'd have

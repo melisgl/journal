@@ -3,7 +3,7 @@
 lisp="$1"
 stop_on_failure="${2:-t}"
 debug="${3:-nil}"
-print="${4:-(quote try:unexpected)}"
+print="${4:-(quote (or try:unexpected try:skip))}"
 describe="${5:-(quote try:unexpected)}"
 num_passes=
 num_failures=
