@@ -5179,7 +5179,7 @@
        t))))
 
 (defparameter *file-position-works-p*
-  (with-open-file (s (asdf:system-relative-pathname "journal" ".gitignore"))
+  (with-open-file (s (asdf:system-relative-pathname "journal" "COPYING"))
     (read-line s)
     (file-position s 0)
     (cond
