@@ -240,7 +240,6 @@ cycles focussing on persistence.
     
     - returns a new [`FILE-JOURNAL`][8428] if `DESIGNATOR` is a `PATHNAME`([`0`][0317] [`1`][6671]).
 
-
 <a id="x-28JOURNAL-3AWITH-JOURNALING-20MGL-PAX-3AMACRO-29"></a>
 
 - [macro] **WITH-JOURNALING** *(&KEY RECORD REPLAY REPLAY-EOJ-ERROR-P) &BODY BODY*
@@ -603,7 +602,6 @@ returned along with `"hello"`.
     => (8 :SOMETHING "ANOTHER")
     ```
 
-
 <a id="x-28JOURNAL-3AVALUES-3C--20FUNCTION-29"></a>
 
 - [function] **VALUES\<-** *&REST FNS*
@@ -618,7 +616,6 @@ returned along with `"hello"`.
     => 7
     => :SOMETHING
     ```
-
 
 <a id="x-28JOURNAL-3A-40JOURNAL-UTILITIES-20MGL-PAX-3ASECTION-29"></a>
 
@@ -702,7 +699,6 @@ returned along with `"hello"`.
     .. (:OUT EXTERNAL :VERSION :INFINITY :ERROR ("ERROR" "an :ERROR outcome"))
     => ; No value
     ```
-
 
 <a id="x-28JOURNAL-3APPRINT-EVENTS-20FUNCTION-29"></a>
 
@@ -1134,7 +1130,6 @@ Here, we discuss how to make logs more informative.
                    :TIME "2023-05-26T12:27:44.172614+01:00"
                    :REAL-TIME 2531.3254 :RUN-TIME 28.972797)
     ```
-
 
 <a id="x-28JOURNAL-3A-40LOG-RECORD-20MGL-PAX-3ASECTION-29"></a>
 
@@ -1731,7 +1726,6 @@ there is nowhere to return values from replay-triggered functions.
             (setq *state* (+ 2 x)))))
     ```
 
-
 <a id="x-28JOURNAL-3AFLET-INVOKED-20MGL-PAX-3AMACRO-29"></a>
 
 - [macro] **FLET-INVOKED** *DEFINITIONS &BODY BODY*
@@ -1751,7 +1745,6 @@ there is nowhere to return values from replay-triggered functions.
           (foo 0)
           (bar 1))))
     ```
-
 
 <a id="x-28JOURNAL-3A-40BUNDLES-20MGL-PAX-3ASECTION-29"></a>
 
@@ -2249,7 +2242,6 @@ With that, let's see how `WITH-REPLAY-FILTER` works.
               (replayed (pay)))))))
     ```
 
-
 <a id="x-28JOURNAL-3AWITH-REPLAY-FILTER-20MGL-PAX-3AMACRO-29"></a>
 
 - [macro] **WITH-REPLAY-FILTER** *(&KEY MAP SKIP NO-REPLAY-OUTCOME) &BODY BODY*
@@ -2325,7 +2317,6 @@ With that, let's see how `WITH-REPLAY-FILTER` works.
           (checked (j3)
             42))))
     ```
-
 
 <a id="x-28JOURNAL-3A-40TESTING-20MGL-PAX-3ASECTION-29"></a>
 
@@ -2697,7 +2688,6 @@ not need transactions.
     
     - The [`IN-EVENT`][1729] of an [invoked][4212] function, which lies outside the
       normal, deterministic control flow.
-
 
 <a id="x-28JOURNAL-3A-40SYNCHRONIZATION-STRATEGIES-20MGL-PAX-3ASECTION-29"></a>
 
@@ -3243,7 +3233,6 @@ The rest of section is about concrete subclasses of [`JOURNAL`][5082].
     
     - They must **must not be mutated** in any way.
 
-
 <a id="x-28JOURNAL-3AMAKE-IN-MEMORY-JOURNAL-20FUNCTION-29"></a>
 
 - [function] **MAKE-IN-MEMORY-JOURNAL** *&KEY (EVENTS NIL EVENTSP) STATE (SYNC NIL SYNCP) SYNC-FN*
@@ -3636,7 +3625,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
     Read the next event from `STREAMLET` without changing
     the read position, or return `NIL` if there is no event to be read.
 
-<a id="x-28JOURNAL-3APEEK-EVENT-20-28METHOD-20NIL-20-28JOURNAL-3ASTREAMLET-29-29-29"></a>
+<a id="x-28JOURNAL-3APEEK-EVENT-20-28METHOD-20-28JOURNAL-3ASTREAMLET-29-29-29"></a>
 
 - [method] **PEEK-EVENT** *(STREAMLET STREAMLET)*
 
@@ -3657,7 +3646,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
     [`STREAMLET-ERROR`][e6b2] if `STREAMLET` is not [`OUTPUT-STREAMLET-P`][956a] or not
     [`OPEN-STREAMLET-P`][5da8].
 
-<a id="x-28JOURNAL-3AWRITE-EVENT-20-28METHOD-20NIL-20-28T-20JOURNAL-3AJOURNAL-29-29-29"></a>
+<a id="x-28JOURNAL-3AWRITE-EVENT-20-28METHOD-20-28T-20JOURNAL-3AJOURNAL-29-29-29"></a>
 
 - [method] **WRITE-EVENT** *EVENT (JOURNAL JOURNAL)*
 

@@ -168,7 +168,6 @@ cycles focussing on persistence.
     
     - returns a new FILE-JOURNAL if DESIGNATOR is a PATHNAME.
 
-
 - [macro] WITH-JOURNALING (&KEY RECORD REPLAY REPLAY-EOJ-ERROR-P) &BODY BODY
 
     Turn recording and/or replaying of events on or off for the
@@ -497,7 +496,6 @@ returned along with `"hello"`.
     => (8 :SOMETHING "ANOTHER")
     ```
 
-
 - [function] VALUES<- &REST FNS
 
     The inverse of `VALUES->`, this returns a function suitable as
@@ -510,7 +508,6 @@ returned along with `"hello"`.
     => 7
     => :SOMETHING
     ```
-
 
 ### Utilities
 
@@ -582,7 +579,6 @@ returned along with `"hello"`.
     .. (:OUT EXTERNAL :VERSION :INFINITY :ERROR ("ERROR" "an :ERROR outcome"))
     => ; No value
     ```
-
 
 - [function] PPRINT-EVENTS EVENTS &KEY STREAM (PRETTIFIER 'PRETTIFY-EVENT)
 
@@ -986,7 +982,6 @@ Here, we discuss how to make logs more informative.
                    :TIME "2023-05-26T12:27:44.172614+01:00"
                    :REAL-TIME 2531.3254 :RUN-TIME 28.972797)
     ```
-
 
 ### :LOG-RECORD
 
@@ -1525,7 +1520,6 @@ there is nowhere to return values from replay-triggered functions.
             (setq *state* (+ 2 x)))))
     ```
 
-
 - [macro] FLET-INVOKED DEFINITIONS &BODY BODY
 
     Like DEFINE-INVOKED, but with FLET instead of DEFUN. The event
@@ -1543,7 +1537,6 @@ there is nowhere to return values from replay-triggered functions.
           (foo 0)
           (bar 1))))
     ```
-
 
 ### Bundles
 
@@ -1995,7 +1988,6 @@ With that, let's see how WITH-REPLAY-FILTER works.
               (replayed (pay)))))))
     ```
 
-
 - [macro] WITH-REPLAY-FILTER (&KEY MAP SKIP NO-REPLAY-OUTCOME) &BODY BODY
 
     WITH-REPLAY-FILTER performs journal upgrade during replay by
@@ -2069,7 +2061,6 @@ With that, let's see how WITH-REPLAY-FILTER works.
           (checked (j3)
             42))))
     ```
-
 
 ## Testing
 
@@ -2425,7 +2416,6 @@ not need transactions.
     
     - The IN-EVENT of an @INVOKED function, which lies outside the
       normal, deterministic control flow.
-
 
 #### Synchronization strategies
 
@@ -2886,7 +2876,6 @@ The rest of section is about concrete subclasses of JOURNAL.
     - Their identity (`EQ`ness) is not lost.
     
     - They must **must not be mutated** in any way.
-
 
 - [function] MAKE-IN-MEMORY-JOURNAL &KEY (EVENTS NIL EVENTSP) STATE (SYNC NIL SYNCP) SYNC-FN
 

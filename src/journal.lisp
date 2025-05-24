@@ -779,7 +779,7 @@
   (set-read-position generic-function)
   (save-excursion macro)
   (peek-event generic-function)
-  (peek-event (method () (streamlet))))
+  (peek-event (method (streamlet))))
 
 (defgeneric read-event (streamlet &optional eoj-error-p)
   (:documentation "Read the event at the current read position from
@@ -836,7 +836,7 @@
 
 (defsection @writing-to-streamlets (:title "Writing to streamlets")
   (write-event generic-function)
-  (write-event (method () (t journal)))
+  (write-event (method (t journal)))
   (write-position generic-function)
   (request-completed-on-abort generic-function)
   (sync-streamlet generic-function))
@@ -3564,10 +3564,10 @@
                (if logp
                    (apply-key (journal-log-decorator journal) event)
                    event))
-             ;; KLUDGE: We rely on (WRITE-EVENT (METHOD () (T JOURNAL))),
+             ;; KLUDGE: We rely on (WRITE-EVENT (METHOD (T JOURNAL))),
              ;; but that writes through JOURNAL-OUTPUT-STREAMLET not
-             ;; *RECORD-STREAMLET* even if JOURNAL is the same
-             ;; journal *RECORD-STREAMLET* is writing.
+             ;; *RECORD-STREAMLET* even if JOURNAL is the same journal
+             ;; *RECORD-STREAMLET* is writing.
              (write-log-event-to-journal (journal)
                (when (eq (journal-state journal) :completed)
                  (error 'journal-error :journal journal
