@@ -4,8 +4,8 @@ on:
   push:
   pull_request:
   schedule:
-    # Every Friday at 18:23
-    - cron: "23 18 * * 5"
+    # Every day at 18:23
+    - cron: "23 18 * * *"
 
 jobs:
   test:
@@ -30,6 +30,9 @@ jobs:
           LISP: ${{ matrix.lisp }}
         run: |
           curl -L https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | sh
+
+      - name: Install latest MGL-PAX from GitHub
+        run: ros install melisgl/mgl-pax
 
       - name: Install latest Try from GitHub
         run: ros install melisgl/try
