@@ -32,10 +32,7 @@ jobs:
           curl -L https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | sh
 
       - name: Install latest MGL-PAX from GitHub
-        run: ros install melisgl/mgl-pax
-
-      - name: Install latest Named-readtables from GitHub
-        run: ros install melisgl/named-readtables
+        run: ros install melisgl/mgl-pax melisgl/named-readtables
 
       - name: Install latest Try from GitHub
         run: ros install melisgl/try
