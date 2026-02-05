@@ -62,6 +62,7 @@
 <a id="x-28-22journal-22-20ASDF-2FSYSTEM-3ASYSTEM-29"></a>
 
 - [system] **"journal"**
+
     - _Version:_ 0.1.0
     - _Description:_ A library built around explicit execution traces for
         logging, tracing, testing and persistence.
@@ -85,7 +86,7 @@ for the latest version.
 
 ## 2 Portability
 
-Tested and supported on on ABCL, CCL, CMUCL, ECL, and SBCL.
+Tested and supported on ABCL, CCL, CMUCL, ECL, and SBCL.
 AllegroCL Express edition runs out of heap while running the tests.
 On Lisps that seem to lack support for disabling and enabling of
 interrupts, such as ABCL, durability is compromised, and any attempt
@@ -822,8 +823,7 @@ most often used for [Logging][4e53] and [Tracing][e03f].
     Note that in contrast with `JOURNALING-FAILURE` and [`REPLAY-FAILURE`][2e9b],
     which necessitate leaving `WITH-JOURNALING` to recover from, the other
     conditions – [`JOURNAL-ERROR`][0002], and [`STREAMLET-ERROR`][e6b2] – are subclasses of
-    [`ERROR`][d162] as the their handling need not be so
-    heavy-handed.
+    [`ERROR`][d162] as their handling need not be so heavy-handed.
 
 <a id="x-28JOURNAL-3AJOURNALING-FAILURE-EMBEDDED-CONDITION-20-28MGL-PAX-3AREADER-20JOURNAL-3AJOURNALING-FAILURE-29-29"></a>
 
@@ -1116,9 +1116,9 @@ Here, we discuss how to make logs more informative.
     Return a function suitable as [`JOURNAL-LOG-DECORATOR`][8a5b] that may add
     a string timestamp, the internal real-time or run-time (both in
     seconds), the name of the thread, to events, which will be handled
-    by [`PRETTIFY-EVENT`][11b7]. If `DEPTH`, then `PRETTIFY-EVENT` will the nesting
-    level of the event being printed. If `OUT-NAME`, the `PRETTIFY-EVENT`
-    will print the name of [Out-events][48ef].
+    by [`PRETTIFY-EVENT`][11b7]. If `DEPTH`, then `PRETTIFY-EVENT` will print the
+    nesting level of the event being printed. If `OUT-NAME`, the
+    `PRETTIFY-EVENT` will print the name of [Out-events][48ef].
     
     All arguments are [boolean-valued symbol][62678]s.
     
@@ -2011,7 +2011,7 @@ name from the [`REPLAY-JOURNAL`][838b] in the latter case. If the strategy is
   [replay event][6525]'s `EVENT-EXIT`([`0`][c04d] [`1`][812a])s are [`EQ`][5a82] and their [`EVENT-OUTCOME`][c290]s are
   [`EQUAL`][3fb5], **[`REPLAY-OUTCOME-MISMATCH`][bbef]** is signalled.
 
-- Else, the replay event is consumed and the new event is written
+- Else, the replay event is consumed and the new event is written to
   the `RECORD-JOURNAL`.
 
 Note that [The replay strategy][a8a7] for the in-event and the out-event of
@@ -3475,7 +3475,7 @@ classes.
     [Synchronization strategies][f532].
     
     If there is already a `FILE-BUNDLE` with the same directory (according
-    to [`TRUENAME`][ab6d]), return that object is returned if it has the same
+    to [`TRUENAME`][ab6d]), that object is returned if it has the same
     `MAX-N-FAILED`, `MAX-N-COMPLETED` and `SYNC` options, else [`JOURNAL-ERROR`][0002]
     is signalled.
 
@@ -3775,7 +3775,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [23c4]: #x-28JOURNAL-3ALOGGED-20MGL-PAX-3AMACRO-29 "JOURNAL:LOGGED MGL-PAX:MACRO"
   [260d]: #x-28JOURNAL-3A-40BUNDLES-20MGL-PAX-3ASECTION-29 "Bundles"
   [2765]: #x-28JOURNAL-3A-2ATRACE-TIME-2A-20VARIABLE-29 "JOURNAL:*TRACE-TIME* VARIABLE"
-  [278a]: http://www.lispworks.com/documentation/HyperSpec/Body/26_glo_r.htm#readably '"readably" (MGL-PAX:CLHS MGL-PAX:GLOSSARY-TERM)'
+  [278a]: http://www.lispworks.com/documentation/HyperSpec/Body/26_glo_r.htm#readably "\"readably\" (MGL-PAX:CLHS MGL-PAX:GLOSSARY-TERM)"
   [2933]: #x-28JOURNAL-3A-40REPLAY-FAILURES-20MGL-PAX-3ASECTION-29 "Replay failures"
   [297c]: #x-28JOURNAL-3A-40CUSTOMIZING-LOGS-20MGL-PAX-3ASECTION-29 "Customizing logs"
   [2e9b]: #x-28JOURNAL-3AREPLAY-FAILURE-20CONDITION-29 "JOURNAL:REPLAY-FAILURE CONDITION"
@@ -3903,7 +3903,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [b668]: #x-28JOURNAL-3AIN-MEMORY-JOURNAL-20CLASS-29 "JOURNAL:IN-MEMORY-JOURNAL CLASS"
   [b792]: #x-28JOURNAL-3A-40IN-MEMORY-JOURNALS-20MGL-PAX-3ASECTION-29 "In-memory journals"
   [b7d2]: #x-28JOURNAL-3A-40COMPARING-JOURNALS-20MGL-PAX-3ASECTION-29 "Comparing journals"
-  [b815]: http://www.lispworks.com/documentation/HyperSpec/Body/26_glo_n.htm#non-local_exit '"non-local exit" (MGL-PAX:CLHS MGL-PAX:GLOSSARY-TERM)'
+  [b815]: http://www.lispworks.com/documentation/HyperSpec/Body/26_glo_n.htm#non-local_exit "\"non-local exit\" (MGL-PAX:CLHS MGL-PAX:GLOSSARY-TERM)"
   [ba32]: #x-28JOURNAL-3A-40JOURNAL-UTILITIES-20MGL-PAX-3ASECTION-29 "Utilities"
   [bacd]: #x-28JOURNAL-3AIN-MEMORY-BUNDLE-20CLASS-29 "JOURNAL:IN-MEMORY-BUNDLE CLASS"
   [bb08]: #x-28JOURNAL-3A-40JOURNAL-ERROR-HANDLING-20MGL-PAX-3ASECTION-29 "Error handling"

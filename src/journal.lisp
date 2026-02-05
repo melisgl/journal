@@ -29,7 +29,7 @@
   for the latest version.")
 
 (defsection @journal-portability (:title "Portability")
-  "Tested and supported on on ABCL, CCL, CMUCL, ECL, and SBCL.
+  "Tested and supported on ABCL, CCL, CMUCL, ECL, and SBCL.
   AllegroCL Express edition runs out of heap while running the tests.
   On Lisps that seem to lack support for disabling and enabling of
   interrupts, such as ABCL, durability is compromised, and any attempt
@@ -1681,8 +1681,7 @@
   Note that in contrast with JOURNALING-FAILURE and REPLAY-FAILURE,
   which necessitate leaving WITH-JOURNALING to recover from, the other
   conditions – JOURNAL-ERROR, and STREAMLET-ERROR – are subclasses of
-  [ERROR][condition] as the their handling need not be so
-  heavy-handed.")
+  [ERROR][condition] as their handling need not be so heavy-handed.")
   (:report (lambda (condition stream)
              (maybe-print-resignalling-message condition stream)
              (let ((embedded (journaling-failure-embedded-condition condition)))
@@ -2345,9 +2344,9 @@
   """Return a function suitable as JOURNAL-LOG-DECORATOR that may add
   a string timestamp, the internal real-time or run-time (both in
   seconds), the name of the thread, to events, which will be handled
-  by PRETTIFY-EVENT. If DEPTH, then PRETTIFY-EVENT will the nesting
-  level of the event being printed. If OUT-NAME, the PRETTIFY-EVENT
-  will print the name of @OUT-EVENTS.
+  by PRETTIFY-EVENT. If DEPTH, then PRETTIFY-EVENT will print the
+  nesting level of the event being printed. If OUT-NAME, the
+  PRETTIFY-EVENT will print the name of @OUT-EVENTS.
 
   All arguments are @BOOLEAN-VALUED-SYMBOLs.
 
@@ -3738,7 +3737,7 @@
     @REPLAY-EVENT's EVENT-EXITs are `EQ` and their EVENT-OUTCOMEs are
     EQUAL, __REPLAY-OUTCOME-MISMATCH__ is signalled.
 
-  - Else, the replay event is consumed and the new event is written
+  - Else, the replay event is consumed and the new event is written to
     the RECORD-JOURNAL.
 
   Note that @THE-REPLAY-STRATEGY for the in-event and the out-event of
@@ -5861,7 +5860,7 @@
   @SYNCHRONIZATION-STRATEGIES.
 
   If there is already a FILE-BUNDLE with the same directory (according
-  to TRUENAME), return that object is returned if it has the same
+  to TRUENAME), that object is returned if it has the same
   MAX-N-FAILED, MAX-N-COMPLETED and SYNC options, else JOURNAL-ERROR
   is signalled."
   (check-sync-value sync)
