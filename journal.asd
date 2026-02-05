@@ -24,7 +24,6 @@
 
 (asdf:defsystem :journal/test
   :licence "MIT, see COPYING."
-  :version "0.0.1"
   :author "Gábor Melis <mega@retes.hu>"
   :description "Tests for Journal."
   :depends-on (#:alexandria #:journal #:try)
