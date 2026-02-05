@@ -1444,6 +1444,10 @@ there is nowhere to return values from replay-triggered functions.
               (checked (bar :args `(,x))
                 (setq *state* (+ 2 x)))))
 
+    FMAKUNBOUND and UNINTERN undefine invoked functions. Note that this is thread-safe only on SBCL. Do
+    not delete DEFINE-INVOKED functions in
+    production.
+
 - [macro] FLET-INVOKED DEFINITIONS &BODY BODY
 
     Like DEFINE-INVOKED, but with FLET instead of DEFUN. The event

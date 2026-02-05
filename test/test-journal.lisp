@@ -2853,7 +2853,8 @@
   (test-invoked-in-failed-external/second-child)
   (test-invoked-in-failed-external/nested-in-child)
   (test-invoked-in-mismatched-triggered-on-in-event)
-  (test-invoked-in-logging-triggered-on-in-event))
+  (test-invoked-in-logging-triggered-on-in-event)
+  (test-invoked-undefine-thread-safety))
 
 (defvar *var-for-invoked*)
 
@@ -3106,6 +3107,32 @@
         (is (eq (journal-state (record-journal)) :logging))
         (signals (data-event-lossage)
           (invoked))))))
+
+(deftest test-invoked-undefine-thread-safety ()
+  (when bt:*supports-threads-p*
+    ;; Add lots of uninterned symbols.
+    (dotimes (i 1000)
+      (setf (gethash (format nil "event-~D" i)
+                     journal::*invoked-event-name-to-function-name*)
+            (make-symbol (format nil "FUNC-~D" i))))
+    (unwind-protect
+         (let ((threads
+                 (loop repeat 4
+                       collect (bt:make-thread
+                                (lambda ()
+                                  (loop repeat 1000 do
+                                    ;; Randomly query events. Since
+                                    ;; the symbols are uninterned,
+                                    ;; INVOKED-FUNCTION will try to
+                                    ;; REMHASH them.
+                                    (let ((key (format nil "event-~D"
+                                                       (random 1000))))
+                                      (journal::invoked-function key))))))))
+           (mapc #'bt:join-thread threads))
+      ;; cleanup
+      (dotimes (i 1000)
+        (remhash (format nil "event-~D" i)
+                 journal::*invoked-event-name-to-function-name*)))))
 
 
 (deftest test-all ()

@@ -3070,7 +3070,9 @@
   wrappers put code first, and the journal will be a projection of the
   call tree.")
 
-(defvar *invoked-event-name-to-function-name* (make-hash-table :test #'equal))
+(defvar *invoked-event-name-to-function-name*
+  #+sbcl (make-hash-table :test #'equal :synchronized t)
+  #-sbcl (make-hash-table :test #'equal))
 ;;; Name-to-function alist
 (defvar *local-invoked-event-name-to-function* ())
 #+sbcl
@@ -3123,6 +3125,8 @@
         (checked (bar :args `(,x))
           (setq *state* (+ 2 x)))))
   ```
+
+  @UNDEFINE-INVOKED
   """
   `(progn
      (setf (gethash ',name *invoked-event-name-to-function-name*)
@@ -3183,13 +3187,17 @@
                               :test #'equal)
       (let ((symbol
               (gethash event-name *invoked-event-name-to-function-name*)))
-        (cond ((and (symbol-package symbol)
-                    (fboundp symbol))
-               symbol)
-              ;; Handle UNINTERNed and MAKUNBOUND functions.
-              (t
-               (remhash event-name *invoked-event-name-to-function-name*)
-               nil)))))
+        (note (@undefine-invoked :join " ")
+          "FMAKUNBOUND and UNINTERN undefine invoked functions."
+          (cond ((and (symbol-package symbol)
+                      (fboundp symbol))
+                 symbol)
+                (t
+                 (note "Note that this is thread-safe only on SBCL. Do
+                       not delete DEFINE-INVOKED functions in
+                       production."
+                   (remhash event-name *invoked-event-name-to-function-name*))
+                 nil))))))
 
 (defun maybe-handle-invoked (in-event)
   (when (versioned-event-p in-event)

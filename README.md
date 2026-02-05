@@ -1725,6 +1725,10 @@ there is nowhere to return values from replay-triggered functions.
           (checked (bar :args `(,x))
             (setq *state* (+ 2 x)))))
     ```
+    
+    [`FMAKUNBOUND`][609c] and [`UNINTERN`][cdba] undefine invoked functions. Note that this is thread-safe only on SBCL. Do
+    not delete `DEFINE-INVOKED` functions in
+    production.
 
 <a id="x-28JOURNAL-3AFLET-INVOKED-20MGL-PAX-3AMACRO-29"></a>
 
@@ -3817,6 +3821,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [5d05]: #x-28JOURNAL-3AFRAMED-20MGL-PAX-3AMACRO-29 "JOURNAL:FRAMED MGL-PAX:MACRO"
   [5da8]: #x-28JOURNAL-3AOPEN-STREAMLET-P-20GENERIC-FUNCTION-29 "JOURNAL:OPEN-STREAMLET-P GENERIC-FUNCTION"
   [5e0a]: #x-28JOURNAL-3AJOURNAL-EVENTS-20-28MGL-PAX-3AREADER-20JOURNAL-3AIN-MEMORY-JOURNAL-29-29 "JOURNAL:JOURNAL-EVENTS (MGL-PAX:READER JOURNAL:IN-MEMORY-JOURNAL)"
+  [609c]: http://www.lispworks.com/documentation/HyperSpec/Body/f_fmakun.htm "FMAKUNBOUND (MGL-PAX:CLHS FUNCTION)"
   [610f]: #x-28JOURNAL-3APPRINT-JOURNAL-PRETTY-20-28MGL-PAX-3AACCESSOR-20JOURNAL-3APPRINT-JOURNAL-29-29 "JOURNAL:PPRINT-JOURNAL-PRETTY (MGL-PAX:ACCESSOR JOURNAL:PPRINT-JOURNAL)"
   [6131]: #x-28JOURNAL-3AWITH-JOURNALING-20MGL-PAX-3AMACRO-29 "JOURNAL:WITH-JOURNALING MGL-PAX:MACRO"
   [6169]: #x-28JOURNAL-3A-40PERSISTENCE-TUTORIAL-20MGL-PAX-3ASECTION-29 "Persistence tutorial"
@@ -3917,6 +3922,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [c2b8]: #x-28JOURNAL-3AREPLAYED-20MGL-PAX-3AMACRO-29 "JOURNAL:REPLAYED MGL-PAX:MACRO"
   [c438]: #x-28JOURNAL-3ADELETE-FILE-BUNDLE-20FUNCTION-29 "JOURNAL:DELETE-FILE-BUNDLE FUNCTION"
   [c9d6]: #x-28JOURNAL-3ASYNC-STREAMLET-20GENERIC-FUNCTION-29 "JOURNAL:SYNC-STREAMLET GENERIC-FUNCTION"
+  [cdba]: http://www.lispworks.com/documentation/HyperSpec/Body/f_uninte.htm "UNINTERN (MGL-PAX:CLHS FUNCTION)"
   [cee6]: http://www.lispworks.com/documentation/HyperSpec/Body/f_symb_5.htm "SYMBOL-VALUE (MGL-PAX:CLHS FUNCTION)"
   [d162]: http://www.lispworks.com/documentation/HyperSpec/Body/e_error.htm "ERROR (MGL-PAX:CLHS CONDITION)"
   [d2c1]: #x-28JOURNAL-3A-40UNEXPECTED-OUTCOME-20MGL-PAX-3AGLOSSARY-TERM-29 "unexpected outcome"
