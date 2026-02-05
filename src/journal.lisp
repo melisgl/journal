@@ -5483,8 +5483,9 @@
 (defun read-file-journal-state (pathname)
   (let (#+clisp
         (custom:*reopen-open-file* nil))
-    (with-open-file (stream pathname)
-      (if (eql (read-char stream nil nil) #\Newline)
+    ;; Open as binary, so that no encoding errors may happen.
+    (with-open-file (stream pathname :element-type '(unsigned-byte 8))
+      (if (eql (read-byte stream nil nil) #.(char-code #\Newline))
           :completed
           :failed))))
 

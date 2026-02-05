@@ -2825,7 +2825,22 @@
                     journal)))
        (is (eq (slot-value journal 'jrn::n-writers) :invalidated))
        (signals (journal-error :pred "unlinked")
-         (with-open-journal (streamlet journal :direction :output)))))))
+         (with-open-journal (streamlet journal :direction :output))))))
+  (test-make-file-journal/corrupt))
+
+(deftest test-make-file-journal/corrupt ()
+  (let ((pathname (uiop/stream:with-temporary-file (:pathname pathname)
+                    pathname)))
+    (unwind-protect
+         (progn
+           (with-open-file (s pathname :direction :output
+                              :if-exists :supersede
+                              :element-type '(unsigned-byte 8))
+             ;; Illegal in UTF-8
+             (write-byte 255 s))
+           (is (eq (journal-state (make-file-journal pathname))
+                   :failed)))
+      (ignore-errors (delete-file pathname)))))
 
 (deftest test-make-file-bundle ()
   (call-with-file-bundle
