@@ -31,11 +31,19 @@ jobs:
         run: |
           curl -L https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | sh
 
-      - name: Install latest MGL-PAX from GitHub
-        run: ros install melisgl/mgl-pax melisgl/named-readtables
-
-      - name: Install latest Try from GitHub
-        run: ros install melisgl/try
+      - name: Install latest stuff from GitHub
+        run: |
+          # KLUDGE: 'ros install' wants to compile things immediately
+          # after downloading, but there are circular dependencies on
+          # the repository level. There are no circular dependencies
+          # at the ASDF level though, so let's just clone everything
+          # before compiling.
+          cd ~/.roswell/local-projects/
+          git clone --depth 1 https://github.com/melisgl/autoload
+          git clone --depth 1 https://github.com/melisgl/named-readtables
+          git clone --depth 1 https://github.com/melisgl/dref
+          git clone --depth 1 https://github.com/melisgl/mgl-pax
+          git clone --depth 1 https://github.com/melisgl/try
 
       - name: Run tests
         env:
