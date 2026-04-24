@@ -53,10 +53,10 @@ JOURNAL:JUNTRACE all."
                                   :journal)
                                  ,spec))))))))
 
-(define-key slime-mode-map (kbd "C-c C-j")
-  'slime-toggle-jtrace-fdefinition)
-
-(define-key slime-repl-mode-map (kbd "C-c C-j")
-  'slime-toggle-jtrace-fdefinition)
+(with-eval-after-load 'slime
+  (define-key slime-mode-map (kbd "C-c C-j")
+              'slime-toggle-jtrace-fdefinition)
+  (define-key slime-repl-mode-map (kbd "C-c C-j")
+              'slime-toggle-jtrace-fdefinition))
 
 (provide 'mgl-jrn)
