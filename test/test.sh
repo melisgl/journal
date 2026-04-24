@@ -33,7 +33,7 @@ function lisp_tests {
 (quicklisp:quickload :journal/test)
 (when (try:passedp (journal-test::test :debug ${debug} :print ${print}
                                        :describe ${describe}))
-  (uiop/image:quit 22))
+  (uiop:quit 22))
 EOF
 }
 

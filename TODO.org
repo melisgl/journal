@@ -1,3 +1,6 @@
+#+STARTUP: overview nologdone
+#+SEQ_TODO: TODO(t) NEXT(n) STARTED(s) WAITING(w) | DONE(d) OLD(o) CANCELLED(c)
+#+TODO: MAYBE(m) FAILED(f) LOG(l) DEFERRED(e) BUG(b)
 * TODO audit what happens if a file journal is corrupted
 Truncation can easily happen on crashes. How does replay handle when
 the :COMPLETED marker is there but the contents are corrupted? Audit

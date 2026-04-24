@@ -68,8 +68,8 @@
         logging, tracing, testing and persistence.
     - _Licence:_ MIT, see COPYING.
     - _Author:_ Gábor Melis <mega@retes.hu>
-    - _Homepage:_ [http://github.com/melisgl/journal](http://github.com/melisgl/journal)
-    - _Bug tracker:_ [http://github.com/melisgl/journal/issues](http://github.com/melisgl/journal/issues)
+    - _Homepage:_ <http://github.com/melisgl/journal>
+    - _Bug tracker:_ <http://github.com/melisgl/journal/issues>
     - _Source control:_ [GIT](https://github.com/melisgl/journal.git)
     - *Depends on:* alexandria, bordeaux-threads, local-time, mgl-pax, osicat(?), sb-posix(?), trivial-features, trivial-garbage
 
@@ -1402,7 +1402,7 @@ Slime, load `src/mgl-jrn.el` into Emacs.
   `mgl-jrn.el` may change with updates, and you may want to copy the
   current version to a stable location:
 
-    (journal:install-journal-elisp "~/quicklisp/")
+        (journal:install-journal-elisp "~/quicklisp/")
 
 Then, assuming the Elisp file is in the quicklisp directory, add
 this to your `.emacs`:

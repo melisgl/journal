@@ -2753,7 +2753,7 @@
     `mgl-jrn.el` may change with updates, and you may want to copy the
     current version to a stable location:
 
-        (journal:install-journal-elisp "~/quicklisp/")
+          (journal:install-journal-elisp "~/quicklisp/")
 
   Then, assuming the Elisp file is in the quicklisp directory, add
   this to your `.emacs`:
