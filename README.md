@@ -1411,6 +1411,14 @@ this to your `.emacs`:
 (load "~/quicklisp/mgl-jrn.el")
 ```
 
+Alternatively, with `use-package`:
+
+```elisp
+(use-package mgl-jrn :load-path "~/quicklisp/"
+  :after slime
+  :demand t)
+```
+
 Since `JTRACE` lacks some features of `CL:TRACE`, most notably that of
 tracing non-global functions, it is assigned a separate binding,
 `C-c C-j`.
