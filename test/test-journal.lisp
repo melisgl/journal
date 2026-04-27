@@ -912,8 +912,8 @@
 
 (defun get-message ()
   (journaled (listen :version :infinity
-                     :values (values-> #'user-id)
-                     :replay-values (values<- #'find-user))
+              :values (values-> #'user-id)
+              :replay-values (values<- #'find-user))
     (values *user7* "hello")))
 
 (deftest test-replay-values ()
@@ -934,9 +934,9 @@
     (signals (some-error)
       (with-journaling (:record journal-1)
         (journaled (e :version :infinity
-                      :condition (lambda (c)
-                                   (when (typep c 'some-error)
-                                     `(error ',(type-of c)))))
+                    :condition (lambda (c)
+                                 (when (typep c 'some-error)
+                                   `(error ',(type-of c)))))
           (error 'some-error))))
     (signals (some-error)
       (with-journaling (:replay journal-1 :record journal-2)
@@ -955,7 +955,7 @@
       (with-journaling (:record journal-1)
         (unwind-protect
              (signals (record-unexpected-outcome :pred "SOME-ERROR"
-                                                 :handler nil)
+                       :handler nil)
                (journaled (b :version :infinity)
                  (error 'some-error)))
           (is (eq (journal-state journal-1) :logging))
@@ -981,7 +981,7 @@
         (with-journaling (:record journal-2 :replay journal-1)
           (unwind-protect
                (signals (record-unexpected-outcome :pred "SOME-ERROR"
-                                                   :handler nil)
+                         :handler nil)
                  (journaled (b :version :infinity)
                    (error 'some-error)))
             (is (eq (journal-state journal-2) :logging))
@@ -1196,11 +1196,11 @@
              (when (if (and replay-process-event
                             (< #+sbcl
                                (sb-ext:truly-the
-                                   fixnum (event-version replay-process-event))
+                                fixnum (event-version replay-process-event))
                                #+cmucl
                                (ext:truly-the
-                                   fixnum
-                                 (event-version replay-process-event))
+                                fixnum
+                                (event-version replay-process-event))
                                #-(or cmucl sbcl)
                                (the fixnum
                                     (event-version replay-process-event))
@@ -1574,9 +1574,9 @@
   (flet ((bar ()
            (signals (some-error)
              (replayed (bar :condition (expected-type 'some-error)
-                            :replay-condition (lambda (string)
-                                                (declare (ignore string))
-                                                (error 'some-error)))
+                        :replay-condition (lambda (string)
+                                            (declare (ignore string))
+                                            (error 'some-error)))
                (error 'some-error)))
            nil))
     (let ((journal-1 (funcall *make-journal*)))
@@ -2071,7 +2071,7 @@
                      (format nil "journal-test-~A/" random-string)
                      (uiop:temporary-directory)))
          (bundle (make-file-bundle directory :max-n-failed 1
-                                             :max-n-completed nil)))
+                                   :max-n-completed nil)))
     (unwind-protect
          (funcall fn bundle)
       (delete-file-bundle directory))))

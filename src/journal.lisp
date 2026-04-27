@@ -300,7 +300,7 @@
   JOURNALED @BLOCK. IN-EVENTs have EVENT-NAME,
   [EVENT-VERSION][function], and EVENT-ARGS. See @IN-EVENTS for a more
   introductory treatment."
- '(satisfies in-event-p))
+  '(satisfies in-event-p))
 
 (declaim (inline in-event-p))
 (defun in-event-p (event)
@@ -2690,7 +2690,7 @@
                         (apply ,fn ,args)
                         (let ((*suppress-trace* t))
                           (journaled (,name :args ,args
-                                            :log-record *trace-journal*)
+                                      :log-record *trace-journal*)
                             (let ((*suppress-trace* nil))
                               (apply ,fn ,args)))))))
              (let ((,encapsulation nil))
@@ -2991,7 +2991,7 @@
 
   If a VERSIONED-EVENT has an @UNEXPECTED-OUTCOME,
   RECORD-UNEXPECTED-OUTCOME is signalled."
- '(satisfies versioned-event-p))
+  '(satisfies versioned-event-p))
 
 (deftype external-event ()
   "Events with [EVENT-VERSION][type] :INFINITY are called external events.
@@ -3019,7 +3019,7 @@
   triggered. BODY is not required to be deterministic, and it may have
   side-effects."
   `(journaled (,name :log-record ,log-record :args ,args
-                     :values ,values :condition ,condition)
+               :values ,values :condition ,condition)
      ,@body))
 
 (defmacro checked ((name &key (version 1) args values condition insertable)
@@ -3034,8 +3034,8 @@
 
   For further discussion of determinism, see REPLAYED."
   `(journaled (,name :version ,version :args ,args
-                     :values ,values :condition ,condition
-                     :insertable ,insertable)
+               :values ,values :condition ,condition
+               :insertable ,insertable)
      ,@body))
 
 (defmacro replayed ((name &key args values condition insertable
@@ -3052,10 +3052,10 @@
   REPLAYED requires its BODY to be side-effect free, but it may be
   non-deterministic."
   `(journaled (,name :version :infinity :args ,args
-                     :values ,values :condition ,condition
-                     :insertable ,insertable
-                     :replay-values ,replay-values
-                     :replay-condition ,replay-condition)
+               :values ,values :condition ,condition
+               :insertable ,insertable
+               :replay-values ,replay-values
+               :replay-condition ,replay-condition)
      ,@body))
 
 (define-glossary-term @invoked (:title "invoked")
@@ -3150,7 +3150,7 @@
     (when *replay-streamlet*
       (setq *skipped-events-until* (read-position *replay-streamlet*)))
     (checked (,name :version ,version :args (list ,@args)
-                    :insertable ,insertable)
+              :insertable ,insertable)
       ,@body)
     (values)))
 
