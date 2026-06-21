@@ -1,6 +1,6 @@
 <a id="x-28JOURNAL-3A-40JOURNAL-MANUAL-20MGL-PAX-3ASECTION-29"></a>
 
-# Journal manual
+# Journal Manual
 
 ## Table of Contents
 

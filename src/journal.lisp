@@ -2,7 +2,7 @@
 
 (in-readtable pythonic-string-syntax)
 
-(defsection @journal-manual (:title "Journal manual")
+(defsection @journal-manual (:title "Journal Manual")
   (journal asdf:system)
   (@journal-links section)
   (@journal-portability section)
