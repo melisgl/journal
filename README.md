@@ -77,10 +77,9 @@
 
 ## 1 Links
 
-Here is the [official repository](https://github.com/melisgl/journal)
-and the [HTML
-documentation](http://melisgl.github.io/mgl-pax-world/journal-manual.html)
-for the latest version.
+The official repository is <https://github.com/melisgl/journal>, and
+this document in available in various formats on
+<https://fixnum.com> for the latest version.
 
 <a id="x-28JOURNAL-3A-40JOURNAL-PORTABILITY-20MGL-PAX-3ASECTION-29"></a>
 

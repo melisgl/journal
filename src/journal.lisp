@@ -23,10 +23,9 @@
 
 
 (defsection @journal-links (:title "Links")
-  "Here is the [official repository](https://github.com/melisgl/journal)
-  and the [HTML
-  documentation](http://melisgl.github.io/mgl-pax-world/journal-manual.html)
-  for the latest version.")
+  "The official repository is <https://github.com/melisgl/journal>, and
+  this document in available in various formats on
+  <https://fixnum.com> for the latest version.")
 
 (defsection @journal-portability (:title "Portability")
   "Tested and supported on ABCL, CCL, CMUCL, ECL, and SBCL.
