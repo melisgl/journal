@@ -239,7 +239,7 @@ cycles focussing on persistence.
     
     - returns a new [`IN-MEMORY-JOURNAL`][b668] if `DESIGNATOR` is `T`,
     
-    - returns a new [`FILE-JOURNAL`][8428] if `DESIGNATOR` is a `PATHNAME`([`0`][0317] [`1`][6671]).
+    - returns a new [`FILE-JOURNAL`][8428] if `DESIGNATOR` is a [`PATHNAME`][783a].
 
 <a id="x-28JOURNAL-3AWITH-JOURNALING-20MGL-PAX-3AMACRO-29"></a>
 
@@ -1990,7 +1990,7 @@ assistance may be required from `REPLAY-VALUES` and `REPLAY-CONDITION`:
   condition (has `EVENT-EXIT` `:CONDITION`), then the recorded
   condition (in `EVENT-OUTCOME`) is signalled as
   IN `(ERROR (EVENT-OUTCOME REPLAY-EVENT))`. If `REPLAY-CONDITION` is
-  specified, it is called instead of `ERROR`([`0`][d162] [`1`][35ba]). `REPLAY-CONDITION` must
+  specified, it is called instead of [`ERROR`][669b]. `REPLAY-CONDITION` must
   not return normally, and it's a [`JOURNAL-ERROR`][0002] if it does.
 
 [`WITH-REPLAY-FILTER`][0cce]'s `NO-REPLAY-OUTCOME` can selectively turn off
@@ -3236,7 +3236,7 @@ The rest of section is about concrete subclasses of [`JOURNAL`][5082].
     generated. They differ from `FILE-JOURNAL`s in that events written to
     `IN-MEMORY-JOURNAL`s are not serialized (and deserialized on replay)
     with the following consequences for the objects recorded by
-    [`JOURNALED`][6267] (i.e. its `NAME`, `ARGS` arguments, and also the return `VALUES`([`0`][fc69] [`1`][eef3])
+    [`JOURNALED`][6267] (i.e. its `NAME`, `ARGS` arguments, and also the return [`VALUES`][5cc0]
     of the block, or the value returned by [`CONDITION`][83e1]):
     
     - These objects need not be [readable][768f].
@@ -3247,7 +3247,7 @@ The rest of section is about concrete subclasses of [`JOURNAL`][5082].
 
 <a id="x-28JOURNAL-3AMAKE-IN-MEMORY-JOURNAL-20FUNCTION-29"></a>
 
-- [function] **MAKE-IN-MEMORY-JOURNAL** *&KEY (EVENTS NIL EVENTSP) STATE (SYNC NIL SYNCP) SYNC-FN*
+- [function] **MAKE-IN-MEMORY-JOURNAL** *&KEY EVENTS STATE SYNC SYNC-FN*
 
     Create an [`IN-MEMORY-JOURNAL`][b668].
     
@@ -3297,7 +3297,7 @@ The rest of section is about concrete subclasses of [`JOURNAL`][5082].
     
     Since serialization in `FILE-JOURNAL`s is built on top of Lisp [`READ`][fe58]
     and [`WRITE`][fc0a], everything that [`JOURNALED`][6267] records in events (i.e. its
-    `NAME`, `ARGS` arguments, and also the return `VALUES`([`0`][fc69] [`1`][eef3]) of the block, or
+    `NAME`, `ARGS` arguments, and also the return [`VALUES`][5cc0] of the block, or
     the value returned by [`CONDITION`][83e1]) must be [readable][768f].
     
     File journals are human-readable and editable by hand with some
@@ -3751,7 +3751,6 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [0002]: #x-28JOURNAL-3AJOURNAL-ERROR-20CONDITION-29 "JOURNAL:JOURNAL-ERROR CONDITION"
   [0114]: #x-28JOURNAL-3A-40JOURNAL-BACKGROUND-20MGL-PAX-3ASECTION-29 "Background"
   [01fd]: #x-28JOURNAL-3AWRITE-EVENT-20GENERIC-FUNCTION-29 "JOURNAL:WRITE-EVENT GENERIC-FUNCTION"
-  [0317]: http://www.lispworks.com/documentation/HyperSpec/Body/t_pn.htm "PATHNAME (MGL-PAX:CLHS CLASS)"
   [03de]: #x-28JOURNAL-3AJOURNAL-STATE-20TYPE-29 "JOURNAL:JOURNAL-STATE TYPE"
   [041c]: #x-28JOURNAL-3A-40REPLAY-20MGL-PAX-3ASECTION-29 "Replay"
   [046e]: #x-28JOURNAL-3A-40SYNCHRONIZATION-20MGL-PAX-3ASECTION-29 "Synchronization to storage"
@@ -3825,6 +3824,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [560b]: #x-28JOURNAL-3A-40ERROR-OUTCOME-20MGL-PAX-3AGLOSSARY-TERM-29 "error outcome"
   [5833]: #x-28JOURNAL-3APPRINT-EVENTS-20FUNCTION-29 "JOURNAL:PPRINT-EVENTS FUNCTION"
   [5a82]: http://www.lispworks.com/documentation/HyperSpec/Body/f_eq.htm "EQ (MGL-PAX:CLHS FUNCTION)"
+  [5cc0]: http://www.lispworks.com/documentation/HyperSpec/Body/a_values.htm "VALUES (MGL-PAX:CLHS NIL)"
   [5cd1]: #x-28JOURNAL-3ALEAF-EVENT-20TYPE-29 "JOURNAL:LEAF-EVENT TYPE"
   [5d05]: #x-28JOURNAL-3AFRAMED-20MGL-PAX-3AMACRO-29 "JOURNAL:FRAMED MGL-PAX:MACRO"
   [5da8]: #x-28JOURNAL-3AOPEN-STREAMLET-P-20GENERIC-FUNCTION-29 "JOURNAL:OPEN-STREAMLET-P GENERIC-FUNCTION"
@@ -3839,8 +3839,8 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [6525]: #x-28JOURNAL-3A-40REPLAY-EVENT-20MGL-PAX-3AGLOSSARY-TERM-29 "replay event"
   [6547]: http://www.lispworks.com/documentation/HyperSpec/Body/f_open.htm "OPEN (MGL-PAX:CLHS FUNCTION)"
   [663f]: http://www.lispworks.com/documentation/HyperSpec/Body/t_null.htm "NULL (MGL-PAX:CLHS CLASS)"
-  [6671]: http://www.lispworks.com/documentation/HyperSpec/Body/f_pn.htm "PATHNAME (MGL-PAX:CLHS FUNCTION)"
   [6699]: #x-28JOURNAL-3AREPLAY-UNEXPECTED-OUTCOME-20CONDITION-29 "JOURNAL:REPLAY-UNEXPECTED-OUTCOME CONDITION"
+  [669b]: http://www.lispworks.com/documentation/HyperSpec/Body/a_error.htm "ERROR (MGL-PAX:CLHS NIL)"
   [6710]: #x-28JOURNAL-3AREPLAY-NAME-MISMATCH-20CONDITION-29 "JOURNAL:REPLAY-NAME-MISMATCH CONDITION"
   [674f]: #x-28JOURNAL-3A-40SYNCHRONIZATION-WITH-FILE-JOURNALS-20MGL-PAX-3ASECTION-29 "Synchronization with file journals"
   [676d]: http://www.lispworks.com/documentation/HyperSpec/Body/f_wr_pr.htm "PRINC (MGL-PAX:CLHS FUNCTION)"
@@ -3858,6 +3858,7 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [768f]: #x-28JOURNAL-3A-40READABLE-20MGL-PAX-3AGLOSSARY-TERM-29 "readable"
   [77a2]: https://en.wikipedia.org/wiki/Continuation "continuation"
   [782a]: http://www.lispworks.com/documentation/HyperSpec/Body/v_pr_pre.htm "*PRINT-PRETTY* (MGL-PAX:CLHS VARIABLE)"
+  [783a]: http://www.lispworks.com/documentation/HyperSpec/Body/a_pn.htm "PATHNAME (MGL-PAX:CLHS NIL)"
   [78fd]: #x-28JOURNAL-3A-40ABORTED-EXECUTION-20MGL-PAX-3AGLOSSARY-TERM-29 "aborted execution"
   [7991]: #x-28JOURNAL-3A-40REPLAYING-THE-OUTCOME-20MGL-PAX-3ASECTION-29 "Replaying the outcome"
   [7a2f]: #x-28JOURNAL-3ASTREAMLET-20CLASS-29 "JOURNAL:STREAMLET CLASS"
@@ -3950,7 +3951,6 @@ normal operation, [`STREAMLET`][7a2f]s are not worked with directly.
   [e95a]: #x-28JOURNAL-3ACHECKED-20MGL-PAX-3AMACRO-29 "JOURNAL:CHECKED MGL-PAX:MACRO"
   [ecf9]: http://www.lispworks.com/documentation/HyperSpec/Body/e_storag.htm "STORAGE-CONDITION (MGL-PAX:CLHS CONDITION)"
   [eddd]: #x-28JOURNAL-3APEEK-REPLAY-EVENT-20FUNCTION-29 "JOURNAL:PEEK-REPLAY-EVENT FUNCTION"
-  [eef3]: http://www.lispworks.com/documentation/HyperSpec/Body/t_values.htm "VALUES (MGL-PAX:CLHS TYPE)"
   [f0e7]: #x-28JOURNAL-3AMAKE-FILE-JOURNAL-20FUNCTION-29 "JOURNAL:MAKE-FILE-JOURNAL FUNCTION"
   [f17d]: #x-28JOURNAL-3AVALUES-3C--20FUNCTION-29 "JOURNAL:VALUES<- FUNCTION"
   [f224]: #x-28JOURNAL-3AJOURNAL-DIVERGENT-P-20FUNCTION-29 "JOURNAL:JOURNAL-DIVERGENT-P FUNCTION"

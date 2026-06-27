@@ -2760,7 +2760,7 @@ The rest of section is about concrete subclasses of JOURNAL.
 
     - They must must not be mutated in any way.
 
-- [function] MAKE-IN-MEMORY-JOURNAL &KEY (EVENTS NIL EVENTSP) STATE (SYNC NIL SYNCP) SYNC-FN
+- [function] MAKE-IN-MEMORY-JOURNAL &KEY EVENTS STATE SYNC SYNC-FN
 
     Create an IN-MEMORY-JOURNAL.
 
