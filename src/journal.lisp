@@ -24,7 +24,7 @@
 
 (defsection @journal-links (:title "Links")
   "The official repository is <https://github.com/melisgl/journal>, and
-  this document in available in various formats on
+  this document is available in various formats on
   <https://fixnum.com> for the latest version.")
 
 (defsection @journal-portability (:title "Portability")
